@@ -1,5 +1,7 @@
 'use strict';
 
+const { alojamientoGratuito } = require('./alojamientos');
+
 /**
  * ¿Qué fichero de una ficha es DE VERDAD el de esa ficha?
  *
@@ -134,7 +136,9 @@ function selectRelevantFiles(candidates, pageUrl) {
       continue;
     }
 
-    if (sharesIdentity(url, tokens) || sinIdentificador) {
+    // Un alojamiento de vídeo conocido (normalizado por lib/alojamientos.js) no lleva el nombre del
+    // vídeo en la URL, solo un identificador: es el reproductor de la propia ficha, no un intruso.
+    if (sharesIdentity(url, tokens) || sinIdentificador || alojamientoGratuito(url)) {
       verificados.push({ url, suspect: false, reason: null });
       continue;
     }

@@ -201,3 +201,32 @@ test('normalizeCrawlParams', async t => {
     assert.equal(normalizeCrawlParams(base).useJavaScript, false);
   });
 });
+
+test('alojamientos: prefiere el gratuito (normalizado) y descarta los que piden cuenta', () => {
+  const extraer = extractFilesFromHtml;
+  const html =
+    '<a href="https://mxdrop.to/e/abc123">ver</a>' +
+    '<a href="https://nitroflare.com/view/XYZ/v.mp4">bajar</a>' +
+    '<a href="/otro.mp4">directo</a>';
+  const r = extraer(html, 'https://example.com/ficha', ['mp4']);
+  assert.deepEqual(r, ['https://mixdrop.ag/f/abc123', 'https://example.com/otro.mp4']);
+  assert.deepEqual(
+    extraer('<a href="https://nitroflare.com/view/XYZ/v.mp4">x</a>', 'https://example.com/', [
+      'mp4',
+    ]),
+    ['https://nitroflare.com/view/XYZ/v.mp4']
+  );
+});
+
+test('alojamientos: también en og:video, data-embed-src y noscript', () => {
+  const html =
+    '<meta property="og:video" content="https://mxdrop.to/e/zz9">' +
+    '<button data-embed-src="https://mxdrop.to/e/zz9"></button>' +
+    '<noscript><a href="https://mixdrop.co/f/qq1">x</a></noscript>' +
+    '<a href="https://nitroflare.com/view/XYZ/v.mp4">bajar</a>';
+  assert.deepEqual(extractFilesFromHtml(html, 'https://example.com/ficha', ['mp4']).sort(), [
+    'https://mixdrop.ag/f/qq1',
+    'https://mixdrop.ag/f/zz9',
+  ]);
+  assert.deepEqual(extractFilesFromHtml(html, 'https://example.com/ficha', ['jpg']), []);
+});

@@ -127,7 +127,8 @@ const config = {
 
   // Proxy de salida opcional (p. ej. el Privoxy de un contenedor con VPN: http://192.168.1.10:8118).
   // Sirve cuando el operador bloquea un sitio. Lo usan el cliente HTTP y el navegador.
-  outboundProxy: (process.env.OUTBOUND_PROXY || '').trim(),
+  // En los tests (node --test pone NODE_TEST_CONTEXT) nunca: el .env local no debe colarse ahí.
+  outboundProxy: process.env.NODE_TEST_CONTEXT ? '' : (process.env.OUTBOUND_PROXY || '').trim(),
 
   browser: {
     enabled: boolFromEnv('BROWSER_ENABLED', true),

@@ -24,6 +24,12 @@ const {
   formatFileSize,
 } = require('../lib/media');
 const { groupDuplicates } = require('../lib/dedupe');
+const {
+  alojamientoGratuito,
+  alojamientosEnHtml,
+  soloConCuenta,
+  buscaVideo,
+} = require('../lib/alojamientos');
 const { asDocument } = require('../lib/document');
 const { analizarRespuesta, analizarError, combinar } = require('../lib/blocking');
 const { findExtension } = require('./extensions');
@@ -118,17 +124,25 @@ function prefijosMasFrecuentes(diagnostico, n = 3) {
 function extractFilesFromHtml(html, baseUrl, extensions) {
   const $ = asDocument(html);
   const files = new Set();
+  const gratuitos = new Set();
+  const conVideo = buscaVideo(extensions);
 
   $(FILE_SELECTORS).each((_, element) => {
     const $el = $(element);
     const raw = $el.attr('href') || $el.attr('src') || $el.attr('data');
     const absolute = toAbsoluteUrl(raw, baseUrl);
-    if (absolute && hasExtension(absolute, extensions)) {
-      files.add(absolute);
-    }
+    if (!absolute) return;
+    const alojado = conVideo ? alojamientoGratuito(absolute) : null;
+    if (alojado) gratuitos.add(alojado);
+    else if (hasExtension(absolute, extensions)) files.add(absolute);
   });
 
-  return [...files];
+  if (conVideo) for (const url of alojamientosEnHtml($.html())) gratuitos.add(url);
+
+  // Con una alternativa gratuita en la ficha, fuera los alojamientos que piden cuenta de pago:
+  // el gestor de descargas se quedaría esperando una cuenta que no hay.
+  if (gratuitos.size === 0) return [...files];
+  return [...gratuitos, ...[...files].filter(f => !soloConCuenta(f))];
 }
 
 /**

@@ -30,6 +30,7 @@ const CONFIG_KEYS = [
   'concurrency',
   'useJavaScript',
   'openLicenseOnly',
+  'paginationMode',
 ];
 
 const MAX_NAME_LENGTH = 120;
@@ -57,6 +58,7 @@ function sanitizeProfile(raw) {
   for (const key of CONFIG_KEYS) {
     const value = source[key];
     if (value === undefined || value === null) continue;
+    if (key === 'paginationMode' && !['auto', 'scroll'].includes(value)) continue;
     if (typeof value === 'boolean') clean[key] = value;
     else clean[key] = String(value).slice(0, MAX_VALUE_LENGTH);
   }

@@ -25,6 +25,7 @@ export const CONFIG_KEYS = [
   'concurrency',
   'useJavaScript',
   'openLicenseOnly',
+  'paginationMode',
 ];
 
 /**

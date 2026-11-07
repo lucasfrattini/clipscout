@@ -1243,6 +1243,9 @@ export function createExplorerView(container, { limits }) {
   function applyConfig(config, { resetUrls = true } = {}) {
     if (!config) return;
     if (resetUrls) limpiarFilasExtra();
+    // Una configuración guardada fija también cómo pasa de página. Las antiguas no lo traían: se
+    // usa «automático», que es con lo que se guardaron, y no el modo que quedó de otra búsqueda.
+    if (resetUrls && !('paginationMode' in config)) fields.paginationMode.value = 'auto';
     for (const [key, value] of Object.entries(config)) {
       const input = fields[key];
       if (!input) continue;
