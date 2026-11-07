@@ -6,6 +6,7 @@
  */
 
 import { ajustes } from '../api.js';
+import { confirmDialog } from '../components/dialog.js';
 import { el, toast } from '../dom.js';
 import { alCambiarIdioma, t } from '../i18n/index.js';
 
@@ -40,7 +41,8 @@ export function createAjustesView(raiz) {
       }),
       tarjetaGeneral(),
       tarjetaClave(),
-      tarjetaConexiones()
+      tarjetaConexiones(),
+      tarjetaJd()
     );
   }
 
@@ -159,7 +161,15 @@ export function createAjustesView(raiz) {
             boton(
               t('aj.clave.regenerar'),
               async () => {
-                if (!window.confirm(t('aj.clave.confirmar'))) return;
+                if (
+                  !(await confirmDialog({
+                    titleKey: 'aj.clave.regenerar',
+                    bodyKey: 'aj.clave.confirmar',
+                    variant: 'danger',
+                  }))
+                ) {
+                  return;
+                }
                 const r = await ajustes.regenerarClave();
                 general.api_key = r.api_key;
                 claveVisible = true;
@@ -170,6 +180,86 @@ export function createAjustesView(raiz) {
             ),
           ],
         }),
+      ],
+    });
+  }
+
+  /* ── JDownloader ───────────────────────────────────────────────────── */
+
+  function tarjetaJd() {
+    const url = el('input', {
+      className: 'input',
+      attrs: { type: 'text', spellcheck: 'false', placeholder: 'http://192.168.1.10:3128' },
+    });
+    const autostart = el('input', { attrs: { type: 'checkbox', checked: true } });
+    const resultado = el('p', { className: 'ajustes-resultado' });
+    const mostrar = r => {
+      resultado.className = `ajustes-resultado ${r.ok ? 'ajustes-resultado--ok' : 'ajustes-resultado--mal'}`;
+      resultado.textContent = r.ok
+        ? t('aj.jd.responde', { version: r.version, carpeta: r.carpeta })
+        : r.error;
+    };
+    ajustes
+      .jdownloader()
+      .then(d => {
+        url.value = d.url || '';
+        autostart.checked = d.autostart !== false;
+        if (d.url) ajustes.probarJd(d.url).then(mostrar, () => {});
+      })
+      .catch(() => {});
+    const boton = (clave, tipo, onClick) =>
+      el('button', {
+        className: `button button--small ${tipo}`,
+        attrs: { type: tipo ? 'button' : 'submit' },
+        text: t(clave),
+        on: onClick ? { click: onClick } : undefined,
+      });
+    const form = el('form', {
+      className: 'card__body ajustes-form',
+      children: [
+        campo(t('aj.jd.url'), url, t('aj.jd.url.hint')),
+        el('label', { className: 'ajustes-casilla', children: [autostart, t('aj.jd.autostart')] }),
+        el('div', {
+          className: 'ajustes-acciones',
+          children: [
+            boton('aj.con.probar', 'button--secondary', async () => {
+              try {
+                mostrar(await ajustes.probarJd(url.value));
+              } catch (error) {
+                mostrar({ ok: false, error: error.message });
+              }
+            }),
+            boton('aj.guardar', ''),
+          ],
+        }),
+        resultado,
+      ],
+      on: {
+        submit: async e => {
+          e.preventDefault();
+          try {
+            await ajustes.guardarJd({ url: url.value, autostart: autostart.checked });
+            toast(t(url.value.trim() ? 'aj.jd.guardado' : 'aj.jd.quitado'));
+            window.dispatchEvent(new Event('clipscout:jdownloader'));
+            if (url.value.trim()) mostrar(await ajustes.probarJd(url.value));
+            else resultado.textContent = '';
+          } catch (error) {
+            mostrar({ ok: false, error: error.message });
+          }
+        },
+      },
+    });
+    return el('section', {
+      className: 'card',
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.jd.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.jd.hint') }),
+          ],
+        }),
+        form,
       ],
     });
   }
@@ -285,7 +375,16 @@ export function createAjustesView(raiz) {
               text: t('aj.con.quitar'),
               on: {
                 click: async () => {
-                  if (!window.confirm(t('aj.con.quitarConfirmar', { nombre: c.nombre }))) return;
+                  if (
+                    !(await confirmDialog({
+                      titleKey: 'aj.con.quitar',
+                      bodyKey: 'aj.con.quitarConfirmar',
+                      bodyParams: { nombre: c.nombre },
+                      variant: 'danger',
+                    }))
+                  ) {
+                    return;
+                  }
                   await ajustes.quitar(c.id);
                   toast(t('aj.con.quitada'));
                   avisarCambio();

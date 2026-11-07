@@ -219,6 +219,13 @@ export const ajustes = {
       method: 'POST',
       body: JSON.stringify({ titulos, duraciones }),
     }),
+  jdownloader: () => request('/ajustes/jdownloader'),
+  guardarJd: datos =>
+    request('/ajustes/jdownloader', { method: 'PUT', body: JSON.stringify(datos) }),
+  probarJd: url =>
+    request('/ajustes/jdownloader/probar', { method: 'POST', body: JSON.stringify({ url }) }),
+  enviarJd: datos =>
+    request('/ajustes/jdownloader/enviar', { method: 'POST', body: JSON.stringify(datos) }),
 };
 
 export { ApiError };

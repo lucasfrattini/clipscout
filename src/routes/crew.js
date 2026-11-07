@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 
 const crew = require('../services/crew');
+const jd = require('../services/jdownloader');
 
 /**
  * Rutas de clip crew.
@@ -153,6 +154,35 @@ router.post(
       Array.isArray(duraciones) ? duraciones.slice(0, 200) : []
     );
   })
+);
+
+/* ── JDownloader (API local) ────────────────────────────────────────── */
+
+router.get(
+  '/ajustes/jdownloader',
+  manejar(() => jd.ajustes())
+);
+
+router.put(
+  '/ajustes/jdownloader',
+  manejar(async req => {
+    const { url = '', autostart = true } = req.body || {};
+    if (String(url).trim()) {
+      const prueba = await jd.probar(url);
+      if (!prueba.ok) throw new crew.ErrorCrew(prueba.error);
+    }
+    return jd.guardar({ url, autostart });
+  })
+);
+
+router.post(
+  '/ajustes/jdownloader/probar',
+  manejar(async req => jd.probar((req.body || {}).url || (await jd.ajustes()).url))
+);
+
+router.post(
+  '/ajustes/jdownloader/enviar',
+  manejar(req => jd.enviar(req.body || {}))
 );
 
 router.get(

@@ -144,8 +144,17 @@ the ones not connected dimmed), to jump between them. With **clipkeeper** connec
 authentication with the `X-Api-Key` header, error format) is described in
 [docs/CREW.md](docs/CREW.md).
 
+### Sending to JDownloader
+
+**Settings → JDownloader** takes the URL of JDownloader 2's local API (usually
+`http://<jdownloader-ip>:3128`). Then the Videos tab shows **Send to JDownloader** (all visible
+results) and a **JDownloader** button on each video; you can pick a subfolder inside JDownloader's
+download folder. To enable the API in JDownloader: *Advanced Settings* → `RemoteAPI: Deprecated API
+enabled` on and `RemoteAPI: Deprecated API localhost only` off, then restart it. In Docker, publish
+port `3128`.
+
 > Calls to other clip crew apps only go to the URLs you add in **Settings**, and only to their
-> `/api/crew/v1/...` endpoints. The SSRF protection that keeps crawls away from private addresses
+> `/api/crew/v1/...` endpoints (and, for JDownloader, to its API). The SSRF protection that keeps crawls away from private addresses
 > is unchanged.
 
 | Variable          | Default          | What it does                                                                                                                                                       |

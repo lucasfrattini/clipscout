@@ -1,6 +1,6 @@
 {
   "name": "clipscout",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "clipscout — explora los enlaces y recursos multimedia de un sitio web recorriendo su paginación.",
   "main": "server.js",
   "engines": {

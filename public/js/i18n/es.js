@@ -546,4 +546,22 @@ export const es = {
   'video.yaLoTengo.ninguno': 'Ninguno de estos está en tu biblioteca.',
   'video.enBiblioteca': '✓ En tu biblioteca',
   'video.verEnClipkeeper': 'Ver en clipkeeper',
+  'aj.jd.titulo': 'JDownloader',
+  'aj.jd.hint':
+    'Manda los vídeos encontrados a JDownloader 2 por su API local. En JDownloader: Ajustes avanzados → «RemoteAPI: Deprecated API enabled» activado y «… localhost only» desactivado; publica el puerto 3128.',
+  'aj.jd.url': 'URL de la API de JDownloader',
+  'aj.jd.url.hint': 'Normalmente http://<ip-de-jdownloader>:3128. Déjala vacía para desactivarlo.',
+  'aj.jd.autostart':
+    'Empezar a descargar en cuanto llegue (si no, queda en el capturador de enlaces)',
+  'aj.jd.responde': '✓ Responde: JDownloader {version} · descarga en {carpeta}',
+  'aj.jd.guardado': 'JDownloader guardado',
+  'aj.jd.quitado': 'JDownloader desactivado',
+  'video.jd.todos': 'Enviar a JDownloader',
+  'video.jd.todos.titulo': 'Manda todos los vídeos visibles a JDownloader',
+  'video.jd.boton': 'JDownloader',
+  'video.jd.boton.titulo': 'Mandar este vídeo a JDownloader',
+  'video.jd.carpeta':
+    'Subcarpeta dentro de las descargas de JDownloader para {n} vídeo(s) (p. ej. el nombre de la persona). Vacía = la carpeta por defecto.',
+  'video.jd.enviados': '{n} enviado(s) a JDownloader',
+  'video.jd.enviadosA': '{n} enviado(s) a JDownloader → {carpeta}',
 };

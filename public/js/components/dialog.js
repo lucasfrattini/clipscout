@@ -113,7 +113,13 @@ function abrirDialogo({ role, titleKey, valorCancelar, render }) {
  * Pide un texto. `Promise<string|null>`: `null` significa cancelado, igual
  * que devolvía `window.prompt()`.
  */
-export function promptDialog({ titleKey, labelKey, defaultValue = '', inputType = 'text' }) {
+export function promptDialog({
+  titleKey,
+  labelKey,
+  labelParams,
+  defaultValue = '',
+  inputType = 'text',
+}) {
   return abrirDialogo({
     role: 'dialog',
     titleKey,
@@ -162,7 +168,7 @@ export function promptDialog({ titleKey, labelKey, defaultValue = '', inputType 
       return {
         focoInicial: input,
         refrescar() {
-          label.textContent = t(labelKey);
+          label.textContent = t(labelKey, labelParams);
           botonCancelar.textContent = t('dialogo.cancelar');
           botonAceptar.textContent = t('dialogo.aceptar');
         },

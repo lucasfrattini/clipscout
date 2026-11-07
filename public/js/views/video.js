@@ -13,6 +13,7 @@ import {
   toast,
 } from '../dom.js';
 import { ajustes, openVideoStream } from '../api.js';
+import { promptDialog } from '../components/dialog.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { createRangeFilter, formatDuration, formatBytes } from '../components/rangeSlider.js';
 import { aCSV, aJSON, aListaDeDescarga, construirFilas } from '../exportFormats.js';
@@ -56,6 +57,9 @@ export function createVideoView(container) {
   let ultimosVisibles = [];
   // «¿Ya lo tengo?»: url -> coincidencia en clipkeeper (de la última comprobación).
   let enBiblioteca = new Map();
+  // JDownloader: si está configurado se muestran los botones de enviar.
+  let jdConfigurado = false;
+  let ultimaCarpetaJd = '';
 
   // Quitados a mano: NADA se borra de `meta`/`order`, quitar es solo una
   // vista, igual que en el Explorador. `tandas` guarda cada borrado por
@@ -661,6 +665,56 @@ export function createVideoView(container) {
   texto(yaLoTengoButton, 'video.yaLoTengo');
   atributo(yaLoTengoButton, 'title', 'video.yaLoTengo.titulo');
 
+  /** Pide la subcarpeta (relativa a la de descargas de JDownloader) y envía. */
+  async function enviarAJd(links) {
+    if (links.length === 0) return;
+    const carpeta = await promptDialog({
+      titleKey: 'video.jd.todos',
+      labelKey: 'video.jd.carpeta',
+      labelParams: { n: links.length },
+      defaultValue: ultimaCarpetaJd,
+    });
+    if (carpeta === null) return;
+    ultimaCarpetaJd = carpeta.trim();
+    const urls = readUrls();
+    try {
+      const r = await ajustes.enviarJd({
+        links,
+        carpeta: ultimaCarpetaJd,
+        origen: urls.length === 1 ? urls[0] : '',
+      });
+      toast(
+        r.carpeta
+          ? t('video.jd.enviadosA', { n: r.enviados, carpeta: r.carpeta })
+          : t('video.jd.enviados', { n: r.enviados }),
+        'success',
+        5000
+      );
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+    }
+  }
+
+  const jdButton = el('button', {
+    className: 'button button--secondary button--small',
+    attrs: { type: 'button', hidden: '' },
+    on: { click: () => enviarAJd(ultimosVisibles.map(v => v.url)) },
+  });
+  texto(jdButton, 'video.jd.todos');
+  atributo(jdButton, 'title', 'video.jd.todos.titulo');
+
+  async function cargarJd() {
+    try {
+      jdConfigurado = Boolean((await ajustes.jdownloader()).url);
+    } catch {
+      jdConfigurado = false;
+    }
+    jdButton.hidden = !jdConfigurado;
+    if (huboResultado) renderResults();
+  }
+  cargarJd();
+  window.addEventListener('clipscout:jdownloader', cargarJd);
+
   const cabeceraResultados = el('div', {
     className: 'results__head',
     children: [
@@ -675,6 +729,7 @@ export function createVideoView(container) {
           viewToggleGroup,
           exportDropdown,
           yaLoTengoButton,
+          jdButton,
           copyAllButton,
         ],
       }),
@@ -1050,6 +1105,16 @@ export function createVideoView(container) {
           text: t('video.abrir'),
         })
       );
+      if (jdConfigurado) {
+        actions.push(
+          el('button', {
+            className: 'button button--secondary button--small',
+            text: t('video.jd.boton'),
+            attrs: { type: 'button', title: t('video.jd.boton.titulo') },
+            on: { click: () => enviarAJd([video.url]) },
+          })
+        );
+      }
     }
     actions.push(
       el('button', {

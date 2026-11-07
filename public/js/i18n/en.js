@@ -545,4 +545,22 @@ export const en = {
   'video.yaLoTengo.ninguno': 'None of these are in your library.',
   'video.enBiblioteca': '✓ In your library',
   'video.verEnClipkeeper': 'Open in clipkeeper',
+  'aj.jd.titulo': 'JDownloader',
+  'aj.jd.hint':
+    'Send found videos to JDownloader 2 through its local API. In JDownloader: Advanced settings → enable «RemoteAPI: Deprecated API enabled» and disable «… localhost only»; publish port 3128.',
+  'aj.jd.url': 'JDownloader API URL',
+  'aj.jd.url.hint': 'Usually http://<jdownloader-ip>:3128. Leave it empty to turn it off.',
+  'aj.jd.autostart':
+    'Start downloading as soon as it arrives (otherwise it waits in the link grabber)',
+  'aj.jd.responde': '✓ Responds: JDownloader {version} · downloads to {carpeta}',
+  'aj.jd.guardado': 'JDownloader saved',
+  'aj.jd.quitado': 'JDownloader turned off',
+  'video.jd.todos': 'Send to JDownloader',
+  'video.jd.todos.titulo': 'Send every visible video to JDownloader',
+  'video.jd.boton': 'JDownloader',
+  'video.jd.boton.titulo': 'Send this video to JDownloader',
+  'video.jd.carpeta':
+    'Subfolder inside JDownloader downloads for {n} video(s) (e.g. the person’s name). Empty = default folder.',
+  'video.jd.enviados': '{n} sent to JDownloader',
+  'video.jd.enviadosA': '{n} sent to JDownloader → {carpeta}',
 };
