@@ -164,6 +164,7 @@ port `3128`.
 
 | Variable          | Default          | What it does                                                                                                                                                       |
 | ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `OUTBOUND_PROXY`  | _(empty)_        | Optional outbound proxy for crawls and the browser, e.g. `http://192.168.1.10:8118` (the Privoxy of a VPN container). Useful when your ISP blocks a site |
 | `ADMIN_PASSWORD`  | _(empty)_        | Optional password for the whole app (HTTP Basic, user `ADMIN_USER`, default `admin`). Recommended if more devices can reach it: the Settings tab shows the API key |
 | `CREW_PATH`       | `data/crew.json` | API key, instance name and connections                                                                                                                             |
 | `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another clip crew app                                                                                                                      |

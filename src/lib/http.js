@@ -55,8 +55,23 @@ const throttle = new HostThrottle();
  * puede resolver DNS: no basta por sí solo.
  */
 const agentOptions = { keepAlive: true, lookup: secureLookup };
-const httpAgent = new http.Agent(agentOptions);
-const httpsAgent = new https.Agent(agentOptions);
+let httpAgent = new http.Agent(agentOptions);
+let httpsAgent = new https.Agent(agentOptions);
+
+/*
+ * Con OUTBOUND_PROXY todo sale por ese proxy (útil si el operador bloquea un sitio). El proxy
+ * resuelve los nombres, así que `secureLookup` ya no ve la IP final: queda `assertUrlIsSafe`,
+ * que resuelve y valida ANTES de cada petición y de cada redirección.
+ */
+if (config.outboundProxy) {
+  const { HttpProxyAgent } = require('http-proxy-agent');
+  const { HttpsProxyAgent } = require('https-proxy-agent');
+  httpAgent = new HttpProxyAgent(config.outboundProxy, { keepAlive: true });
+  httpsAgent = new HttpsProxyAgent(config.outboundProxy, { keepAlive: true });
+  logger.info('Saliendo por proxy', {
+    proxy: config.outboundProxy.replace(/\/\/[^@]*@/, '//***@'),
+  });
+}
 
 /**
  * Revalidación de FORMA en cada redirección.

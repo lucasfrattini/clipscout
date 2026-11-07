@@ -125,6 +125,10 @@ const config = {
     circuitBreakerCooldownMs: intFromEnv('THROTTLE_CIRCUIT_BREAKER_COOLDOWN_MS', 120000),
   },
 
+  // Proxy de salida opcional (p. ej. el Privoxy de un contenedor con VPN: http://192.168.1.10:8118).
+  // Sirve cuando el operador bloquea un sitio. Lo usan el cliente HTTP y el navegador.
+  outboundProxy: (process.env.OUTBOUND_PROXY || '').trim(),
+
   browser: {
     enabled: boolFromEnv('BROWSER_ENABLED', true),
     // Ruta a un Chromium del sistema. En Docker se usa el de apt y se evita
