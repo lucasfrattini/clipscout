@@ -21,7 +21,7 @@ import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
  * con localStorage la siguiente veía la búsqueda de la anterior. Al cerrar la
  * pestaña, el formulario vuelve a estar vacío.
  */
-const STORAGE_KEY = 'urlexplorer:explorer-form';
+const STORAGE_KEY = 'clipscout:explorer-form';
 
 /**
  * Vista Explorador: fase 1 (recorrer paginación y extraer enlaces) y, si se
@@ -1054,7 +1054,7 @@ export function createExplorerView(container, { limits }) {
   const results = createResultList({
     emptyTitleKey: 'explorer.vacio.titulo',
     emptyTextKey: 'explorer.vacio.texto',
-    filename: 'urlexplorer-resultados.txt',
+    filename: 'clipscout-resultados.txt',
   });
 
   const explorerShell = el('div', {

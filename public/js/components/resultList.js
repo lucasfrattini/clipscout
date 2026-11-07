@@ -43,7 +43,7 @@ function bytesDe(info) {
   return Number.isFinite(info?.sizeBytes) ? info.sizeBytes : null;
 }
 
-export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'urlexplorer.txt' }) {
+export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clipscout.txt' }) {
   let items = [];
   let filtered = [];
   // url -> { duration, durationSeconds, size, sizeBytes, sizeApproximate }

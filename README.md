@@ -2,7 +2,7 @@
 
 <img src="public/img/logo.png" alt="" width="96" height="96" />
 
-# URL Explorer
+# clipscout
 
 **Point it at a paginated website. Walk away with a clean, deduplicated list of
 everything that matched.**
@@ -18,7 +18,7 @@ progress, real cancellation and export.
 
 </div>
 
-> ⚠️ URL Explorer only reads what a site already serves to a normal visitor —
+> ⚠️ clipscout only reads what a site already serves to a normal visitor —
 > it does not bypass logins, paywalls, CAPTCHAs or DRM. Whether you may access,
 > save or redistribute what you find depends on the site and your jurisdiction,
 > and that responsibility is yours. See [Responsible use](#responsible-use).
@@ -66,8 +66,8 @@ This is the recommended way. You need **Docker with Docker Compose** and about
 it).
 
 ```bash
-git clone https://github.com/lucasfrattini/urlexplorer.git
-cd urlexplorer
+git clone https://github.com/lucasfrattini/clipscout.git
+cd clipscout
 cp .env.example .env     # optional: defaults work as they are
 docker compose up -d --build
 ```
@@ -76,7 +76,7 @@ Open **http://localhost:3001** (or `http://<server-ip>:3001` from another
 machine). That's it.
 
 The container restarts by itself after a crash or a reboot. Everyday commands,
-run from the `urlexplorer` folder:
+run from the `clipscout` folder:
 
 ```bash
 docker compose logs -f         # follow the log
@@ -118,7 +118,7 @@ with none.
 ## Updating and backups
 
 ```bash
-cd urlexplorer
+cd clipscout
 git pull
 docker compose up -d --build
 ```
@@ -138,7 +138,7 @@ kept in memory and are lost on restart.
 
 ## Exposing it on the internet
 
-URL Explorer has **no login**: anyone who can reach it can use it and see or
+clipscout has **no login**: anyone who can reach it can use it and see or
 change the saved configurations. On a home or office network that is fine. If
 you open it to the internet, put it behind a reverse proxy with authentication
 (basic auth, an SSO proxy) or behind a VPN such as Tailscale or WireGuard.
@@ -169,8 +169,8 @@ Needs **Node.js 20 or newer**. Puppeteer downloads its own Chromium during
 `npm install`.
 
 ```bash
-git clone https://github.com/lucasfrattini/urlexplorer.git
-cd urlexplorer
+git clone https://github.com/lucasfrattini/clipscout.git
+cd clipscout
 npm install
 cp .env.example .env
 npm start
@@ -241,7 +241,7 @@ organised, the API and the design decisions are in
 
 ## Responsible use
 
-URL Explorer is a generic tool: it automates what you would do by hand clicking
+clipscout is a generic tool: it automates what you would do by hand clicking
 "next page", sending plain HTTP requests (or rendering with a normal browser)
 to URLs **you** provide. It ships with no list of targets and does not get past
 any access control.

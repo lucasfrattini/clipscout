@@ -35,7 +35,7 @@ const DICCIONARIOS = { es, en };
 export const IDIOMAS = ['es', 'en'];
 export const IDIOMA_POR_DEFECTO = 'en';
 
-const STORAGE_KEY = 'urlexplorer:lang';
+const STORAGE_KEY = 'clipscout:lang';
 
 /**
  * Idioma a partir de las preferencias del navegador.

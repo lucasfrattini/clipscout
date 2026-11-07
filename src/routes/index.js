@@ -13,7 +13,7 @@ const router = express.Router();
 router.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    name: 'URL Explorer',
+    name: 'clipscout',
     uptimeSeconds: Math.floor(process.uptime()),
     limits: {
       maxPages: config.crawl.maxPages,

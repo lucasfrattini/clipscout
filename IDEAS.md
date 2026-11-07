@@ -1,4 +1,4 @@
-# URL Explorer — análisis y propuesta de funcionalidades
+# clipscout — análisis y propuesta de funcionalidades
 
 > Documento de análisis. Ninguna de estas propuestas está implementada.
 > Los sitios investigados se identifican por letra y por sus características

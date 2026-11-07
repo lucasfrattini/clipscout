@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Punto de entrada de URL Explorer.
+ * Punto de entrada de clipscout.
  *
  * Toda la lógica vive en src/. Este fichero solo arranca el servidor y
  * gestiona el apagado ordenado.
@@ -15,7 +15,7 @@ const { pool } = require('./src/lib/browser');
 const app = createApp();
 
 const server = app.listen(config.port, () => {
-  logger.info(`URL Explorer escuchando en http://localhost:${config.port}`);
+  logger.info(`clipscout escuchando en http://localhost:${config.port}`);
 });
 
 /** Apagado ordenado: cierra el servidor HTTP y el navegador del pool. */

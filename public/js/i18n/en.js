@@ -27,10 +27,10 @@ export const en = {
   'idioma.cambiado': 'Language: English',
 
   /* ── Document head (<title> and meta description) ──────────────── */
-  'head.explorer.titulo': 'Link explorer — URL Explorer',
+  'head.explorer.titulo': 'Link explorer — clipscout',
   'head.explorer.desc':
     'Walk the pages of a section, pull out the links matching a pattern and look for files inside each one.',
-  'head.video.titulo': 'Video analysis — URL Explorer',
+  'head.video.titulo': 'Video analysis — clipscout',
   'head.video.desc':
     'Analyse a single URL in depth and find the videos inside it, with their duration and size.',
 

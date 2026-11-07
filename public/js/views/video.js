@@ -508,7 +508,7 @@ export function createVideoView(container) {
     attrs: { type: 'button', role: 'menuitem' },
     on: {
       click: () => {
-        downloadText('urlexplorer-videos.txt', ultimosVisibles.map(v => v.url).join('\n'));
+        downloadText('clipscout-videos.txt', ultimosVisibles.map(v => v.url).join('\n'));
         toast(t('resultados.descargados', { n: ultimosVisibles.length }));
         alternarMenuExportar(false);
       },
@@ -523,7 +523,7 @@ export function createVideoView(container) {
       on: {
         click: () => {
           const filas = filasExportables();
-          downloadText(`urlexplorer-videos${extension}`, construir(filas), tipo);
+          downloadText(`clipscout-videos${extension}`, construir(filas), tipo);
           toast(t('resultados.exportados', { n: filas.length, formato }));
           alternarMenuExportar(false);
         },

@@ -1,4 +1,4 @@
-/** Cliente de la API de URL Explorer. */
+/** Cliente de la API de clipscout. */
 
 import { t } from './i18n/index.js';
 

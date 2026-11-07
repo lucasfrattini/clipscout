@@ -1,4 +1,4 @@
-# URL Explorer — Architecture
+# clipscout — Architecture
 
 How the code is organised and why. For installing and running it, see the [README](../README.md).
 

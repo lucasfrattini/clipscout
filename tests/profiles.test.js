@@ -8,7 +8,7 @@ const path = require('node:path');
 
 // El entorno se fija ANTES de cargar la configuración: `src/config` lee
 // process.env una sola vez, al requerirse.
-const TEMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'urlexplorer-profiles-'));
+const TEMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-profiles-'));
 process.env.PROFILES_PATH = path.join(TEMP_DIR, 'profiles.json');
 
 const { readProfiles, writeProfiles, sanitizeProfile } = require('../src/services/profiles');

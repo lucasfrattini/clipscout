@@ -1,4 +1,4 @@
-# URL Explorer — imagen de producción
+# clipscout — imagen de producción
 #
 # Puppeteer necesita un Chromium. En vez de dejar que se descargue el suyo
 # (~300 MB, y se desincroniza con las librerías del sistema base), se instala

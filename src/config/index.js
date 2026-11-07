@@ -5,7 +5,7 @@ const path = require('node:path');
 require('dotenv').config();
 
 /**
- * Configuración central de URL Explorer.
+ * Configuración central de clipscout.
  *
  * Todas las constantes que antes estaban esparcidas por server.js como números
  * mágicos viven aquí y son sobreescribibles por variable de entorno.

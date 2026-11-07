@@ -1,8 +1,8 @@
 services:
-  urlexplorer:
+  clipscout:
     build: .
-    image: url-explorer:latest
-    container_name: urlexplorer
+    image: clipscout:latest
+    container_name: clipscout
 
     # "Corriendo siempre": se reinicia si el proceso muere y al arrancar el
     # host. `unless-stopped` respeta un `docker compose stop` manual, a

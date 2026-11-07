@@ -1,4 +1,4 @@
-# URL Explorer — hoja de ruta
+# clipscout — hoja de ruta
 
 > Documento de propuesta. **Nada de aquí está implementado.**
 >

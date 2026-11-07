@@ -1,4 +1,4 @@
-# URL Explorer es 100 % self-hosted: cada instancia la levanta y la opera quien
+# clipscout es 100 % self-hosted: cada instancia la levanta y la opera quien
 # quiere usarla. Este fichero es el defecto sensato para una herramienta interna
 # —que no salga en buscadores— y quien la aloje puede cambiarlo.
 #

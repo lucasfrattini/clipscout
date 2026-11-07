@@ -11,7 +11,7 @@ import {
   traducirDocumento,
 } from './i18n/index.js';
 
-const THEME_KEY = 'urlexplorer:theme';
+const THEME_KEY = 'clipscout:theme';
 
 const DEFAULT_LIMITS = {
   maxPages: 50,
@@ -33,7 +33,9 @@ function initTheme() {
 
   let current = 'system';
   try {
-    current = localStorage.getItem(THEME_KEY) || 'system';
+    // La app se llamaba URL Explorer: se respeta el tema guardado con la clave antigua.
+    current =
+      localStorage.getItem(THEME_KEY) || localStorage.getItem('urlexplorer:theme') || 'system';
   } catch {
     current = 'system';
   }
@@ -106,7 +108,7 @@ function initRouter(views) {
    *
    * Las dos herramientas viven en la misma URL con hash (`#/explorer`,
    * `#/video`), así que sin esto ambas compartían el título estático
-   * "URL Explorer" y una descripción genérica: la pestaña del navegador y el
+   * "clipscout" y una descripción genérica: la pestaña del navegador y el
    * historial no distinguían en cuál de las dos estabas.
    */
   function aplicarCabecera(name) {
