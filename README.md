@@ -28,6 +28,7 @@ progress, real cancellation and export.
 - [Features](#features)
 - [Install with Docker](#install-with-docker)
 - [Configuration](#configuration)
+- [Part of clip crew](#part-of-clip-crew)
 - [Updating and backups](#updating-and-backups)
 - [Exposing it on the internet](#exposing-it-on-the-internet)
 - [Install without Docker](#install-without-docker)
@@ -115,6 +116,43 @@ with none.
 
 ---
 
+## Part of clip crew
+
+clipscout is one of three independent, self-hosted apps that work together, in the style of
+Sonarr, Radarr and Prowlarr:
+
+| App            | What it does                                            | Default port |
+| -------------- | ------------------------------------------------------- | ------------ |
+| **clipscout**  | Finds files on websites (this app)                      | `3001`       |
+| **clonbuster** | Detects duplicate videos and photos and sets them aside | `8095`       |
+| **clipkeeper** | Catalogs, plays and organizes your video library        | `8096`       |
+
+Each app keeps its own data and works on its own. Connecting them lets each one use what the
+others know (for example, "do I already have this?" before downloading).
+
+**Connect them** — every app has a **Settings** tab:
+
+1. In app B, open **Settings → API key** and copy it.
+2. In app A, open **Settings → Connected apps → + Add connection**, pick B, check the suggested URL
+   (`http://<server-ip>:<port>`), paste B's key, press **Test**, then **Save**.
+3. With _Also connect in the opposite direction_ ticked (the default), B is connected back to A
+   automatically.
+
+The header shows an icon for every connected app, to jump between them. The protocol (endpoints,
+authentication with the `X-Api-Key` header, error format) is described in
+[docs/CREW.md](docs/CREW.md).
+
+> Calls to other clip crew apps only go to the URLs you add in **Settings**, and only to their
+> `/api/crew/v1/...` endpoints. The SSRF protection that keeps crawls away from private addresses
+> is unchanged.
+
+| Variable          | Default          | What it does                                  |
+| ----------------- | ---------------- | --------------------------------------------- |
+| `CREW_PATH`       | `data/crew.json` | API key, instance name and connections        |
+| `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another clip crew app |
+
+---
+
 ## Updating and backups
 
 ```bash
@@ -124,10 +162,10 @@ docker compose up -d --build
 ```
 
 Your saved configurations survive updates. The only things worth backing up
-are two small files:
+are three small files:
 
 ```bash
-cp data/profiles.json .env ~/backups/
+cp data/profiles.json data/crew.json .env ~/backups/
 ```
 
 Results are never written to disk — they live in the browser tab that ran the

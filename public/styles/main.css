@@ -3016,6 +3016,10 @@ a {
   flex: 1;
 }
 
+.card__header--con-cierre > .button {
+  white-space: nowrap;
+}
+
 .ajustes-casilla {
   display: flex;
   gap: var(--space-2);
