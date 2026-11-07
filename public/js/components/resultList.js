@@ -11,6 +11,7 @@ import {
 import { createRangeFilter, formatDuration, formatBytes } from './rangeSlider.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { aCSV, aJSON, aListaDeDescarga, construirFilas } from '../exportFormats.js';
+import { createJdGrupos } from './jdGrupos.js';
 
 /**
  * Lista de resultados con filtros y exportación.
@@ -516,6 +517,9 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
     ],
   });
 
+  // Enviar a JDownloader (en grupos con destino), igual que en la vista Vídeos.
+  const jd = createJdGrupos({ visibles: () => filtered, alCambiar: () => render() });
+
   const cabecera = el('div', {
     className: 'results__head',
     children: [
@@ -523,7 +527,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
       contador,
       el('div', {
         className: 'results__actions',
-        children: [undoButton, restoreButton, exportDropdown, copyButton],
+        children: [undoButton, restoreButton, exportDropdown, ...jd.barra, copyButton],
       }),
     ],
   });
@@ -646,6 +650,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
   }
 
   function render() {
+    jd.pintarBarra();
     const hayResultados = filtered.length > 0;
     copyButton.disabled = !hayResultados;
     exportToggleButton.disabled = !hayResultados;
@@ -796,6 +801,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
               // Copiar una sola línea. Los botones globales copian la lista
               // filtrada entera, que no sirve cuando solo quieres esta URL.
               copyIconButton(url),
+              ...jd.controles(url),
               // Quitar: sin confirmación, porque es reversible. Deshacer y
               // "restaurar ocultos" son las dos salidas.
               el('button', {

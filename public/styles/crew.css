@@ -265,33 +265,104 @@ a.cc-app:hover img {
 
 /* ── Diálogo de confirmación común (sustituye a confirm()/prompt() del navegador) ── */
 .cc-dialogo-fondo {
-  position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
-  padding: 16px; background: rgba(10, 10, 20, 0.55); backdrop-filter: blur(3px);
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(10, 10, 20, 0.55);
+  backdrop-filter: blur(3px);
   animation: cc-aparece 0.12s ease-out;
 }
 .cc-dialogo {
-  width: min(440px, 100%); background: var(--cc-carta); color: var(--cc-texto);
-  border: 1px solid var(--cc-borde); border-radius: var(--cc-radio); box-shadow: var(--cc-sombra-alta);
-  padding: 20px 22px 18px; animation: cc-sube 0.15s ease-out;
+  width: min(440px, 100%);
+  background: var(--cc-carta);
+  color: var(--cc-texto);
+  border: 1px solid var(--cc-borde);
+  border-radius: var(--cc-radio);
+  box-shadow: var(--cc-sombra-alta);
+  padding: 20px 22px 18px;
+  animation: cc-sube 0.15s ease-out;
 }
-.cc-dialogo h2 { margin: 0 0 8px; font-size: 1.05rem; font-weight: 650; }
-.cc-dialogo p { margin: 0 0 6px; color: var(--cc-tenue); line-height: 1.45; white-space: pre-line; }
+.cc-dialogo h2 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 650;
+}
+.cc-dialogo p {
+  margin: 0 0 6px;
+  color: var(--cc-tenue);
+  line-height: 1.45;
+  white-space: pre-line;
+}
 .cc-dialogo input {
-  width: 100%; box-sizing: border-box; margin-top: 8px; padding: 8px 10px; font: inherit;
-  color: var(--cc-texto); background: var(--cc-fondo); border: 1px solid var(--cc-borde-fuerte);
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--cc-texto);
+  background: var(--cc-fondo);
+  border: 1px solid var(--cc-borde-fuerte);
   border-radius: var(--cc-radio-chico);
 }
-.cc-dialogo input:focus { outline: 2px solid var(--cc-acento); outline-offset: 1px; }
-.cc-dialogo-botones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
-.cc-dialogo-botones button {
-  font: inherit; font-weight: 600; padding: 8px 16px; border-radius: var(--cc-radio-chico); cursor: pointer;
-  border: 1px solid var(--cc-borde-fuerte); background: transparent; color: var(--cc-texto);
+.cc-dialogo input:focus {
+  outline: 2px solid var(--cc-acento);
+  outline-offset: 1px;
 }
-.cc-dialogo-botones button:hover { background: var(--cc-acento-suave); }
-.cc-dialogo-botones .cc-dialogo-si { background: var(--cc-acento); border-color: var(--cc-acento); color: var(--cc-acento-texto); }
-.cc-dialogo-botones .cc-dialogo-si:hover { filter: brightness(1.08); background: var(--cc-acento); }
-.cc-dialogo--peligro .cc-dialogo-si { background: var(--cc-mal); border-color: var(--cc-mal); color: #fff; }
-.cc-dialogo--peligro .cc-dialogo-si:hover { background: var(--cc-mal); }
-@keyframes cc-aparece { from { opacity: 0; } }
-@keyframes cc-sube { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
-@media (prefers-reduced-motion: reduce) { .cc-dialogo-fondo, .cc-dialogo { animation: none; } }
+.cc-dialogo-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.cc-dialogo-botones button {
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--cc-radio-chico);
+  cursor: pointer;
+  border: 1px solid var(--cc-borde-fuerte);
+  background: transparent;
+  color: var(--cc-texto);
+}
+.cc-dialogo-botones button:hover {
+  background: var(--cc-acento-suave);
+}
+.cc-dialogo-botones .cc-dialogo-si {
+  background: var(--cc-acento);
+  border-color: var(--cc-acento);
+  color: var(--cc-acento-texto);
+}
+.cc-dialogo-botones .cc-dialogo-si:hover {
+  filter: brightness(1.08);
+  background: var(--cc-acento);
+}
+.cc-dialogo--peligro .cc-dialogo-si {
+  background: var(--cc-mal);
+  border-color: var(--cc-mal);
+  color: #fff;
+}
+.cc-dialogo--peligro .cc-dialogo-si:hover {
+  background: var(--cc-mal);
+}
+@keyframes cc-aparece {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes cc-sube {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cc-dialogo-fondo,
+  .cc-dialogo {
+    animation: none;
+  }
+}

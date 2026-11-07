@@ -1516,8 +1516,11 @@ a {
 
 .results__actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--space-2);
   margin-left: auto;
+  min-width: 0;
 }
 
 /*
@@ -2876,7 +2879,8 @@ a {
 /* Destino de descarga (grupos para JDownloader) */
 .jd-destino {
   width: auto;
-  max-width: 220px;
+  min-width: 0;
+  max-width: min(220px, 100%);
   padding: 4px 8px;
   font-size: 0.85rem;
 }

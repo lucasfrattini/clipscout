@@ -13,7 +13,7 @@ import {
   toast,
 } from '../dom.js';
 import { ajustes, openVideoStream } from '../api.js';
-import { promptDialog } from '../components/dialog.js';
+import { createJdGrupos } from '../components/jdGrupos.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { createRangeFilter, formatDuration, formatBytes } from '../components/rangeSlider.js';
 import { aCSV, aJSON, aListaDeDescarga, construirFilas } from '../exportFormats.js';
@@ -57,15 +57,6 @@ export function createVideoView(container) {
   let ultimosVisibles = [];
   // «¿Ya lo tengo?»: url -> coincidencia en clipkeeper (de la última comprobación).
   let enBiblioteca = new Map();
-  // JDownloader: si está configurado se muestran los botones de enviar.
-  let jdConfigurado = false;
-  let ultimaCarpetaJd = '';
-  // Grupos de descarga: url -> subcarpeta de destino. Los destinos salen de clipkeeper (las
-  // subcarpetas de la biblioteca donde descarga JDownloader) más las carpetas nuevas que se creen.
-  const asignados = new Map();
-  let destinos = [];
-  const carpetasNuevas = [];
-
   // Quitados a mano: NADA se borra de `meta`/`order`, quitar es solo una
   // vista, igual que en el Explorador. `tandas` guarda cada borrado por
   // separado para que "Deshacer" devuelva solo el último.
@@ -671,177 +662,16 @@ export function createVideoView(container) {
   atributo(yaLoTengoButton, 'title', 'video.yaLoTengo.titulo');
 
   /** Pide la subcarpeta (relativa a la de descargas de JDownloader) y envía. */
-  const origenActual = () => {
-    const urls = readUrls();
-    return urls.length === 1 ? urls[0] : '';
-  };
-
-  /** Sin destino asignado: pide la subcarpeta (relativa a las descargas de JDownloader) y envía. */
-  async function enviarAJd(links) {
-    if (links.length === 0) return;
-    const carpeta = await promptDialog({
-      titleKey: 'video.jd.todos',
-      labelKey: 'video.jd.carpeta',
-      labelParams: { n: links.length },
-      defaultValue: ultimaCarpetaJd,
-    });
-    if (carpeta === null) return;
-    ultimaCarpetaJd = carpeta.trim();
-    try {
-      const r = await ajustes.enviarJd({ links, carpeta: ultimaCarpetaJd, origen: origenActual() });
-      toast(
-        r.carpeta
-          ? t('video.jd.enviadosA', { n: r.enviados, carpeta: r.carpeta })
-          : t('video.jd.enviados', { n: r.enviados }),
-        'success',
-        5000
-      );
-    } catch (error) {
-      toast(error.message, 'error', 6000);
-    }
-  }
-
-  /** Envía los vídeos con destino, un pedido a JDownloader por grupo (carpeta). */
-  async function enviarGrupos(urls) {
-    const grupos = new Map();
-    for (const url of urls) {
-      const carpeta = asignados.get(url);
-      if (carpeta === undefined) continue;
-      if (!grupos.has(carpeta)) grupos.set(carpeta, []);
-      grupos.get(carpeta).push(url);
-    }
-    if (grupos.size === 0) return;
-    let enviados = 0;
-    try {
-      for (const [carpeta, links] of grupos) {
-        const r = await ajustes.enviarJd({ links, carpeta, origen: origenActual() });
-        enviados += r.enviados;
-        for (const l of links) asignados.delete(l);
-      }
-      toast(t('video.jd.enviadosGrupos', { n: enviados, g: grupos.size }), 'success', 5000);
-    } catch (error) {
-      toast(error.message, 'error', 6000);
-    }
-    renderResults();
-  }
-
-  function etiquetaDestino(d) {
-    const extra = [...(d.personas || []), ...(d.etiquetas || [])];
-    return extra.length ? `${d.carpeta} · ${extra.join(', ')}` : d.carpeta;
-  }
-
-  /** <select> de destino. `alElegir(carpeta|undefined)`; «nueva» pide el nombre. */
-  function selectorDestino(valor, alElegir, textoVacio = t('video.jd.destino.ninguno')) {
-    const opciones = [el('option', { attrs: { value: '' }, text: textoVacio })];
-    const conocidas = new Set();
-    for (const d of destinos) {
-      conocidas.add(d.carpeta);
-      opciones.push(el('option', { attrs: { value: d.carpeta }, text: etiquetaDestino(d) }));
-    }
-    for (const c of carpetasNuevas) {
-      if (!conocidas.has(c)) opciones.push(el('option', { attrs: { value: c }, text: `${c} ✚` }));
-    }
-    opciones.push(
-      el('option', { attrs: { value: '__nueva__' }, text: t('video.jd.destino.nueva') })
-    );
-    const select = el('select', {
-      className: 'input input--small jd-destino',
-      attrs: { 'aria-label': t('video.jd.destino'), title: t('video.jd.destino') },
-      children: opciones,
-    });
-    select.value = valor ?? '';
-    select.addEventListener('click', e => e.stopPropagation());
-    select.addEventListener('change', async () => {
-      if (select.value === '__nueva__') {
-        const nombre = await promptDialog({
-          titleKey: 'video.jd.destino.nuevaTitulo',
-          labelKey: 'video.jd.destino.nuevaLabel',
-        });
-        const limpio = (nombre || '').trim().replace(/^\/+|\/+$/g, '');
-        if (!limpio) {
-          select.value = valor ?? '';
-          return;
-        }
-        if (!carpetasNuevas.includes(limpio)) carpetasNuevas.push(limpio);
-        alElegir(limpio);
-      } else {
-        alElegir(select.value === '' ? undefined : select.value);
-      }
-    });
-    return select;
-  }
-
-  function asignar(urls, carpeta) {
-    for (const u of urls) {
-      if (carpeta === undefined) asignados.delete(u);
-      else asignados.set(u, carpeta);
-    }
-    renderResults();
-  }
-
-  const agruparHueco = el('span', { className: 'jd-agrupar' });
-  const colaButton = el('button', {
-    className: 'button button--small',
-    attrs: { type: 'button', hidden: '' },
-    on: { click: () => enviarGrupos([...asignados.keys()]) },
+  const jd = createJdGrupos({
+    visibles: () => ultimosVisibles.map(v => v.url),
+    origen: () => {
+      const urls = readUrls();
+      return urls.length === 1 ? urls[0] : '';
+    },
+    alCambiar: () => {
+      if (huboResultado) renderResults();
+    },
   });
-  atributo(colaButton, 'title', 'video.jd.cola.titulo');
-
-  function pintarCola() {
-    const n = asignados.size;
-    const g = new Set(asignados.values()).size;
-    colaButton.hidden = !jdConfigurado || n === 0;
-    colaButton.textContent = t('video.jd.cola', { n, g });
-    agruparHueco.replaceChildren(
-      jdConfigurado
-        ? selectorDestino(
-            '',
-            carpeta => {
-              if (carpeta !== undefined) {
-                asignar(
-                  ultimosVisibles.map(v => v.url),
-                  carpeta
-                );
-              }
-            },
-            t('video.jd.agrupar')
-          )
-        : ''
-    );
-  }
-
-  const jdButton = el('button', {
-    className: 'button button--secondary button--small',
-    attrs: { type: 'button', hidden: '' },
-    on: { click: () => enviarAJd(ultimosVisibles.map(v => v.url)) },
-  });
-  texto(jdButton, 'video.jd.todos');
-  atributo(jdButton, 'title', 'video.jd.todos.titulo');
-
-  async function cargarJd() {
-    let jd = {};
-    try {
-      jd = await ajustes.jdownloader();
-      jdConfigurado = Boolean(jd.url);
-    } catch {
-      jdConfigurado = false;
-    }
-    destinos = [];
-    if (jdConfigurado && jd.biblioteca !== null && jd.biblioteca !== undefined) {
-      try {
-        const d = await ajustes.destinos();
-        const b = (d.bibliotecas || []).find(x => x.id === jd.biblioteca);
-        destinos = b ? b.carpetas : [];
-      } catch {
-        destinos = [];
-      }
-    }
-    jdButton.hidden = !jdConfigurado;
-    pintarCola();
-    if (huboResultado) renderResults();
-  }
-  cargarJd();
-  window.addEventListener('clipscout:jdownloader', cargarJd);
 
   const cabeceraResultados = el('div', {
     className: 'results__head',
@@ -857,9 +687,7 @@ export function createVideoView(container) {
           viewToggleGroup,
           exportDropdown,
           yaLoTengoButton,
-          agruparHueco,
-          jdButton,
-          colaButton,
+          ...jd.barra,
           copyAllButton,
         ],
       }),
@@ -1235,20 +1063,7 @@ export function createVideoView(container) {
           text: t('video.abrir'),
         })
       );
-      if (jdConfigurado) {
-        actions.push(
-          selectorDestino(asignados.get(video.url), carpeta => asignar([video.url], carpeta)),
-          el('button', {
-            className: 'button button--secondary button--small',
-            text: t('video.jd.boton'),
-            attrs: { type: 'button', title: t('video.jd.boton.titulo') },
-            on: {
-              click: () =>
-                asignados.has(video.url) ? enviarGrupos([video.url]) : enviarAJd([video.url]),
-            },
-          })
-        );
-      }
+      actions.push(...jd.controles(video.url));
     }
     actions.push(
       el('button', {
@@ -1330,9 +1145,7 @@ export function createVideoView(container) {
             safeLink(video.url, { className: 'result-item__link' }),
             marcaGrupo,
             copyIconButton(video.url),
-            jdConfigurado && /^https?:\/\//i.test(video.url)
-              ? selectorDestino(asignados.get(video.url), carpeta => asignar([video.url], carpeta))
-              : null,
+            ...jd.controles(video.url),
             el('button', {
               className: 'button button--secondary button--icon result-item__quitar',
               text: '✕',
@@ -1509,7 +1322,7 @@ export function createVideoView(container) {
    * un rincón desincronizado que actualizar cada trozo por separado.
    */
   function renderResults() {
-    pintarCola();
+    jd.pintarBarra();
     if (!huboResultado) {
       renderInitialEmpty();
       return;
@@ -1680,7 +1493,7 @@ export function createVideoView(container) {
     agruparToggle.input.checked = true;
     huboResultado = false;
     direccionesAnalizadas = 0;
-    asignados.clear();
+    jd.limpiar();
     direccionesTotal = 0;
     methodsUsados = {};
 
