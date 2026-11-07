@@ -1,6 +1,7 @@
 import { getHealth } from './api.js';
 import { createExplorerView } from './views/explorer.js';
 import { createVideoView } from './views/video.js';
+import { createAjustesView, initCrewCabecera } from './views/ajustes.js';
 import { toast } from './dom.js';
 import {
   t,
@@ -101,6 +102,7 @@ function initRouter(views) {
   const sections = {
     explorer: document.getElementById('view-explorer'),
     video: document.getElementById('view-video'),
+    ajustes: document.getElementById('view-ajustes'),
   };
 
   /**
@@ -221,9 +223,11 @@ async function main() {
   const views = {
     explorer: createExplorerView(document.getElementById('view-explorer'), { limits }),
     video: createVideoView(document.getElementById('view-video')),
+    ajustes: createAjustesView(document.getElementById('view-ajustes')),
   };
 
   initRouter(views);
+  initCrewCabecera(document.getElementById('crew-apps'));
 
   // Abortar los streams en curso al cerrar la pestaña, para que el servidor
   // no siga scrapeando en vano.

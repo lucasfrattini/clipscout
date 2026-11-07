@@ -6,6 +6,7 @@ const config = require('../config');
 const scrapeRoutes = require('./scrape');
 const videoRoutes = require('./video');
 const profileRoutes = require('./profiles');
+const crewRoutes = require('./crew');
 
 const router = express.Router();
 
@@ -29,5 +30,6 @@ router.get('/health', (req, res) => {
 router.use(scrapeRoutes);
 router.use(videoRoutes);
 router.use(profileRoutes);
+router.use(crewRoutes);
 
 module.exports = router;

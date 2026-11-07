@@ -30,6 +30,7 @@
             <img class="topbar__logo" src="/img/logo.png" alt="" width="36" height="36" />
           </span>
           <div>
+            <p class="topbar__crew">clip crew</p>
             <h1 class="topbar__title">clipscout</h1>
             <p class="topbar__subtitle" data-i18n="app.subtitulo">
               Explora enlaces y recursos de un sitio
@@ -51,6 +52,10 @@
             <span aria-hidden="true">🎬</span>
             <span class="tab__label" data-i18n="nav.videos">Vídeos</span>
           </button>
+          <button class="tab" data-view="ajustes" type="button">
+            <span aria-hidden="true">⚙️</span>
+            <span class="tab__label" data-i18n="nav.ajustes">Ajustes</span>
+          </button>
         </nav>
 
         <!--
@@ -61,6 +66,14 @@
           botones sueltos.
         -->
         <div class="topbar__controls">
+          <!-- Apps de clip crew conectadas: se rellena desde Ajustes → Conexiones. -->
+          <div
+            class="crew-apps"
+            id="crew-apps"
+            data-i18n="crew.aria"
+            data-i18n-attr="aria-label"
+            aria-label="Otras apps de clip crew"
+          ></div>
           <div
             class="langswitch"
             role="group"
@@ -89,6 +102,7 @@
       <main id="main" class="main">
         <section id="view-explorer" class="view" aria-labelledby="explorer-heading"></section>
         <section id="view-video" class="view" hidden aria-labelledby="video-heading"></section>
+        <section id="view-ajustes" class="view" hidden aria-labelledby="ajustes-heading"></section>
       </main>
 
       <footer class="footer">

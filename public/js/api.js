@@ -41,7 +41,7 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     throw new ApiError(
-      payload?.error || t('api.errorHttp', { status: response.status }),
+      payload?.error || payload?.detail || t('api.errorHttp', { status: response.status }),
       payload?.code || 'HTTP_ERROR',
       response.status
     );
@@ -199,5 +199,21 @@ export function openVideoStream(params, handlers = {}) {
     },
   };
 }
+
+/* ── clip crew: ajustes y conexiones con las otras apps ───────────── */
+
+export const ajustes = {
+  general: () => request('/ajustes/general'),
+  guardarGeneral: datos =>
+    request('/ajustes/general', { method: 'PUT', body: JSON.stringify(datos) }),
+  regenerarClave: () => request('/ajustes/api-key', { method: 'POST', body: '{}' }),
+  conexiones: () => request('/ajustes/conexiones'),
+  probar: datos =>
+    request('/ajustes/conexiones/probar', { method: 'POST', body: JSON.stringify(datos) }),
+  conectar: datos =>
+    request('/ajustes/conexiones', { method: 'POST', body: JSON.stringify(datos) }),
+  estado: id => request(`/ajustes/conexiones/${id}/estado`),
+  quitar: id => request(`/ajustes/conexiones/${id}`, { method: 'DELETE' }),
+};
 
 export { ApiError };

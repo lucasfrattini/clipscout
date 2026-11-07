@@ -215,6 +215,14 @@ const config = {
     },
   },
 
+  crew: {
+    // Conexión con las otras apps de clip crew (clonbuster, clipkeeper): clave de
+    // API propia, nombre, URL y conexiones. Fuera del control de versiones.
+    path: process.env.CREW_PATH || path.join(__dirname, '..', '..', 'data', 'crew.json'),
+    // Tiempo máximo para hablar con otra app de la familia.
+    timeoutMs: intFromEnv('CREW_TIMEOUT_MS', 6000),
+  },
+
   profiles: {
     // Configuraciones guardadas, FUERA del control de versiones: cada
     // instalación tiene las suyas y no acaban en el repositorio.
