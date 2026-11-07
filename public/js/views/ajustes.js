@@ -418,27 +418,42 @@ export function createAjustesView(raiz) {
   };
 }
 
-/** Iconos de las apps conectadas en la cabecera (saltar de una a otra). */
+/**
+ * Selector común de clip crew en la cabecera: las tres apps siempre, la actual
+ * resaltada y las que no están conectadas, apagadas (igual en las tres apps).
+ */
 export function initCrewCabecera(contenedor) {
   const pintar = async () => {
     let conexiones = [];
     try {
       conexiones = await ajustes.conexiones();
     } catch {
-      return;
+      conexiones = [];
     }
+    const icono = app =>
+      el('img', { attrs: { src: `/img/crew/${app}.png`, alt: app, width: 30, height: 30 } });
     contenedor.replaceChildren(
-      ...conexiones.map(c =>
-        el('a', {
-          className: 'crew-app',
-          attrs: { href: c.url, title: `${c.nombre} (${c.app})` },
-          children: [
-            el('img', {
-              attrs: { src: `/img/crew/${c.app}.png`, alt: c.app, width: 28, height: 28 },
-            }),
-          ],
-        })
-      )
+      ...['clipscout', 'clonbuster', 'clipkeeper'].map(app => {
+        if (app === 'clipscout') {
+          return el('span', {
+            className: 'cc-app actual',
+            attrs: { title: t('crew.actual', { app }) },
+            children: [icono(app)],
+          });
+        }
+        const c = conexiones.find(x => x.app === app);
+        return c
+          ? el('a', {
+              className: 'cc-app',
+              attrs: { href: c.url, title: t('crew.ir', { nombre: c.nombre }) },
+              children: [icono(app)],
+            })
+          : el('span', {
+              className: 'cc-app apagada',
+              attrs: { title: t('crew.noConectada', { app }) },
+              children: [icono(app)],
+            });
+      })
     );
   };
   window.addEventListener(EVENTO, pintar);

@@ -479,7 +479,7 @@ export const en = {
 
   /* ── Ajustes y clip crew ───────────────────────────────────────── */
   'nav.ajustes': 'Settings',
-  'crew.aria': 'Other clip crew apps',
+  'crew.aria': 'clip crew apps',
   'head.ajustes.titulo': 'Settings — clipscout',
   'head.ajustes.desc': 'Identity, API key and connections with the other clip crew apps.',
   'aj.esta.titulo': 'This app',
@@ -533,4 +533,7 @@ export const en = {
   'aj.app.clipkeeper': 'catalogs, plays and organizes',
   'aj.app.clonbuster': 'spots and sets aside duplicates',
   'aj.app.clipscout': 'another instance',
+  'crew.actual': '{app} (you are here)',
+  'crew.ir': 'Go to {nombre}',
+  'crew.noConectada': '{app}: not connected (Settings → Connections)',
 };

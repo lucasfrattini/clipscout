@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-app="clipscout">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>clipscout</title>
     <meta name="description" content="Explorador de enlaces y recursos multimedia de sitios web." />
     <meta name="color-scheme" content="light dark" />
+    <link rel="stylesheet" href="/styles/crew.css" />
     <link rel="stylesheet" href="/styles/main.css" />
 
     <!--
@@ -24,78 +25,65 @@
     <a class="skip-link" href="#main" data-i18n="app.saltar">Saltar al contenido</a>
 
     <div class="layout">
-      <header class="topbar">
-        <div class="topbar__brand">
-          <span class="topbar__mark" aria-hidden="true">
-            <img class="topbar__logo" src="/img/logo.png" alt="" width="36" height="36" />
-          </span>
-          <div>
-            <p class="topbar__crew">clip crew</p>
-            <h1 class="topbar__title">clipscout</h1>
-            <p class="topbar__subtitle" data-i18n="app.subtitulo">
-              Explora enlaces y recursos de un sitio
-            </p>
-          </div>
-        </div>
+      <!-- Cabecera COMÚN de clip crew (styles/crew.css): igual en clonbuster y clipkeeper. -->
+      <header class="cc-cabecera">
+        <div class="cc-cabecera-dentro">
+          <a class="cc-marca" href="/">
+            <img src="/img/logo.png" alt="" width="38" height="38" />
+            <span class="cc-marca-texto">
+              <span class="cc-crew">clip crew</span>
+              <span class="cc-nombre">clipscout</span>
+            </span>
+          </a>
 
-        <nav
-          class="tabs"
-          data-i18n="nav.aria"
-          data-i18n-attr="aria-label"
-          aria-label="Herramientas"
-        >
-          <button class="tab" data-view="explorer" type="button" aria-current="page">
-            <span aria-hidden="true">🔗</span>
-            <span class="tab__label" data-i18n="nav.explorador">Explorador</span>
-          </button>
-          <button class="tab" data-view="video" type="button">
-            <span aria-hidden="true">🎬</span>
-            <span class="tab__label" data-i18n="nav.videos">Vídeos</span>
-          </button>
-          <button class="tab" data-view="ajustes" type="button">
-            <span aria-hidden="true">⚙️</span>
-            <span class="tab__label" data-i18n="nav.ajustes">Ajustes</span>
-          </button>
-        </nav>
-
-        <!--
-          Controles de la cabecera, agrupados a la derecha.
-
-          El selector de idioma y el de tema viven JUNTOS, con su propio
-          contenedor, para que la cabecera no acabe siendo una fila de
-          botones sueltos.
-        -->
-        <div class="topbar__controls">
-          <!-- Apps de clip crew conectadas: se rellena desde Ajustes → Conexiones. -->
-          <div
-            class="crew-apps"
-            id="crew-apps"
-            data-i18n="crew.aria"
+          <nav
+            class="cc-menu"
+            data-i18n="nav.aria"
             data-i18n-attr="aria-label"
-            aria-label="Otras apps de clip crew"
-          ></div>
-          <div
-            class="langswitch"
-            role="group"
-            data-i18n="idioma.aria"
-            data-i18n-attr="aria-label"
-            aria-label="Idioma"
+            aria-label="Herramientas"
           >
-            <button class="langswitch__option" type="button" data-lang="es">ES</button>
-            <button class="langswitch__option" type="button" data-lang="en">EN</button>
-          </div>
+            <button class="tab" data-view="explorer" type="button" aria-current="page">
+              <span class="tab__label" data-i18n="nav.explorador">Explorador</span>
+            </button>
+            <button class="tab" data-view="video" type="button">
+              <span class="tab__label" data-i18n="nav.videos">Vídeos</span>
+            </button>
+            <button class="tab" data-view="ajustes" type="button">
+              <span class="tab__label" data-i18n="nav.ajustes">Ajustes</span>
+            </button>
+          </nav>
 
-          <button
-            class="icon-button"
-            id="theme-toggle"
-            type="button"
-            data-i18n="tema.cambiar"
-            data-i18n-attr="aria-label,title"
-            aria-label="Cambiar tema"
-            title="Cambiar tema"
-          >
-            <span aria-hidden="true">◐</span>
-          </button>
+          <div class="cc-derecha">
+            <!-- Las tres apps de clip crew; las no conectadas aparecen apagadas. -->
+            <nav
+              class="cc-apps"
+              id="crew-apps"
+              data-i18n="crew.aria"
+              data-i18n-attr="aria-label"
+              aria-label="Apps de clip crew"
+            ></nav>
+            <div
+              class="langswitch"
+              role="group"
+              data-i18n="idioma.aria"
+              data-i18n-attr="aria-label"
+              aria-label="Idioma"
+            >
+              <button class="langswitch__option" type="button" data-lang="es">ES</button>
+              <button class="langswitch__option" type="button" data-lang="en">EN</button>
+            </div>
+            <button
+              class="icon-button"
+              id="theme-toggle"
+              type="button"
+              data-i18n="tema.cambiar"
+              data-i18n-attr="aria-label,title"
+              aria-label="Cambiar tema"
+              title="Cambiar tema"
+            >
+              <span aria-hidden="true">◐</span>
+            </button>
+          </div>
         </div>
       </header>
 

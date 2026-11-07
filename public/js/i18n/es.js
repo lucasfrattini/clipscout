@@ -479,7 +479,7 @@ export const es = {
 
   /* ── Ajustes y clip crew ───────────────────────────────────────── */
   'nav.ajustes': 'Ajustes',
-  'crew.aria': 'Otras apps de clip crew',
+  'crew.aria': 'Apps de clip crew',
   'head.ajustes.titulo': 'Ajustes — clipscout',
   'head.ajustes.desc': 'Identidad, clave de API y conexiones con las otras apps de clip crew.',
   'aj.esta.titulo': 'Esta app',
@@ -533,4 +533,7 @@ export const es = {
   'aj.app.clipkeeper': 'cataloga, reproduce y ordena',
   'aj.app.clonbuster': 'detecta y aparta duplicados',
   'aj.app.clipscout': 'otra instancia',
+  'crew.actual': '{app} (estás aquí)',
+  'crew.ir': 'Ir a {nombre}',
+  'crew.noConectada': '{app}: no conectada (Ajustes → Conexiones)',
 };

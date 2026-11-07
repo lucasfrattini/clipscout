@@ -2,38 +2,40 @@
    Tokens de diseño + componentes. Sin dependencias externas (la CSP no
    permite hosts remotos). */
 
+/* Colores, radios y sombras de los componentes: del sistema común de clip crew
+   (styles/crew.css). Aquí solo se nombran como los usa clipscout. */
 :root {
   color-scheme: light dark;
 
   /* Escala de color neutra */
-  --c-bg: #f6f7f9;
-  --c-surface: #ffffff;
+  --c-bg: var(--cc-fondo);
+  --c-surface: var(--cc-carta);
   --c-surface-2: #f1f3f6;
   --c-surface-3: #e8ebf0;
-  --c-border: #dfe3ea;
-  --c-border-strong: #c6ccd8;
-  --c-text: #14181f;
-  --c-text-muted: #5c6675;
+  --c-border: var(--cc-borde);
+  --c-border-strong: var(--cc-borde-fuerte);
+  --c-text: var(--cc-texto);
+  --c-text-muted: var(--cc-tenue);
   --c-text-subtle: #838d9c;
 
   /* Acento */
-  --c-accent: #3d5afe;
-  --c-accent-hover: #2f49e0;
-  --c-accent-soft: #eaeeff;
-  --c-accent-text: #ffffff;
+  --c-accent: var(--cc-acento);
+  --c-accent-hover: var(--cc-acento);
+  --c-accent-soft: var(--cc-acento-suave);
+  --c-accent-text: var(--cc-acento-texto);
 
   /* Semánticos */
-  --c-success: #0f9d58;
-  --c-success-soft: #e6f5ec;
-  --c-danger: #d93636;
-  --c-danger-soft: #fdeaea;
-  --c-warning: #b26a00;
-  --c-warning-soft: #fdf1e0;
+  --c-success: var(--cc-ok);
+  --c-success-soft: var(--cc-ok-suave);
+  --c-danger: var(--cc-mal);
+  --c-danger-soft: var(--cc-mal-suave);
+  --c-warning: var(--cc-aviso);
+  --c-warning-soft: var(--cc-aviso-suave);
 
   /* Forma y elevación */
   --radius-sm: 6px;
   --radius: 10px;
-  --radius-lg: 14px;
+  --radius-lg: var(--cc-radio);
   --shadow-sm: 0 1px 2px rgb(16 24 40 / 6%);
   --shadow: 0 4px 12px rgb(16 24 40 / 8%);
   --shadow-lg: 0 12px 32px rgb(16 24 40 / 12%);
@@ -56,25 +58,9 @@
 /* Tema oscuro: por preferencia del sistema, salvo que se fuerce claro. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --c-bg: #0e1116;
-    --c-surface: #161a21;
     --c-surface-2: #1c212a;
     --c-surface-3: #242a35;
-    --c-border: #262c36;
-    --c-border-strong: #39414f;
-    --c-text: #e8ecf2;
-    --c-text-muted: #9aa4b3;
     --c-text-subtle: #6e7887;
-    --c-accent: #7c8cff;
-    --c-accent-hover: #93a0ff;
-    --c-accent-soft: #1c2140;
-    --c-accent-text: #0e1116;
-    --c-success: #46c07f;
-    --c-success-soft: #14261d;
-    --c-danger: #f0736f;
-    --c-danger-soft: #2b1718;
-    --c-warning: #e0a253;
-    --c-warning-soft: #2a2015;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
     --shadow: 0 4px 12px rgb(0 0 0 / 45%);
     --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
@@ -82,25 +68,9 @@
 }
 
 :root[data-theme='dark'] {
-  --c-bg: #0e1116;
-  --c-surface: #161a21;
   --c-surface-2: #1c212a;
   --c-surface-3: #242a35;
-  --c-border: #262c36;
-  --c-border-strong: #39414f;
-  --c-text: #e8ecf2;
-  --c-text-muted: #9aa4b3;
   --c-text-subtle: #6e7887;
-  --c-accent: #7c8cff;
-  --c-accent-hover: #93a0ff;
-  --c-accent-soft: #1c2140;
-  --c-accent-text: #0e1116;
-  --c-success: #46c07f;
-  --c-success-soft: #14261d;
-  --c-danger: #f0736f;
-  --c-danger-soft: #2b1718;
-  --c-warning: #e0a253;
-  --c-warning-soft: #2a2015;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
   --shadow: 0 4px 12px rgb(0 0 0 / 45%);
   --shadow-lg: 0 12px 32px rgb(0 0 0 / 55%);
@@ -207,119 +177,24 @@ a {
   }
 }
 
-/* ── Barra superior ──────────────────────────────────────────────────── */
+/* ── Cabecera ────────────────────────────────────────────────────────── */
 
-.topbar {
+/*
+ * La cabecera es la COMÚN de clip crew (styles/crew.css, clases cc-*), igual en
+ * clonbuster y clipkeeper. Aquí solo se adaptan los controles propios de
+ * clipscout (idioma y tema) al fondo oscuro, y las pestañas (.tab) dentro de
+ * `.cc-menu`, que es lo que mira el enrutador.
+ */
+
+.cc-cabecera {
   position: sticky;
   top: 0;
   z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: var(--space-5);
-  padding: var(--space-3) var(--space-5);
-  background: color-mix(in srgb, var(--c-surface) 88%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--c-border);
 }
 
-.topbar__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-/*
- * Marca de la cabecera.
- *
- * El logo va TRANSPARENTE y la placa la pone el CSS, en vez de hornearla en
- * el PNG: así el mismo fichero sirve para los dos temas.
- *
- * La placa es clara SIEMPRE, también en tema oscuro, y eso es deliberado. El
- * arte es azul marino: sobre el fondo oscuro (#161a21) el contraste es tan
- * bajo que el logo casi desaparece. Sobre blanco se lee igual de bien en los
- * dos temas, y en tema claro la placa es invisible porque coincide con el
- * fondo de la barra.
- *
- * La alternativa —recolorear el logo en oscuro con un filtro CSS— se
- * descartó: cambia los colores de la marca y ensucia el turquesa.
- */
-.topbar__mark {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  padding: 3px;
-  border-radius: var(--radius);
-  background: #fff;
-  /* En claro la placa se funde con el fondo; el borde la despega lo justo. */
-  box-shadow: inset 0 0 0 1px var(--c-border);
-}
-
-.topbar__logo {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
-
-/* En oscuro la placa sí se ve, así que no necesita borde. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .topbar__mark {
-    box-shadow: none;
-  }
-}
-
-:root[data-theme='dark'] .topbar__mark {
-  box-shadow: none;
-}
-
-.topbar__title {
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-}
-
-.topbar__subtitle {
-  font-size: 12.5px;
-  color: var(--c-text-muted);
-  line-height: 1.3;
-}
-
-.tabs {
-  display: flex;
-  gap: var(--space-1);
-  margin-left: auto;
-  padding: 3px;
-  background: var(--c-surface-2);
-  border-radius: var(--radius);
-}
-
-.tab {
-  padding: var(--space-2) var(--space-4);
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--c-text-muted);
-  font-size: 14px;
+.cc-menu .tab {
   font-weight: 550;
-  cursor: pointer;
   white-space: nowrap;
-  transition:
-    background var(--transition),
-    color var(--transition);
-}
-
-.tab:hover {
-  color: var(--c-text);
-}
-
-.tab[aria-current='page'] {
-  background: var(--c-surface);
-  color: var(--c-text);
-  box-shadow: var(--shadow-sm);
 }
 
 .icon-button {
@@ -342,75 +217,48 @@ a {
   color: var(--c-text);
 }
 
-/*
- * Controles de la derecha: idioma y tema, agrupados.
- *
- * Van juntos y con su propio contenedor para que la cabecera no acabe siendo
- * una fila de botones sueltos según se añadan cosas.
- */
-.topbar__controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
+.cc-cabecera .icon-button {
+  width: 32px;
+  height: 32px;
+  border-color: rgb(255 255 255 / 25%);
+  background: transparent;
+  color: #cbd5e1;
 }
 
-/* Selector de idioma: segmentado, con el activo marcado en acento. Se elige
-   frente a un <select> porque con dos opciones un desplegable esconde la
-   mitad de la información y exige dos clics para algo que se hace con uno. */
+.cc-cabecera .icon-button:hover {
+  border-color: rgb(255 255 255 / 50%);
+  color: #fff;
+}
+
+/* Selector de idioma: dos botones (ES/EN), frente a un <select> porque con dos
+   opciones un desplegable esconde la mitad de la información. */
 .langswitch {
   display: flex;
   gap: 2px;
   padding: 3px;
-  background: var(--c-surface-2);
+  background: rgb(255 255 255 / 8%);
   border-radius: var(--radius);
 }
 
 .langswitch__option {
-  padding: 5px var(--space-3);
+  padding: 4px var(--space-3);
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: var(--c-text-muted);
+  color: #cbd5e1;
   font-size: 12.5px;
   font-weight: 620;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition:
-    background var(--transition),
-    color var(--transition);
 }
 
 .langswitch__option:hover {
-  color: var(--c-text);
+  color: #fff;
 }
 
 .langswitch__option[aria-pressed='true'] {
-  background: var(--c-surface);
-  color: var(--c-accent);
-  box-shadow: var(--shadow-sm);
-}
-
-@media (max-width: 720px) {
-  .topbar {
-    flex-wrap: wrap;
-    gap: var(--space-3);
-  }
-
-  .topbar__subtitle {
-    display: none;
-  }
-
-  .tabs {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .tab {
-    flex: 1;
-    text-align: center;
-  }
+  background: rgb(255 255 255 / 16%);
+  color: #fff;
 }
 
 /* ── Tarjetas ────────────────────────────────────────────────────────── */
@@ -2882,33 +2730,6 @@ a {
 
 /* ── clip crew: marca, apps conectadas y Ajustes ────────────────────── */
 
-.topbar__crew {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #b8860b;
-  line-height: 1;
-}
-
-.crew-apps {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.crew-app img {
-  display: block;
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  transition: transform var(--transition);
-}
-
-.crew-app:hover img {
-  transform: translateY(-2px);
-}
-
 .ajustes-form {
   display: grid;
   gap: var(--space-4);
@@ -3049,9 +2870,5 @@ a {
   .ajustes-conexiones .ajustes-acciones {
     grid-column: 2;
     justify-self: start;
-  }
-
-  .crew-apps {
-    display: none;
   }
 }

@@ -1,0 +1,264 @@
+/*
+ * clip crew — sistema visual común (clipscout · clonbuster · clipkeeper).
+ *
+ * ESTE FICHERO ES IDÉNTICO EN LAS TRES APPS. Si se cambia, se cambia en las tres:
+ * es lo que hace que pasar de una a otra no parezca cambiar de aplicación.
+ *
+ * Cada app solo define su acento en <html data-app="…">: el resto (cabecera, colores,
+ * tarjetas, botones, campos, avisos) es común. Las clases llevan el prefijo `cc-` para no
+ * chocar con las de cada app.
+ */
+
+:root {
+  --cc-fondo: #f4f6f9;
+  --cc-carta: #ffffff;
+  --cc-texto: #172033;
+  --cc-tenue: #64748b;
+  --cc-borde: #e2e8f0;
+  --cc-borde-fuerte: #cbd5e1;
+  --cc-noche: #0b1e3f;
+  --cc-ok: #137a3d;
+  --cc-ok-suave: #e3f5ea;
+  --cc-mal: #d92d20;
+  --cc-mal-suave: #fdecea;
+  --cc-aviso: #b54708;
+  --cc-aviso-suave: #fff4e5;
+  --cc-radio: 12px;
+  --cc-radio-chico: 8px;
+  --cc-sombra: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --cc-sombra-alta: 0 12px 32px rgba(16, 24, 40, 0.18);
+  --cc-letra: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --cc-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Acento por app (por defecto, el violeta de clip crew). */
+  --cc-acento: #7c3aed;
+  --cc-acento-claro: #a78bfa;
+  --cc-acento-texto: #ffffff;
+  --cc-acento-suave: #f1eafe;
+}
+
+html[data-app='clonbuster'] {
+  --cc-acento: #0f9f7a;
+  --cc-acento-claro: #34d399;
+  --cc-acento-suave: #e3f6f0;
+}
+html[data-app='clipscout'] {
+  --cc-acento: #c2410c;
+  --cc-acento-claro: #fbbf24;
+  --cc-acento-suave: #fff1e6;
+}
+html[data-app='clipkeeper'] {
+  --cc-acento: #7c3aed;
+  --cc-acento-claro: #a78bfa;
+  --cc-acento-suave: #f1eafe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --cc-fondo: #0b1220;
+    --cc-carta: #121a2b;
+    --cc-texto: #e6ebf3;
+    --cc-tenue: #94a3b8;
+    --cc-borde: #243049;
+    --cc-borde-fuerte: #334160;
+    --cc-ok: #5fd18b;
+    --cc-ok-suave: #16301f;
+    --cc-mal: #f97066;
+    --cc-mal-suave: #3a1a17;
+    --cc-aviso: #f3c66b;
+    --cc-aviso-suave: #33270f;
+    --cc-sombra: none;
+    --cc-acento-texto: #0b1220;
+  }
+  html[data-app='clonbuster']:not([data-theme='light']) {
+    --cc-acento: #34d399;
+    --cc-acento-suave: #0f2a24;
+  }
+  html[data-app='clipscout']:not([data-theme='light']) {
+    --cc-acento: #fbbf24;
+    --cc-acento-suave: #33240c;
+  }
+  html[data-app='clipkeeper']:not([data-theme='light']) {
+    --cc-acento: #a78bfa;
+    --cc-acento-suave: #241a3f;
+  }
+}
+
+/* Tema oscuro forzado desde la app (clipscout tiene selector de tema). */
+:root[data-theme='dark'] {
+  --cc-fondo: #0b1220;
+  --cc-carta: #121a2b;
+  --cc-texto: #e6ebf3;
+  --cc-tenue: #94a3b8;
+  --cc-borde: #243049;
+  --cc-borde-fuerte: #334160;
+  --cc-ok: #5fd18b;
+  --cc-ok-suave: #16301f;
+  --cc-mal: #f97066;
+  --cc-mal-suave: #3a1a17;
+  --cc-aviso: #f3c66b;
+  --cc-aviso-suave: #33270f;
+  --cc-sombra: none;
+  --cc-acento-texto: #0b1220;
+}
+html[data-app='clonbuster'][data-theme='dark'] {
+  --cc-acento: #34d399;
+  --cc-acento-suave: #0f2a24;
+}
+html[data-app='clipscout'][data-theme='dark'] {
+  --cc-acento: #fbbf24;
+  --cc-acento-suave: #33240c;
+}
+html[data-app='clipkeeper'][data-theme='dark'] {
+  --cc-acento: #a78bfa;
+  --cc-acento-suave: #241a3f;
+}
+
+/* ── Cabecera común ─────────────────────────────────────────────────── */
+
+.cc-cabecera {
+  background: var(--cc-noche);
+  color: #fff;
+  font-family: var(--cc-letra);
+}
+.cc-cabecera-dentro {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.cc-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.cc-marca img {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: block;
+}
+.cc-marca-texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.cc-crew {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-acento-claro);
+  margin: 0;
+}
+.cc-nombre {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+.cc-menu {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.cc-menu a,
+.cc-menu button {
+  font: inherit;
+  font-size: 15px;
+  color: #cbd5e1;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cc-menu a:hover,
+.cc-menu button:hover {
+  color: #fff;
+}
+.cc-menu .activa,
+.cc-menu [aria-current='page'],
+.cc-menu a.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.cc-derecha {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Selector de apps: las tres siempre; la actual resaltada; las no conectadas, apagadas. */
+.cc-apps {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.cc-app {
+  display: block;
+  border-radius: 9px;
+  line-height: 0;
+  outline-offset: 2px;
+}
+.cc-app img {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: block;
+  transition: transform 0.15s;
+}
+a.cc-app:hover img {
+  transform: translateY(-2px);
+}
+.cc-app.actual {
+  box-shadow: 0 0 0 2px var(--cc-acento-claro);
+}
+.cc-app.apagada img {
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+.cc-boton-cabecera {
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.cc-boton-cabecera:hover,
+.cc-boton-cabecera[aria-pressed='true'] {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+@media (max-width: 760px) {
+  .cc-cabecera-dentro {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .cc-menu {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+  .cc-apps {
+    display: none;
+  }
+}
