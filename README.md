@@ -138,7 +138,9 @@ others know (for example, "do I already have this?" before downloading).
 3. With _Also connect in the opposite direction_ ticked (the default), B is connected back to A
    automatically.
 
-The header shows an icon for every connected app, to jump between them. The protocol (endpoints,
+The header shows the three apps with the same look in all of them (the current one highlighted,
+the ones not connected dimmed), to jump between them. With **clipkeeper** connected, the
+**Do I have it?** button in the Videos tab marks the results that are already in your library. The protocol (endpoints,
 authentication with the `X-Api-Key` header, error format) is described in
 [docs/CREW.md](docs/CREW.md).
 
@@ -146,10 +148,11 @@ authentication with the `X-Api-Key` header, error format) is described in
 > `/api/crew/v1/...` endpoints. The SSRF protection that keeps crawls away from private addresses
 > is unchanged.
 
-| Variable          | Default          | What it does                                  |
-| ----------------- | ---------------- | --------------------------------------------- |
-| `CREW_PATH`       | `data/crew.json` | API key, instance name and connections        |
-| `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another clip crew app |
+| Variable          | Default          | What it does                                                                                                                                                       |
+| ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ADMIN_PASSWORD`  | _(empty)_        | Optional password for the whole app (HTTP Basic, user `ADMIN_USER`, default `admin`). Recommended if more devices can reach it: the Settings tab shows the API key |
+| `CREW_PATH`       | `data/crew.json` | API key, instance name and connections                                                                                                                             |
+| `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another clip crew app                                                                                                                      |
 
 ---
 
