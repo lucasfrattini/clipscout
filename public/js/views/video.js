@@ -12,7 +12,7 @@ import {
   downloadText,
   toast,
 } from '../dom.js';
-import { openVideoStream } from '../api.js';
+import { ajustes, openVideoStream } from '../api.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { createRangeFilter, formatDuration, formatBytes } from '../components/rangeSlider.js';
 import { aCSV, aJSON, aListaDeDescarga, construirFilas } from '../exportFormats.js';
@@ -54,6 +54,8 @@ export function createVideoView(container) {
   let direccionesTotal = 0;
   let huboResultado = false;
   let ultimosVisibles = [];
+  // «¿Ya lo tengo?»: url -> coincidencia en clipkeeper (de la última comprobación).
+  let enBiblioteca = new Map();
 
   // Quitados a mano: NADA se borra de `meta`/`order`, quitar es solo una
   // vista, igual que en el Explorador. `tandas` guarda cada borrado por
@@ -605,6 +607,60 @@ export function createVideoView(container) {
   texto(copyAllButton, 'resultados.copiar');
   copyAllButton.disabled = true;
 
+  /** Nombre del fichero de una URL, sin extensión: es lo que mejor identifica el vídeo. */
+  function nombreDeUrl(url) {
+    try {
+      const ultimo = new URL(url).pathname.split('/').filter(Boolean).pop() || '';
+      return decodeURIComponent(ultimo).replace(/\.[a-z0-9]{2,4}$/i, '');
+    } catch {
+      return '';
+    }
+  }
+
+  async function comprobarBiblioteca() {
+    const visibles = ultimosVisibles.filter(v => nombreDeUrl(v.url));
+    if (visibles.length === 0) return;
+    yaLoTengoButton.disabled = true;
+    try {
+      const r = await ajustes.yaLoTengo(
+        visibles.map(v => nombreDeUrl(v.url)),
+        visibles.map(v => (Number.isFinite(v.durationSeconds) ? v.durationSeconds : null))
+      );
+      if (!r.conectado) {
+        toast(t('video.yaLoTengo.sinConexion'), 'error', 6000);
+        return;
+      }
+      if (r.error) {
+        toast(r.error, 'error', 6000);
+        return;
+      }
+      enBiblioteca = new Map();
+      r.resultados.forEach((res, i) => {
+        if (res.coincidencias.length) enBiblioteca.set(visibles[i].url, res.coincidencias[0]);
+      });
+      toast(
+        enBiblioteca.size
+          ? tp('video.yaLoTengo.resultado', enBiblioteca.size)
+          : t('video.yaLoTengo.ninguno'),
+        'success',
+        4000
+      );
+      renderResults();
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+    } finally {
+      yaLoTengoButton.disabled = false;
+    }
+  }
+
+  const yaLoTengoButton = el('button', {
+    className: 'button button--secondary button--small',
+    attrs: { type: 'button' },
+    on: { click: comprobarBiblioteca },
+  });
+  texto(yaLoTengoButton, 'video.yaLoTengo');
+  atributo(yaLoTengoButton, 'title', 'video.yaLoTengo.titulo');
+
   const cabeceraResultados = el('div', {
     className: 'results__head',
     children: [
@@ -618,6 +674,7 @@ export function createVideoView(container) {
           agruparToggle.root,
           viewToggleGroup,
           exportDropdown,
+          yaLoTengoButton,
           copyAllButton,
         ],
       }),
@@ -972,10 +1029,20 @@ export function createVideoView(container) {
     if (video.platform) head.push(badge(video.platform, 'warning'));
     const marcaGrupo = marcaGrupoBadge(video, plegados, estaExpandido);
     if (marcaGrupo) head.push(marcaGrupo);
+    const loTengo = enBiblioteca.get(video.url);
+    if (loTengo) head.push(badge(t('video.enBiblioteca'), 'success'));
 
     const miniatura = video.thumbnailUrl ? miniaturaCelda(video) : null;
 
     const actions = [];
+    if (loTengo) {
+      actions.push(
+        safeLink(loTengo.url, {
+          className: 'button button--secondary button--small',
+          text: t('video.verEnClipkeeper'),
+        })
+      );
+    }
     if (/^https?:\/\//i.test(video.url)) {
       actions.push(
         safeLink(video.url, {

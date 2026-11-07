@@ -214,6 +214,11 @@ export const ajustes = {
     request('/ajustes/conexiones', { method: 'POST', body: JSON.stringify(datos) }),
   estado: id => request(`/ajustes/conexiones/${id}/estado`),
   quitar: id => request(`/ajustes/conexiones/${id}`, { method: 'DELETE' }),
+  yaLoTengo: (titulos, duraciones) =>
+    request('/ajustes/ya-lo-tengo', {
+      method: 'POST',
+      body: JSON.stringify({ titulos, duraciones }),
+    }),
 };
 
 export { ApiError };

@@ -11,6 +11,29 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
+/**
+ * HTTP Basic con comparación en tiempo constante. Libres: el protocolo clip crew (tiene su
+ * propia clave) y /api/health (healthcheck del contenedor).
+ */
+function requerirContrasena({ adminUser, adminPassword }) {
+  const crypto = require('node:crypto');
+  const igual = (a, b) => {
+    const x = Buffer.from(String(a));
+    const y = Buffer.from(String(b));
+    return x.length === y.length && crypto.timingSafeEqual(x, y);
+  };
+  return (req, res, next) => {
+    if (req.path === '/api/health' || req.path.startsWith('/api/crew/v1/')) return next();
+    const [tipo, valor] = (req.get('authorization') || '').split(' ');
+    if (tipo === 'Basic' && valor) {
+      const [usuario, ...resto] = Buffer.from(valor, 'base64').toString('utf8').split(':');
+      if (igual(usuario, adminUser) && igual(resto.join(':'), adminPassword)) return next();
+    }
+    res.set('WWW-Authenticate', 'Basic realm="clipscout", charset="UTF-8"');
+    return res.status(401).json({ detail: 'Hace falta usuario y contraseña.' });
+  };
+}
+
 function createApp() {
   const app = express();
 
@@ -23,6 +46,9 @@ function createApp() {
    */
   app.set('trust proxy', config.security.trustProxy);
   app.disable('x-powered-by');
+
+  // Contraseña opcional (ADMIN_PASSWORD). Va lo primero para que nada se sirva sin ella.
+  if (config.security.adminPassword) app.use(requerirContrasena(config.security));
 
   // Tope de body: nada legítimo se acerca a esto
   app.use(express.json({ limit: '64kb' }));

@@ -536,4 +536,13 @@ export const en = {
   'crew.actual': '{app} (you are here)',
   'crew.ir': 'Go to {nombre}',
   'crew.noConectada': '{app}: not connected (Settings → Connections)',
+  'video.yaLoTengo': 'Do I have it?',
+  'video.yaLoTengo.titulo': 'Ask clipkeeper which videos in this list are already in your library',
+  'video.yaLoTengo.sinConexion':
+    'Connect clipkeeper under Settings → Connections to see what you already have.',
+  'video.yaLoTengo.resultado.uno': '1 video is already in your library',
+  'video.yaLoTengo.resultado.varios': '{n} videos are already in your library',
+  'video.yaLoTengo.ninguno': 'None of these are in your library.',
+  'video.enBiblioteca': '✓ In your library',
+  'video.verEnClipkeeper': 'Open in clipkeeper',
 };

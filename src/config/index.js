@@ -182,6 +182,11 @@ const config = {
   },
 
   security: {
+    // Contraseña OPCIONAL para toda la interfaz (HTTP Basic). Vacía = sin contraseña, como hasta
+    // ahora. El protocolo clip crew (/api/crew/v1) y /api/health no la piden: el primero se
+    // protege con su propia clave de API y el segundo lo usa el healthcheck del contenedor.
+    adminUser: process.env.ADMIN_USER || 'admin',
+    adminPassword: process.env.ADMIN_PASSWORD || '',
     // Protección SSRF. Desactivar SOLO en tests contra fixtures locales.
     blockPrivateAddresses: boolFromEnv('SECURITY_BLOCK_PRIVATE_ADDRESSES', true),
     allowedProtocols: listFromEnv('SECURITY_ALLOWED_PROTOCOLS', ['http:', 'https:']),

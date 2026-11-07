@@ -103,3 +103,12 @@ test('probar, conectar, listar sin claves y quitar', async () => {
   await json(`/api/ajustes/conexiones/${lista[0].id}`, { method: 'DELETE' });
   assert.deepEqual((await json('/api/ajustes/conexiones')).body, []);
 });
+
+test('«¿ya lo tengo?» sin clipkeeper conectado lo dice, sin fallar', async () => {
+  const r = await json('/api/ajustes/ya-lo-tengo', {
+    method: 'POST',
+    body: JSON.stringify({ titulos: ['algo'], duraciones: [null] }),
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.conectado, false);
+});

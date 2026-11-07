@@ -141,6 +141,20 @@ router.post(
   })
 );
 
+router.post(
+  '/ajustes/ya-lo-tengo',
+  manejar(req => {
+    const { titulos = [], duraciones = [] } = req.body || {};
+    if (!Array.isArray(titulos) || titulos.length > 200) {
+      throw new crew.ErrorCrew('Se esperaba una lista de hasta 200 títulos.');
+    }
+    return crew.buscarEnClipkeeper(
+      titulos.map(x => String(x).slice(0, 300)),
+      Array.isArray(duraciones) ? duraciones.slice(0, 200) : []
+    );
+  })
+);
+
 router.get(
   '/ajustes/conexiones/:id/estado',
   manejar(async req => {

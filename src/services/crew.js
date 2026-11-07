@@ -247,7 +247,31 @@ async function registrarseEn(req, url, claveRemota) {
   }
 }
 
+/**
+ * «¿Ya lo tengo?»: pregunta a clipkeeper si estos títulos están en la biblioteca.
+ * Devuelve {conectado: false} si no hay ningún clipkeeper conectado.
+ */
+async function buscarEnClipkeeper(titulos, duraciones) {
+  const { conexiones = [] } = await datos();
+  const destino = conexiones.find(c => c.app === 'clipkeeper' && c.activa);
+  if (!destino) return { conectado: false, resultados: [] };
+  try {
+    const r = await llamar(`${destino.url}/api/crew/v1/buscar`, {
+      method: 'POST',
+      headers: { 'X-Api-Key': destino.api_key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulos, duraciones }),
+    });
+    if (r.status !== 200) {
+      return { conectado: true, error: `clipkeeper respondió ${r.status}`, resultados: [] };
+    }
+    return { conectado: true, clipkeeper: destino.nombre, ...(await r.json()) };
+  } catch {
+    return { conectado: true, error: 'clipkeeper no responde.', resultados: [] };
+  }
+}
+
 module.exports = {
+  buscarEnClipkeeper,
   APP,
   APPS,
   ErrorCrew,
