@@ -219,3 +219,88 @@ export function confirmDialog({ titleKey, bodyKey, bodyParams, variant = 'defaul
     },
   });
 }
+
+/**
+ * Elegir una opción de una lista (con buscador si es larga). `Promise<valor|null>`.
+ *
+ * `opciones`: [{ valor, titulo, detalle }]. Con `nuevaKey`, el texto del buscador se puede usar
+ * como opción nueva («Usar "x"»). Pulsar una opción la elige al momento.
+ */
+export function chooseDialog({ titleKey, labelKey, labelParams, opciones, nuevaKey }) {
+  return abrirDialogo({
+    role: 'dialog',
+    titleKey,
+    valorCancelar: null,
+    render({ cuerpo, acciones, cerrar }) {
+      const ayuda = el('p', { className: 'dialog__text' });
+      const filtro = el('input', {
+        className: 'dialog__input input',
+        attrs: { type: 'search', autocomplete: 'off' },
+      });
+      const lista = el('ul', { className: 'dialog__opciones' });
+
+      const pintar = () => {
+        const q = filtro.value.trim().toLowerCase();
+        const visibles = opciones.filter(
+          o => !q || `${o.titulo} ${o.detalle || ''}`.toLowerCase().includes(q)
+        );
+        const items = visibles.map(o =>
+          el('li', {
+            children: [
+              el('button', {
+                className: 'dialog__opcion',
+                attrs: { type: 'button' },
+                on: { click: () => cerrar(o.valor) },
+                children: [
+                  el('span', { className: 'dialog__opcion-titulo', text: o.titulo }),
+                  o.detalle
+                    ? el('span', { className: 'dialog__opcion-detalle', text: o.detalle })
+                    : null,
+                ],
+              }),
+            ],
+          })
+        );
+        const exacta = opciones.some(o => String(o.valor).toLowerCase() === q);
+        if (nuevaKey && q && !exacta) {
+          items.push(
+            el('li', {
+              children: [
+                el('button', {
+                  className: 'dialog__opcion dialog__opcion--nueva',
+                  attrs: { type: 'button' },
+                  on: { click: () => cerrar(filtro.value.trim()) },
+                  text: t(nuevaKey, { nombre: filtro.value.trim() }),
+                }),
+              ],
+            })
+          );
+        }
+        lista.replaceChildren(...items);
+      };
+      filtro.addEventListener('input', pintar);
+      filtro.addEventListener('keydown', evento => {
+        if (evento.key !== 'Enter') return;
+        evento.preventDefault();
+        lista.querySelector('button')?.click();
+      });
+      pintar();
+
+      cuerpo.append(ayuda, filtro, lista);
+      const botonCancelar = el('button', {
+        className: 'button button--secondary',
+        attrs: { type: 'button' },
+        on: { click: () => cerrar(null) },
+      });
+      acciones.append(botonCancelar);
+      return {
+        focoInicial: filtro,
+        refrescar() {
+          ayuda.textContent = t(labelKey, labelParams);
+          filtro.placeholder = t('dialogo.buscar');
+          botonCancelar.textContent = t('dialogo.cancelar');
+        },
+      };
+    },
+  });
+}

@@ -147,13 +147,14 @@ authentication with the `X-Api-Key` header, error format) is described in
 ### Sending to JDownloader
 
 **Settings → JDownloader** takes the URL of JDownloader 2's local API (usually
-`http://<jdownloader-ip>:3128`). Then the Videos tab shows **Send to JDownloader** (all visible
-results) and a **JDownloader** button on each video; you can pick a subfolder inside JDownloader's
-download folder. If **clipkeeper** is connected, pick in Settings the library that is
-JDownloader's download folder: its subfolders become the destinations (each showing the people and tags
-it holds). Give each video a destination, or **Group visible into…** several at once, then **Send N in
-M group(s)** sends each group to its folder; clipkeeper catalogues whatever lands there with that
-folder's people and tags. To enable the API in JDownloader: *Advanced Settings* → `RemoteAPI: Deprecated API
+`http://<jdownloader-ip>:3128`). Then **Send to JDownloader** appears above the results (Explorer and
+Videos tab, sends everything visible), plus a **JDownloader** button on each video in the Videos tab.
+Pressing it asks for the destination folder: if **clipkeeper** is connected, pick in Settings the
+library that is JDownloader's download folder and its subfolders are listed (each with the people and
+tags it holds), with a search box and the option to type a new one. Everything sent at once goes into
+**one JDownloader package** in that folder, so JDownloader doesn't create a package (or a folder) per
+file; clipkeeper catalogues whatever lands there with that folder's people and tags.
+To enable the API in JDownloader: *Advanced Settings* → `RemoteAPI: Deprecated API
 enabled` on and `RemoteAPI: Deprecated API localhost only` off, then restart it. In Docker, publish
 port `3128`.
 

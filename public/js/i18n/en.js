@@ -567,14 +567,9 @@ export const en = {
   'aj.jd.biblioteca.hint':
     'The clipkeeper library that is the same folder as JDownloader’s download folder. Its subfolders show up as destinations when sending, and whatever lands in each one inherits its people and tags.',
   'aj.jd.biblioteca.ninguna': '— None (type the subfolder by hand) —',
-  'video.jd.destino': 'Destination',
-  'video.jd.destino.ninguno': 'No group',
-  'video.jd.destino.nueva': '+ New folder…',
-  'video.jd.destino.nuevaTitulo': 'New folder',
-  'video.jd.destino.nuevaLabel': 'Subfolder name (created when downloading)',
-  'video.jd.agrupar': 'Group visible into…',
-  'video.jd.cola': 'Send {n} in {g} group(s)',
-  'video.jd.cola.titulo':
-    'Send the videos that have a destination to JDownloader, each group to its folder',
-  'video.jd.enviadosGrupos': '{n} sent to JDownloader in {g} group(s)',
+  'video.jd.elegir': 'Which folder do these {n} video(s) go to? They go together, in one package.',
+  'video.jd.porDefecto': 'Default folder',
+  'video.jd.porDefecto.detalle': 'JDownloader’s download folder, no subfolder',
+  'video.jd.nueva': 'New folder: “{nombre}”',
+  'dialogo.buscar': 'Search…',
 };

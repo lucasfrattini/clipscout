@@ -111,8 +111,23 @@ async function enviar({ links, carpeta = '', paquete = '', origen = '' } = {}) {
     .filter(l => /^https?:\/\//i.test(l))
     .slice(0, 500);
   if (lista.length === 0) throw new ErrorJd('No hay enlaces válidos para enviar.');
-  const consulta = { links: lista.join('\n'), autostart: Boolean(autostart), deepDecrypt: false };
+  // Un envío = UN paquete con nombre propio. Sin nombre, JDownloader arma un paquete por fichero
+  // (y, con «crear subcarpeta por paquete» activo, una carpeta por fichero). Con nombre y
+  // `overwritePackagizerRules`, todo va junto y a la carpeta exacta, sin carpetas en medio.
   const sub = limpiarSubcarpeta(carpeta);
+  const fecha = new Date().toISOString().slice(0, 16).replace('T', ' ');
+  const consulta = {
+    links: lista.join('\n'),
+    autostart: Boolean(autostart),
+    deepDecrypt: false,
+    overwritePackagizerRules: true,
+    packageName:
+      String(paquete || '')
+        .trim()
+        .slice(0, 200) ||
+      sub.split('/').pop() ||
+      `clipscout ${fecha}`,
+  };
   if (sub) {
     const base = String(
       await llamar(url, '/config/get', [
@@ -122,15 +137,16 @@ async function enviar({ links, carpeta = '', paquete = '', origen = '' } = {}) {
       ])
     ).replace(/\/+$/, '');
     consulta.destinationFolder = `${base}/${sub}`;
-    consulta.overwritePackagizerRules = true;
   }
-  const nombre = String(paquete || '')
-    .trim()
-    .slice(0, 200);
-  if (nombre) consulta.packageName = nombre;
   if (/^https?:\/\//i.test(String(origen))) consulta.sourceUrl = String(origen).slice(0, 2000);
   const trabajo = await llamar(url, '/linkgrabberv2/addLinks', [consulta]);
-  return { ok: true, enviados: lista.length, carpeta: consulta.destinationFolder || null, trabajo };
+  return {
+    ok: true,
+    enviados: lista.length,
+    carpeta: consulta.destinationFolder || null,
+    paquete: consulta.packageName,
+    trabajo,
+  };
 }
 
 module.exports = { ajustes, guardar, probar, enviar, limpiarSubcarpeta, ErrorJd };

@@ -13,7 +13,7 @@ import {
   toast,
 } from '../dom.js';
 import { ajustes, openVideoStream } from '../api.js';
-import { createJdGrupos } from '../components/jdGrupos.js';
+import { createJdEnvio } from '../components/jdEnvio.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { createRangeFilter, formatDuration, formatBytes } from '../components/rangeSlider.js';
 import { aCSV, aJSON, aListaDeDescarga, construirFilas } from '../exportFormats.js';
@@ -662,15 +662,15 @@ export function createVideoView(container) {
   atributo(yaLoTengoButton, 'title', 'video.yaLoTengo.titulo');
 
   /** Pide la subcarpeta (relativa a la de descargas de JDownloader) y envía. */
-  const jd = createJdGrupos({
+  const jd = createJdEnvio({
     visibles: () => ultimosVisibles.map(v => v.url),
     origen: () => {
       const urls = readUrls();
       return urls.length === 1 ? urls[0] : '';
     },
-    alCambiar: () => {
-      if (huboResultado) renderResults();
-    },
+  });
+  jd.alCargar(() => {
+    if (huboResultado) renderResults();
   });
 
   const cabeceraResultados = el('div', {
@@ -687,7 +687,7 @@ export function createVideoView(container) {
           viewToggleGroup,
           exportDropdown,
           yaLoTengoButton,
-          ...jd.barra,
+          jd.boton,
           copyAllButton,
         ],
       }),
@@ -1063,7 +1063,16 @@ export function createVideoView(container) {
           text: t('video.abrir'),
         })
       );
-      actions.push(...jd.controles(video.url));
+      if (jd.configurado()) {
+        actions.push(
+          el('button', {
+            className: 'button button--secondary button--small',
+            text: t('video.jd.boton'),
+            attrs: { type: 'button', title: t('video.jd.boton.titulo') },
+            on: { click: () => jd.enviar([video.url]) },
+          })
+        );
+      }
     }
     actions.push(
       el('button', {
@@ -1145,7 +1154,6 @@ export function createVideoView(container) {
             safeLink(video.url, { className: 'result-item__link' }),
             marcaGrupo,
             copyIconButton(video.url),
-            ...jd.controles(video.url),
             el('button', {
               className: 'button button--secondary button--icon result-item__quitar',
               text: '✕',
@@ -1322,7 +1330,6 @@ export function createVideoView(container) {
    * un rincón desincronizado que actualizar cada trozo por separado.
    */
   function renderResults() {
-    jd.pintarBarra();
     if (!huboResultado) {
       renderInitialEmpty();
       return;
@@ -1493,7 +1500,6 @@ export function createVideoView(container) {
     agruparToggle.input.checked = true;
     huboResultado = false;
     direccionesAnalizadas = 0;
-    jd.limpiar();
     direccionesTotal = 0;
     methodsUsados = {};
 

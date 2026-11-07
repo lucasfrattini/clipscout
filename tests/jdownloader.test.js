@@ -104,6 +104,8 @@ test('probar, guardar y enviar a una subcarpeta', async () => {
   assert.equal(q.destinationFolder, '/output/Ana');
   assert.equal(q.autostart, false);
   assert.equal(q.sourceUrl, 'https://example.com/ficha');
+  assert.equal(q.packageName, 'Ana', 'un solo paquete con el nombre de la carpeta');
+  assert.equal(q.overwritePackagizerRules, true);
 
   // Sin subcarpeta: no se toca el destino (manda la regla de JDownloader).
   await json('/api/ajustes/jdownloader/enviar', {
@@ -111,4 +113,5 @@ test('probar, guardar y enviar a una subcarpeta', async () => {
     body: JSON.stringify({ links: ['https://example.com/c.mp4'] }),
   });
   assert.equal(recibidos.at(-1).destinationFolder, undefined);
+  assert.match(recibidos.at(-1).packageName, /^clipscout /, 'sin carpeta también va en un paquete');
 });
