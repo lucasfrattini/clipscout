@@ -72,10 +72,18 @@ async function probar(url) {
   }
 }
 
-async function guardar({ url = '', autostart = true } = {}) {
+/**
+ * `biblioteca`: id de la biblioteca de clipkeeper que es la carpeta de descargas de JDownloader
+ * (la misma carpeta vista desde las dos máquinas). Sus subcarpetas se ofrecen como destino.
+ */
+async function guardar({ url = '', autostart = true, biblioteca = null } = {}) {
   const limpia = String(url).trim() ? crew.normalizarUrl(url) : '';
+  const id =
+    Number.isInteger(Number(biblioteca)) && biblioteca !== null && biblioteca !== ''
+      ? Number(biblioteca)
+      : null;
   await crew.cambiar(d => {
-    d.jdownloader = { url: limpia, autostart: autostart !== false };
+    d.jdownloader = { url: limpia, autostart: autostart !== false, biblioteca: id };
   });
   return ajustes();
 }

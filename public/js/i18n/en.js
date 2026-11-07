@@ -563,4 +563,18 @@ export const en = {
     'Subfolder inside JDownloader downloads for {n} video(s) (e.g. the person’s name). Empty = default folder.',
   'video.jd.enviados': '{n} sent to JDownloader',
   'video.jd.enviadosA': '{n} sent to JDownloader → {carpeta}',
+  'aj.jd.biblioteca': 'clipkeeper library it downloads to',
+  'aj.jd.biblioteca.hint':
+    'The clipkeeper library that is the same folder as JDownloader’s download folder. Its subfolders show up as destinations when sending, and whatever lands in each one inherits its people and tags.',
+  'aj.jd.biblioteca.ninguna': '— None (type the subfolder by hand) —',
+  'video.jd.destino': 'Destination',
+  'video.jd.destino.ninguno': 'No group',
+  'video.jd.destino.nueva': '+ New folder…',
+  'video.jd.destino.nuevaTitulo': 'New folder',
+  'video.jd.destino.nuevaLabel': 'Subfolder name (created when downloading)',
+  'video.jd.agrupar': 'Group visible into…',
+  'video.jd.cola': 'Send {n} in {g} group(s)',
+  'video.jd.cola.titulo':
+    'Send the videos that have a destination to JDownloader, each group to its folder',
+  'video.jd.enviadosGrupos': '{n} sent to JDownloader in {g} group(s)',
 };

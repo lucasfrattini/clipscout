@@ -192,6 +192,22 @@ export function createAjustesView(raiz) {
       attrs: { type: 'text', spellcheck: 'false', placeholder: 'http://192.168.1.10:3128' },
     });
     const autostart = el('input', { attrs: { type: 'checkbox', checked: true } });
+    const biblioteca = el('select', {
+      className: 'input',
+      children: [el('option', { attrs: { value: '' }, text: t('aj.jd.biblioteca.ninguna') })],
+    });
+    let bibliotecaGuardada = null;
+    ajustes
+      .destinos()
+      .then(d => {
+        for (const b of d.bibliotecas || []) {
+          biblioteca.append(
+            el('option', { attrs: { value: String(b.id) }, text: `${b.nombre} — ${b.ruta}` })
+          );
+        }
+        if (bibliotecaGuardada !== null) biblioteca.value = String(bibliotecaGuardada);
+      })
+      .catch(() => {});
     const resultado = el('p', { className: 'ajustes-resultado' });
     const mostrar = r => {
       resultado.className = `ajustes-resultado ${r.ok ? 'ajustes-resultado--ok' : 'ajustes-resultado--mal'}`;
@@ -204,6 +220,8 @@ export function createAjustesView(raiz) {
       .then(d => {
         url.value = d.url || '';
         autostart.checked = d.autostart !== false;
+        bibliotecaGuardada = d.biblioteca ?? null;
+        if (bibliotecaGuardada !== null) biblioteca.value = String(bibliotecaGuardada);
         if (d.url) ajustes.probarJd(d.url).then(mostrar, () => {});
       })
       .catch(() => {});
@@ -218,6 +236,7 @@ export function createAjustesView(raiz) {
       className: 'card__body ajustes-form',
       children: [
         campo(t('aj.jd.url'), url, t('aj.jd.url.hint')),
+        campo(t('aj.jd.biblioteca'), biblioteca, t('aj.jd.biblioteca.hint')),
         el('label', { className: 'ajustes-casilla', children: [autostart, t('aj.jd.autostart')] }),
         el('div', {
           className: 'ajustes-acciones',
@@ -238,7 +257,11 @@ export function createAjustesView(raiz) {
         submit: async e => {
           e.preventDefault();
           try {
-            await ajustes.guardarJd({ url: url.value, autostart: autostart.checked });
+            await ajustes.guardarJd({
+              url: url.value,
+              autostart: autostart.checked,
+              biblioteca: biblioteca.value === '' ? null : Number(biblioteca.value),
+            });
             toast(t(url.value.trim() ? 'aj.jd.guardado' : 'aj.jd.quitado'));
             window.dispatchEvent(new Event('clipscout:jdownloader'));
             if (url.value.trim()) mostrar(await ajustes.probarJd(url.value));

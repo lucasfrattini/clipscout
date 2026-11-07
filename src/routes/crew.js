@@ -166,18 +166,23 @@ router.get(
 router.put(
   '/ajustes/jdownloader',
   manejar(async req => {
-    const { url = '', autostart = true } = req.body || {};
+    const { url = '', autostart = true, biblioteca = null } = req.body || {};
     if (String(url).trim()) {
       const prueba = await jd.probar(url);
       if (!prueba.ok) throw new crew.ErrorCrew(prueba.error);
     }
-    return jd.guardar({ url, autostart });
+    return jd.guardar({ url, autostart, biblioteca });
   })
 );
 
 router.post(
   '/ajustes/jdownloader/probar',
   manejar(async req => jd.probar((req.body || {}).url || (await jd.ajustes()).url))
+);
+
+router.get(
+  '/ajustes/destinos',
+  manejar(() => crew.destinosClipkeeper())
 );
 
 router.post(

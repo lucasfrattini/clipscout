@@ -2872,3 +2872,14 @@ a {
     justify-self: start;
   }
 }
+
+/* Destino de descarga (grupos para JDownloader) */
+.jd-destino {
+  width: auto;
+  max-width: 220px;
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+.jd-agrupar:empty {
+  display: none;
+}

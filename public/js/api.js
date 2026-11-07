@@ -220,6 +220,7 @@ export const ajustes = {
       body: JSON.stringify({ titulos, duraciones }),
     }),
   jdownloader: () => request('/ajustes/jdownloader'),
+  destinos: () => request('/ajustes/destinos'),
   guardarJd: datos =>
     request('/ajustes/jdownloader', { method: 'PUT', body: JSON.stringify(datos) }),
   probarJd: url =>

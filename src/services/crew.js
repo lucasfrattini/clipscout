@@ -270,8 +270,30 @@ async function buscarEnClipkeeper(titulos, duraciones) {
   }
 }
 
+/**
+ * Destinos para descargar: carpetas de las bibliotecas de clipkeeper con lo que heredará lo que
+ * llegue a cada una (personas y etiquetas comunes). {conectado: false} sin clipkeeper.
+ */
+async function destinosClipkeeper() {
+  const { conexiones = [] } = await datos();
+  const destino = conexiones.find(c => c.app === 'clipkeeper' && c.activa);
+  if (!destino) return { conectado: false, bibliotecas: [] };
+  try {
+    const r = await llamar(`${destino.url}/api/crew/v1/destinos`, {
+      headers: { 'X-Api-Key': destino.api_key },
+    });
+    if (r.status !== 200) {
+      return { conectado: true, error: `clipkeeper respondió ${r.status}`, bibliotecas: [] };
+    }
+    return { conectado: true, ...(await r.json()) };
+  } catch {
+    return { conectado: true, error: 'clipkeeper no responde.', bibliotecas: [] };
+  }
+}
+
 module.exports = {
   buscarEnClipkeeper,
+  destinosClipkeeper,
   APP,
   APPS,
   ErrorCrew,

@@ -564,4 +564,17 @@ export const es = {
     'Subcarpeta dentro de las descargas de JDownloader para {n} vídeo(s) (p. ej. el nombre de la persona). Vacía = la carpeta por defecto.',
   'video.jd.enviados': '{n} enviado(s) a JDownloader',
   'video.jd.enviadosA': '{n} enviado(s) a JDownloader → {carpeta}',
+  'aj.jd.biblioteca': 'Biblioteca de clipkeeper donde descarga',
+  'aj.jd.biblioteca.hint':
+    'La biblioteca de clipkeeper que es la misma carpeta que la de descargas de JDownloader. Sus subcarpetas aparecen como destino al enviar, y lo que llegue a cada una hereda sus personas y etiquetas.',
+  'aj.jd.biblioteca.ninguna': '— Ninguna (escribir la subcarpeta a mano) —',
+  'video.jd.destino': 'Destino',
+  'video.jd.destino.ninguno': 'Sin grupo',
+  'video.jd.destino.nueva': '+ Carpeta nueva…',
+  'video.jd.destino.nuevaTitulo': 'Carpeta nueva',
+  'video.jd.destino.nuevaLabel': 'Nombre de la subcarpeta (se crea al descargar)',
+  'video.jd.agrupar': 'Agrupar visibles en…',
+  'video.jd.cola': 'Enviar {n} en {g} grupo(s)',
+  'video.jd.cola.titulo': 'Manda a JDownloader los vídeos con destino, cada grupo a su carpeta',
+  'video.jd.enviadosGrupos': '{n} enviado(s) a JDownloader en {g} grupo(s)',
 };
