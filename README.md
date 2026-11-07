@@ -55,6 +55,12 @@ progress, real cancellation and export.
   grouping, thumbnails, pause and resume, CSV / JSON / plain-list export.
 - **Single-page analyzer**: inspects one URL in depth (DOM, network requests,
   embedded players, scripts).
+- **Send to JDownloader**: one click sends the results to JDownloader 2 as a
+  single package, into the folder you choose — see
+  [Sending to JDownloader](#sending-to-jdownloader).
+- **Works with clip crew**: lists your clipkeeper folders as download
+  destinations and tells you which videos you already have.
+- **Outbound proxy** (`OUTBOUND_PROXY`) for networks that block some sites.
 - **Safe to run**: SSRF protection, per-host throttling, rate limiting, memory
   and time caps. English and Spanish interface.
 
@@ -88,6 +94,16 @@ docker compose up -d --build   # start again / apply changes
 
 > Always use `--build` after pulling new code: without it Docker keeps running
 > the old image.
+
+**Prebuilt image.** Every push to `main` publishes
+`ghcr.io/lucasfrattini/clipscout:latest` (amd64 and arm64), and every release
+tag `vX.Y.Z` publishes `:X.Y.Z`. To use it instead of building, replace
+`build: .` with `image: ghcr.io/lucasfrattini/clipscout:latest` in
+`compose.yaml` and run `docker compose pull && docker compose up -d`.
+
+**The whole clip crew at once** (clipscout + clonbuster + clipkeeper), on any
+Debian/Ubuntu host or as a Proxmox VE container: see
+[clipkeeper/deploy](https://github.com/lucasfrattini/clipkeeper/tree/main/deploy).
 
 ---
 
@@ -146,17 +162,48 @@ authentication with the `X-Api-Key` header, error format) is described in
 
 ### Sending to JDownloader
 
-**Settings → JDownloader** takes the URL of JDownloader 2's local API (usually
-`http://<jdownloader-ip>:3128`). Then **Send to JDownloader** appears above the results (Explorer and
-Videos tab, sends everything visible), plus a **JDownloader** button on each video in the Videos tab.
-Pressing it asks for the destination folder: if **clipkeeper** is connected, pick in Settings the
-library that is JDownloader's download folder and its subfolders are listed (each with the people and
-tags it holds), with a search box and the option to type a new one. Everything sent at once goes into
-**one JDownloader package** in that folder, so JDownloader doesn't create a package (or a folder) per
-file; clipkeeper catalogues whatever lands there with that folder's people and tags.
-To enable the API in JDownloader: *Advanced Settings* → `RemoteAPI: Deprecated API
-enabled` on and `RemoteAPI: Deprecated API localhost only` off, then restart it. In Docker, publish
-port `3128`.
+clipscout can hand what it finds straight to **JDownloader 2**, so a search ends in a download
+without copying links by hand.
+
+**1. Turn on JDownloader's local API** (once):
+
+- *Desktop JDownloader*: **Settings → Advanced Settings**, search `RemoteAPI` and set
+  `Deprecated API enabled` **on** and `Deprecated API localhost only` **off**. Restart JDownloader.
+- *JDownloader in Docker* (e.g. `jlesage/jdownloader-2`): do the same from its web UI
+  (port `5800`) and also publish the API port in its compose file:
+
+  ```yaml
+  ports:
+    - "5800:5800"   # web UI
+    - "3128:3128"   # local API used by clipscout
+  ```
+
+  Check it from the clipscout machine: `curl http://<jdownloader-ip>:3128/jd/version` should
+  answer with a number.
+
+**2. Connect it in clipscout**: **Settings → JDownloader**, paste
+`http://<jdownloader-ip>:3128`, press **Test** and **Save**. Optional:
+
+- **Start downloads right away** (autostart), or leave them in JDownloader's link grabber.
+- **clipkeeper library**: if clipkeeper is connected, pick the library that *is* JDownloader's
+  download folder. Its subfolders then become the destinations you choose from.
+
+**3. Send**: **Send to JDownloader** appears above the results (Explorer and Videos tab; it sends
+everything visible) and on every video card of the Videos tab. Pressing it asks for the
+destination folder — the library's folders, each with the people and tags it holds, a search box,
+*default folder*, or *new folder*.
+
+What happens then:
+
+- Everything sent at once goes into **one JDownloader package** in that folder, so JDownloader
+  doesn't create a package (or a folder) per file.
+- clipkeeper picks up whatever lands there on its next automatic rescan (every 30 minutes by
+  default, or press **Refresh**) and catalogues it with the people and tags that folder already
+  has.
+- When a page offers the same file on several hosts, clipscout keeps the ones JDownloader can
+  download **without an account** and drops premium-only hosts. Some free hosts still ask for a
+  CAPTCHA: JDownloader shows it in its own window (or web UI on port `5800`), or you can plug a
+  CAPTCHA-solving service into JDownloader under *Settings → Captchas*.
 
 > Calls to other clip crew apps only go to the URLs you add in **Settings**, and only to their
 > `/api/crew/v1/...` endpoints (and, for JDownloader, to its API). The SSRF protection that keeps crawls away from private addresses
