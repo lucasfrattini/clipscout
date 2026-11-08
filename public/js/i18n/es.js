@@ -581,7 +581,7 @@ export const es = {
   'buscar.titulo': 'Buscar en todos tus sitios',
   'buscar.placeholder': 'Nombre de una persona, un título…',
   'buscar.boton': 'Buscar',
-  'buscar.paginas': "Páginas por sitio",
+  'buscar.paginas': 'Páginas por sitio',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':

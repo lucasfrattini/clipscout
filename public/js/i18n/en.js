@@ -580,7 +580,7 @@ export const en = {
   'buscar.titulo': 'Search all your sites',
   'buscar.placeholder': 'A person’s name, a title…',
   'buscar.boton': 'Search',
-  'buscar.paginas': "Pages per site",
+  'buscar.paginas': 'Pages per site',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
   'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',
