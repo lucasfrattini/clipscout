@@ -121,6 +121,9 @@ const config = {
     webTimeoutMs: intFromEnv('BUSQUEDA_WEB_TIMEOUT_MS', 20000),
     // Páginas de listado (perfil, etiqueta…) halladas en la web que se recorren por sitio
     webListados: intFromEnv('BUSQUEDA_WEB_LISTADOS', 3),
+    // Imágenes para clipkeeper: fichas por sitio y tiempo máximo de la búsqueda
+    imagenesPorSitio: intFromEnv('BUSQUEDA_IMAGENES_POR_SITIO', 8),
+    imagenesMs: intFromEnv('BUSQUEDA_IMAGENES_MS', 60000),
   },
 
   throttle: {

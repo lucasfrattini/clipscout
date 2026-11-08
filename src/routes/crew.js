@@ -4,7 +4,9 @@ const crypto = require('node:crypto');
 const express = require('express');
 
 const crew = require('../services/crew');
+const config = require('../config');
 const jd = require('../services/jdownloader');
+const { buscarEnTodos } = require('../services/busqueda');
 const ajustesBusqueda = require('../services/ajustesBusqueda');
 
 /**
@@ -64,6 +66,45 @@ protocolo.delete(
   manejar(async req => {
     await crew.quitar(req.params.id);
     return { ok: true };
+  })
+);
+/**
+ * Imágenes para clipkeeper (fotos de personas, portadas de categorías): una búsqueda rápida en los
+ * sitios guardados (1 página, pocas fichas por sitio) y se devuelven las miniaturas de los vídeos.
+ * Es el contenido real de esos sitios: sin el filtro que aplican los buscadores generales.
+ */
+protocolo.get(
+  '/imagenes',
+  manejar(async req => {
+    const q = String(req.query.q || '').trim();
+    if (!q) throw new crew.ErrorCrew('Falta qué buscar.');
+    const controller = new AbortController();
+    const tope = setTimeout(() => controller.abort(), config.busqueda.imagenesMs);
+    tope.unref?.();
+    const fotos = new Map();
+    try {
+      await buscarEnTodos(
+        { q, paginas: 1, web: false, enlaces: config.busqueda.imagenesPorSitio },
+        {
+          signal: controller.signal,
+          emit: ev => {
+            if (ev.type !== 'resultados') return;
+            for (const it of ev.items) {
+              if (it.thumbnail && !fotos.has(it.thumbnail)) {
+                fotos.set(it.thumbnail, {
+                  imagen: it.thumbnail,
+                  pagina: it.sourceUrl || it.url,
+                  titulo: it.title || '',
+                });
+              }
+            }
+          },
+        }
+      );
+    } finally {
+      clearTimeout(tope);
+    }
+    return { fotos: [...fotos.values()] };
   })
 );
 router.use('/crew/v1', protocolo);

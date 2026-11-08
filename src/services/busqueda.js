@@ -40,7 +40,7 @@ async function listarSitios() {
  * @param {object} opciones { signal, emit }
  */
 async function buscarEnTodos(
-  { q, sitios = null, paginas = null, web = false },
+  { q, sitios = null, paginas = null, web = false, enlaces = null },
   { signal, emit = () => {} } = {}
 ) {
   const conWeb = web === true && Boolean(config.busqueda.searxngUrl);
@@ -48,7 +48,8 @@ async function buscarEnTodos(
     config.busqueda.maxPaginas,
     Math.max(1, Number.parseInt(paginas, 10) || config.busqueda.paginas)
   );
-  const topeEnlaces = config.busqueda.maxEnlaces * porSitio;
+  const topeEnlaces =
+    Number.isInteger(enlaces) && enlaces > 0 ? enlaces : config.busqueda.maxEnlaces * porSitio;
   const todosLosItems = []; // para agrupar repetidos ENTRE sitios al final
   const todos = await listarSitios();
   const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : todos;
