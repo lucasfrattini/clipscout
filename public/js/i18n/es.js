@@ -634,6 +634,8 @@ export const es = {
   'buscar.destino': 'Descargar en',
   'buscar.destino.preguntar': 'Preguntar cada vez',
   'buscar.descargarTodo': '⬇ Descargar todo ({n})',
+  'jd.nueva.nombre': 'Nombre de la carpeta (por ejemplo, el de la persona):',
+  'buscar.destino.nueva': '+ Nueva carpeta…',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':

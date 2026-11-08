@@ -88,11 +88,21 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
     return tipoDeCarpetaNueva(elegida);
   }
 
+  /** Crear una carpeta nueva ahora (nombre y qué es), sin mandar nada todavía. */
+  async function nuevaCarpeta() {
+    const nombre = await promptDialog({
+      titleKey: 'jd.tipo.titulo',
+      labelKey: 'jd.nueva.nombre',
+      defaultValue: '',
+    });
+    if (nombre === null || !nombre.trim()) return null;
+    return tipoDeCarpetaNueva(nombre.trim());
+  }
+
   /** `carpeta` fijada de antemano (p. ej. «Descargar en» del buscador): no se pregunta. */
-  async function enviar(links, { carpeta } = {}) {
+  async function enviar(links, { carpeta, regla = null } = {}) {
     if (links.length === 0) return;
-    const elegido =
-      carpeta !== undefined ? { carpeta, regla: null } : await elegirCarpeta(links.length);
+    const elegido = carpeta !== undefined ? { carpeta, regla } : await elegirCarpeta(links.length);
     if (elegido === null) return;
     ultima = elegido.carpeta.replace(/^\/+|\/+$/g, '');
     try {
@@ -158,6 +168,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
     configurado: () => configurado,
     /** Carpetas de clipkeeper (o null) y la última usada, para un «Descargar en» fijo. */
     destinos: () => destinos,
+    nuevaCarpeta,
     ultima: () => ultima,
     /** Avisa cuando se sabe si hay JDownloader (para repintar botones por fila). */
     alCargar: fn => alCargar.add(fn),

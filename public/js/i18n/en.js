@@ -633,6 +633,8 @@ export const en = {
   'buscar.destino': 'Download to',
   'buscar.destino.preguntar': 'Ask every time',
   'buscar.descargarTodo': '⬇ Download all ({n})',
+  'jd.nueva.nombre': 'Folder name (for example, the person’s name):',
+  'buscar.destino.nueva': '+ New folder…',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
   'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',

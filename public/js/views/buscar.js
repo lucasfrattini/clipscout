@@ -148,6 +148,8 @@ export function createBuscarView(root) {
   let ocultarRepetidos = true;
   let minDuracion = 0; // minutos; 0 = cualquiera
   let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
+  let reglaFija = null; // si la carpeta fija es nueva: qué persona/categoría/etiqueta lleva
+  const nuevasCarpetas = []; // creadas aquí (aún sin vídeos, así que clipkeeper todavía no las lista)
 
   const esCopia = r => {
     const c = copias.get(r.url);
@@ -162,7 +164,8 @@ export function createBuscarView(root) {
           (Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60))
     );
   const jd = createJdEnvio({ visibles: () => visibles().map(r => r.sourceUrl || r.url) });
-  const descargar = links => jd.enviar(links, destinoFijo === null ? {} : { carpeta: destinoFijo });
+  const descargar = links =>
+    jd.enviar(links, destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija });
 
   const filtroRepetidos = el('input', { attrs: { type: 'checkbox', checked: true } });
   filtroRepetidos.addEventListener('change', () => {
@@ -190,19 +193,37 @@ export function createBuscarView(root) {
     className: 'buscar__opcion',
     children: [textoDestino, destino],
   });
-  destino.addEventListener('change', () => {
+  destino.addEventListener('change', async () => {
+    if (destino.value === '__nueva') {
+      const nueva = await jd.nuevaCarpeta();
+      if (nueva) {
+        nuevasCarpetas.push(nueva);
+        destinoFijo = nueva.carpeta;
+        reglaFija = nueva.regla;
+        pintarDestinos(nueva.carpeta);
+      } else {
+        pintarDestinos(destinoFijo === null ? '__preguntar' : destinoFijo);
+      }
+      return;
+    }
     destinoFijo = destino.value === '__preguntar' ? null : destino.value;
+    reglaFija = nuevasCarpetas.find(n => n.carpeta === destino.value)?.regla || null;
   });
-  function pintarDestinos() {
-    const actual = destino.value || '__preguntar';
+  function pintarDestinos(elegir) {
+    const actual = elegir ?? (destino.value || '__preguntar');
     clear(destino);
     destino.append(
       el('option', { attrs: { value: '__preguntar' }, text: t('buscar.destino.preguntar') })
     );
-    for (const d of jd.destinos() || []) {
-      destino.append(el('option', { attrs: { value: d.carpeta }, text: d.carpeta }));
+    const existentes = (jd.destinos() || []).map(d => d.carpeta);
+    for (const n of nuevasCarpetas) {
+      if (!existentes.includes(n.carpeta)) existentes.unshift(n.carpeta);
+    }
+    for (const c of existentes) {
+      destino.append(el('option', { attrs: { value: c }, text: c }));
     }
     destino.append(el('option', { attrs: { value: '' }, text: t('video.jd.porDefecto') }));
+    destino.append(el('option', { attrs: { value: '__nueva' }, text: t('buscar.destino.nueva') }));
     destino.value = [...destino.options].some(o => o.value === actual) ? actual : '__preguntar';
   }
   const descargarTodo = el('button', {
