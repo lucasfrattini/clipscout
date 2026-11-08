@@ -3109,3 +3109,22 @@ a {
     flex: none;
   }
 }
+.buscar__pie {
+  display: flex;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.buscar__opcion {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--c-text-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.buscar__paginas {
+  width: auto;
+  padding: 4px 8px;
+}

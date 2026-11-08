@@ -107,6 +107,8 @@ const config = {
     sitiosALaVez: intFromEnv('BUSQUEDA_SITIOS_A_LA_VEZ', 3),
     // Páginas de resultados por sitio: es una búsqueda rápida, no un barrido
     paginas: intFromEnv('BUSQUEDA_PAGINAS', 2),
+    // Lo máximo que se puede elegir en la pantalla
+    maxPaginas: intFromEnv('BUSQUEDA_MAX_PAGINAS', 10),
   },
 
   throttle: {

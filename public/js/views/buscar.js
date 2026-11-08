@@ -66,12 +66,32 @@ export function createBuscarView(root) {
   const chipsSitios = el('div', { className: 'buscar__sitios' });
   const ayuda = el('p', { className: 'buscar__ayuda' });
 
+  // Cuántas páginas de resultados mirar en cada sitio (se recuerda).
+  const CLAVE_PAGINAS = 'clipscout:buscar-paginas';
+  const paginas = el('select', { className: 'input buscar__paginas' });
+  for (const n of [1, 2, 3, 5, 10]) paginas.append(el('option', { attrs: { value: n }, text: n }));
+  try {
+    paginas.value = localStorage.getItem(CLAVE_PAGINAS) || '2';
+  } catch {
+    paginas.value = '2';
+  }
+  paginas.addEventListener('change', () => {
+    try {
+      localStorage.setItem(CLAVE_PAGINAS, paginas.value);
+    } catch {
+      // sin almacenamiento
+    }
+  });
+  const etiquetaPaginas = el('label', { className: 'buscar__opcion', children: [paginas] });
+  const textoPaginas = el('span');
+  etiquetaPaginas.prepend(textoPaginas);
+
   const form = el('form', {
     className: 'buscar__form',
     children: [
       el('div', { className: 'buscar__fila', children: [entrada, boton, parar] }),
       chipsSitios,
-      ayuda,
+      el('div', { className: 'buscar__pie', children: [ayuda, etiquetaPaginas] }),
     ],
     on: {
       submit: e => {
@@ -155,6 +175,7 @@ export function createBuscarView(root) {
           ? t('buscar.ayuda.todos', { n: sitios.length })
           : tp('buscar.ayuda.algunos', activos.length);
     boton.textContent = t('buscar.boton');
+    textoPaginas.textContent = t('buscar.paginas');
   }
 
   async function cargarSitios() {
@@ -199,7 +220,7 @@ export function createBuscarView(root) {
     boton.hidden = true;
     parar.hidden = false;
 
-    const query = new URLSearchParams({ q });
+    const query = new URLSearchParams({ q, paginas: paginas.value });
     if (elegidos.length < sitios.length) query.set('sitios', elegidos.map(s => s.id).join(','));
     try {
       const url = new URL(window.location.href);

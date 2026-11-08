@@ -54,7 +54,10 @@ router.get('/buscar/stream', async (req, res) => {
             .map(x => Number.parseInt(x, 10))
             .filter(Number.isInteger)
         : null;
-    const r = await buscarEnTodos({ q, sitios }, { signal: controller.signal, emit: send });
+    const r = await buscarEnTodos(
+      { q, sitios, paginas: req.query.paginas },
+      { signal: controller.signal, emit: send }
+    );
     send({ type: 'fin', ...r });
   } catch (error) {
     logger.warn(`Error en la búsqueda: ${error.message}`);

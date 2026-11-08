@@ -37,7 +37,14 @@ async function listarSitios() {
  * @param {object} entrada  { q, sitios: [ids] | null (todos) }
  * @param {object} opciones { signal, emit }
  */
-async function buscarEnTodos({ q, sitios = null }, { signal, emit = () => {} } = {}) {
+async function buscarEnTodos(
+  { q, sitios = null, paginas = null },
+  { signal, emit = () => {} } = {}
+) {
+  const porSitio = Math.min(
+    config.busqueda.maxPaginas,
+    Math.max(1, Number.parseInt(paginas, 10) || config.busqueda.paginas)
+  );
   const todos = await listarSitios();
   const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : todos;
 
@@ -52,10 +59,8 @@ async function buscarEnTodos({ q, sitios = null }, { signal, emit = () => {} } =
       const params = normalizeCrawlParams({
         ...c,
         searchTerm: q,
-        endPage: Math.min(
-          Number.parseInt(c.endPage, 10) || 1,
-          (Number.parseInt(c.startPage, 10) || 1) + config.busqueda.paginas - 1
-        ),
+        // Las páginas las elige quien busca (no el rango guardado en la configuración).
+        endPage: (Number.parseInt(c.startPage, 10) || 1) + porSitio - 1,
         withThumbnails: true,
       });
       const resultado = await crawl(
