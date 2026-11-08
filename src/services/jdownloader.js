@@ -104,8 +104,8 @@ function limpiarSubcarpeta(texto) {
  * de JDownloader (p. ej. el nombre de la actriz); `origen` es la página de
  * donde salieron, para que JDownloader la use como referencia.
  */
-async function enviar({ links, carpeta = '', paquete = '', origen = '' } = {}) {
-  const { url, autostart = true } = await ajustes();
+async function enviar({ links, carpeta = '', paquete = '', origen = '', regla = null } = {}) {
+  const { url, autostart = true, biblioteca = null } = await ajustes();
   if (!url) throw new ErrorJd('JDownloader no está configurado (pestaña Ajustes).', 409);
   const lista = (Array.isArray(links) ? links : [])
     .map(l => String(l).trim())
@@ -150,8 +150,19 @@ async function enviar({ links, carpeta = '', paquete = '', origen = '' } = {}) {
       logger.warn(`JDownloader: no se pudo arrancar la descarga: ${error.message}`)
     );
   }
+  // Carpeta nueva con persona/categoría/etiqueta: clipkeeper lo apunta para catalogar lo que llegue.
+  let reglaGuardada = null;
+  if (regla && sub && biblioteca !== null && biblioteca !== undefined) {
+    reglaGuardada = await crew.reglaClipkeeper({
+      bibliotecaId: biblioteca,
+      carpeta: sub,
+      personas: Array.isArray(regla.personas) ? regla.personas.slice(0, 5) : [],
+      etiquetas: Array.isArray(regla.etiquetas) ? regla.etiquetas.slice(0, 5) : [],
+    });
+  }
   return {
     ok: true,
+    regla: reglaGuardada,
     enviados: lista.length,
     carpeta: consulta.destinationFolder || null,
     paquete: consulta.packageName,

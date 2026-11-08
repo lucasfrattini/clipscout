@@ -109,7 +109,7 @@ const config = {
     paginas: intFromEnv('BUSQUEDA_PAGINAS', 2),
     // Lo máximo que se puede elegir en la pantalla
     maxPaginas: intFromEnv('BUSQUEDA_MAX_PAGINAS', 10),
-    // Fichas que se abren como mucho por sitio (cada una es una visita, a veces con navegador)
+    // Fichas que se abren como mucho por sitio Y POR PÁGINA pedida (cada una es una visita)
     maxEnlaces: intFromEnv('BUSQUEDA_MAX_ENLACES', 30),
     // Búsqueda web («site:») con SearXNG; vacío = desactivada
     searxngUrl: (process.env.SEARXNG_URL || '').trim(),

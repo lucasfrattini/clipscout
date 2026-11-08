@@ -6,6 +6,7 @@ const { crawl, normalizeCrawlParams } = require('./scraper');
 const { hasSearchTemplate, parseExtensionList } = require('../lib/url');
 const { mapLimit } = require('../lib/concurrency');
 const { buscarEnWeb } = require('./web');
+const { groupDuplicates } = require('../lib/dedupe');
 
 /**
  * Búsqueda en TODOS los sitios guardados a la vez.
@@ -47,6 +48,8 @@ async function buscarEnTodos(
     config.busqueda.maxPaginas,
     Math.max(1, Number.parseInt(paginas, 10) || config.busqueda.paginas)
   );
+  const topeEnlaces = config.busqueda.maxEnlaces * porSitio;
+  const todosLosItems = []; // para agrupar repetidos ENTRE sitios al final
   const todos = await listarSitios();
   const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : todos;
 
@@ -66,6 +69,7 @@ async function buscarEnTodos(
             .filter(Boolean)
             .map(it => (esWeb ? { ...it, web: true } : it));
           total += items.length;
+          todosLosItems.push(...items);
           emit({ type: 'resultados', sitio: sitio.id, items });
         } else if (evento.type === 'phase1_complete') {
           emit({ type: 'sitio_progreso', sitio: sitio.id, enlaces: evento.totalLinks });
@@ -91,7 +95,8 @@ async function buscarEnTodos(
         {
           ...params,
           extensions: parseExtensionList(c.fileExtensions || '.mp4'),
-          maxLinks: config.busqueda.maxEnlaces,
+          // El tope crece con las páginas pedidas: con uno fijo, 2 o 5 páginas daban lo mismo.
+          maxLinks: topeEnlaces,
         },
         { signal, emit: reenviar() }
       );
@@ -106,11 +111,11 @@ async function buscarEnTodos(
         const urls = web.fichas.filter(u => !vistos.has(u));
         if (urls.length > 0) {
           await crawl(
-            { ...params, extensions: extensiones, maxLinks: config.busqueda.maxEnlaces },
+            { ...params, extensions: extensiones, maxLinks: topeEnlaces },
             {
               signal,
               emit: reenviar({ web: true }),
-              linksPrevios: urls.slice(0, config.busqueda.maxEnlaces),
+              linksPrevios: urls.slice(0, topeEnlaces),
             }
           );
         }
@@ -127,7 +132,7 @@ async function buscarEnTodos(
               withThumbnails: true,
             });
             await crawl(
-              { ...p, extensions: extensiones, maxLinks: config.busqueda.maxEnlaces },
+              { ...p, extensions: extensiones, maxLinks: topeEnlaces },
               { signal, emit: reenviar({ web: true }) }
             );
           } catch {
@@ -141,6 +146,17 @@ async function buscarEnTodos(
       emit({ type: 'sitio_fin', sitio: sitio.id, total, error: error.message });
       return { id: sitio.id, total, error: error.message };
     }
+  });
+
+  // Repetidos: el mismo vídeo en varios sitios (o en varias fichas). Como en el Explorador, no se
+  // quita nada: se manda qué es copia de qué y la interfaz los pliega.
+  const { grupos } = groupDuplicates(todosLosItems);
+  emit({
+    type: 'duplicados',
+    grupos: grupos.map(g => ({
+      representante: g.representante.url,
+      miembros: g.miembros.map(m => m.url),
+    })),
   });
 
   return { sitios: resumen, total: resumen.reduce((n, r) => n + (r?.total || 0), 0) };

@@ -291,7 +291,29 @@ async function destinosClipkeeper() {
   }
 }
 
+/**
+ * Regla de carpeta en clipkeeper: lo que llegue a `carpeta` (relativa a la biblioteca) entra con
+ * esas personas y etiquetas. Se usa al mandar una descarga a una carpeta NUEVA.
+ */
+async function reglaClipkeeper({ bibliotecaId, carpeta, personas = [], etiquetas = [] }) {
+  const { conexiones = [] } = await datos();
+  const destino = conexiones.find(c => c.app === 'clipkeeper' && c.activa);
+  if (!destino) return { ok: false, error: 'clipkeeper no está conectado.' };
+  try {
+    const r = await llamar(`${destino.url}/api/crew/v1/reglas`, {
+      method: 'POST',
+      headers: { 'X-Api-Key': destino.api_key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ biblioteca_id: bibliotecaId, carpeta, personas, etiquetas }),
+    });
+    if (r.status !== 200) return { ok: false, error: `clipkeeper respondió ${r.status}` };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'clipkeeper no responde.' };
+  }
+}
+
 module.exports = {
+  reglaClipkeeper,
   buscarEnClipkeeper,
   destinosClipkeeper,
   APP,

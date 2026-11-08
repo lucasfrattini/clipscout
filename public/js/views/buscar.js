@@ -141,9 +141,79 @@ export function createBuscarView(root) {
 
   root.append(el('div', { className: 'buscar', children: [titulo, form, zonaResultados] }));
 
-  const visibles = () => resultados.filter(r => pestana === 'todos' || r.sitio === pestana);
+  /* ── Repetidos y filtros de la lista ─────────────────────────────────── */
+  // url → { representante, n }: copias del mismo vídeo (mismo o distinto sitio). Se pliegan bajo
+  // el primero, como en el Explorador; nunca se borra nada.
+  let copias = new Map();
+  let ocultarRepetidos = true;
+  let minDuracion = 0; // minutos; 0 = cualquiera
+  let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
+
+  const esCopia = r => {
+    const c = copias.get(r.url);
+    return Boolean(c && c.representante !== r.url);
+  };
+  const visibles = () =>
+    resultados.filter(
+      r =>
+        (pestana === 'todos' || r.sitio === pestana) &&
+        (!ocultarRepetidos || !esCopia(r)) &&
+        (!minDuracion ||
+          (Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60))
+    );
   const jd = createJdEnvio({ visibles: () => visibles().map(r => r.sourceUrl || r.url) });
-  jd.alCargar(() => pintarResultados());
+  const descargar = links => jd.enviar(links, destinoFijo === null ? {} : { carpeta: destinoFijo });
+
+  const filtroRepetidos = el('input', { attrs: { type: 'checkbox', checked: true } });
+  filtroRepetidos.addEventListener('change', () => {
+    ocultarRepetidos = filtroRepetidos.checked;
+    pintarResultados();
+  });
+  const textoRepetidos = el('span');
+  const etiquetaRepetidos = el('label', {
+    className: 'buscar__opcion',
+    children: [filtroRepetidos, textoRepetidos],
+  });
+  const duracion = el('select', { className: 'input buscar__paginas' });
+  const textoDuracion = el('span');
+  const etiquetaDuracion = el('label', {
+    className: 'buscar__opcion',
+    children: [textoDuracion, duracion],
+  });
+  duracion.addEventListener('change', () => {
+    minDuracion = Number(duracion.value);
+    pintarResultados();
+  });
+  const destino = el('select', { className: 'input buscar__destino' });
+  const textoDestino = el('span');
+  const etiquetaDestino = el('label', {
+    className: 'buscar__opcion',
+    children: [textoDestino, destino],
+  });
+  destino.addEventListener('change', () => {
+    destinoFijo = destino.value === '__preguntar' ? null : destino.value;
+  });
+  function pintarDestinos() {
+    const actual = destino.value || '__preguntar';
+    clear(destino);
+    destino.append(
+      el('option', { attrs: { value: '__preguntar' }, text: t('buscar.destino.preguntar') })
+    );
+    for (const d of jd.destinos() || []) {
+      destino.append(el('option', { attrs: { value: d.carpeta }, text: d.carpeta }));
+    }
+    destino.append(el('option', { attrs: { value: '' }, text: t('video.jd.porDefecto') }));
+    destino.value = [...destino.options].some(o => o.value === actual) ? actual : '__preguntar';
+  }
+  const descargarTodo = el('button', {
+    className: 'button button--small',
+    attrs: { type: 'button' },
+    on: { click: () => descargar(visibles().map(r => r.sourceUrl || r.url)) },
+  });
+  jd.alCargar(() => {
+    pintarDestinos();
+    pintarResultados();
+  });
 
   const yaLoTengo = el('button', {
     className: 'button button--secondary button--small',
@@ -200,6 +270,21 @@ export function createBuscarView(root) {
           : tp('buscar.ayuda.algunos', activos.length);
     boton.textContent = t('buscar.boton');
     textoPaginas.textContent = t('buscar.paginas');
+    textoRepetidos.textContent = t('buscar.ocultarRepetidos');
+    textoDuracion.textContent = t('buscar.duracion');
+    textoDestino.textContent = t('buscar.destino');
+    const minActual = duracion.value || '0';
+    clear(duracion);
+    for (const n of [0, 1, 3, 5, 10, 20, 30]) {
+      duracion.append(
+        el('option', {
+          attrs: { value: n },
+          text: n ? t('buscar.duracion.min', { n }) : t('buscar.duracion.cualquiera'),
+        })
+      );
+    }
+    duracion.value = minActual;
+    pintarDestinos();
     textoWeb.textContent = t('buscar.web');
     etiquetaWeb.title = t('buscar.web.titulo');
   }
@@ -240,6 +325,7 @@ export function createBuscarView(root) {
     if (elegidos.length === 0) return;
     fuente?.close();
     resultados = [];
+    copias = new Map();
     enBiblioteca = new Map();
     pestana = 'todos';
     estado = new Map(elegidos.map(s => [s.id, { fase: 'espera', total: 0 }]));
@@ -289,6 +375,13 @@ export function createBuscarView(root) {
           bloqueo: m.bloqueo,
           recortado: m.recortado,
         });
+      } else if (m.type === 'duplicados') {
+        copias = new Map();
+        for (const g of m.grupos) {
+          for (const u of g.miembros) {
+            copias.set(u, { representante: g.representante, n: g.miembros.length });
+          }
+        }
       } else if (m.type === 'fin') return terminar();
       else if (m.type === 'error') {
         toast(m.message, 'error', 6000);
@@ -405,7 +498,7 @@ export function createBuscarView(root) {
           className: 'button button--small',
           attrs: { type: 'button' },
           text: t('buscar.jd'),
-          on: { click: () => jd.enviar([enlace]) },
+          on: { click: () => descargar([enlace]) },
         })
       );
     }
@@ -419,6 +512,13 @@ export function createBuscarView(root) {
             imagen,
             r.duration ? el('span', { className: 'buscar__duracion', text: r.duration }) : null,
             tengo ? el('span', { className: 'buscar__tengo', text: t('buscar.loTienes') }) : null,
+            copias.get(r.url)?.representante === r.url
+              ? el('span', {
+                  className: 'buscar__copias',
+                  text: `+${copias.get(r.url).n - 1}`,
+                  attrs: { title: tp('buscar.copias', copias.get(r.url).n - 1) },
+                })
+              : null,
             r.web
               ? el('span', {
                   className: 'buscar__web',
@@ -476,9 +576,21 @@ export function createBuscarView(root) {
     progreso.append(
       el('li', {
         className: 'buscar__resumen',
-        text: quedan
-          ? t('buscar.estado.quedan', { n: quedan, total: estado.size })
-          : t('buscar.estado.terminado'),
+        children: [
+          el('span', {
+            text: quedan
+              ? t('buscar.estado.quedan', { n: quedan, total: estado.size })
+              : t('buscar.estado.terminado'),
+          }),
+          quedan
+            ? el('button', {
+                className: 'button button--secondary button--small',
+                attrs: { type: 'button' },
+                text: t('buscar.parar'),
+                on: { click: () => terminar(true) },
+              })
+            : null,
+        ],
       })
     );
     for (const [id, e] of estado) progreso.append(lineaSitio(id, e));
@@ -500,11 +612,23 @@ export function createBuscarView(root) {
     const lista = visibles();
     clear(barra);
     if (lista.length > 0) {
+      const repetidos = resultados.filter(esCopia).length;
       barra.append(
-        el('span', { className: 'buscar__cuenta', text: tp('buscar.resultados', lista.length) }),
-        yaLoTengo,
-        jd.boton
+        el('span', {
+          className: 'buscar__cuenta',
+          text:
+            tp('buscar.resultados', lista.length) +
+            (repetidos ? ` · ${tp('buscar.repetidos', repetidos)}` : ''),
+        }),
+        yaLoTengo
       );
+      if (jd.configurado()) {
+        descargarTodo.textContent = t('buscar.descargarTodo', { n: lista.length });
+        barra.append(etiquetaDestino, descargarTodo);
+      }
+    }
+    if (resultados.length > 0) {
+      barra.append(etiquetaDuracion, etiquetaRepetidos);
     }
 
     const e = pestana === 'todos' ? null : estado.get(pestana);
