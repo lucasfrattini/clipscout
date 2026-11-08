@@ -315,16 +315,16 @@ test('applySearchTerm — marcador {q}', async t => {
     // se dio en un sitio real: al final de la ruta, dentro de la query, y en
     // mitad de una ruta con más segmentos detrás.
     assert.equal(
-      applySearchTerm('https://ejemplo.com/search/{q}/', 'argentina'),
-      'https://ejemplo.com/search/argentina/'
+      applySearchTerm('https://ejemplo.com/search/{q}/', 'gatos'),
+      'https://ejemplo.com/search/gatos/'
     );
     assert.equal(
-      applySearchTerm('https://ejemplo.org/search?q={q}', 'argentina'),
-      'https://ejemplo.org/search?q=argentina'
+      applySearchTerm('https://ejemplo.org/search?q={q}', 'gatos'),
+      'https://ejemplo.org/search?q=gatos'
     );
     assert.equal(
-      applySearchTerm('https://ejemplo.net/es/search/a/{q}', 'argentina'),
-      'https://ejemplo.net/es/search/a/argentina'
+      applySearchTerm('https://ejemplo.net/es/search/a/{q}', 'gatos'),
+      'https://ejemplo.net/es/search/a/gatos'
     );
   });
 
