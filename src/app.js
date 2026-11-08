@@ -27,7 +27,13 @@ function requerirContrasena({ adminUser, adminPassword }) {
     const [tipo, valor] = (req.get('authorization') || '').split(' ');
     if (tipo === 'Basic' && valor) {
       const [usuario, ...resto] = Buffer.from(valor, 'base64').toString('utf8').split(':');
-      if (igual(usuario, adminUser) && igual(resto.join(':'), adminPassword)) return next();
+      // El usuario, sin distinguir mayúsculas: los teclados del móvil ponen la primera en mayúscula.
+      if (
+        igual(usuario.toLowerCase(), String(adminUser).toLowerCase()) &&
+        igual(resto.join(':'), adminPassword)
+      ) {
+        return next();
+      }
     }
     res.set('WWW-Authenticate', 'Basic realm="clipscout", charset="UTF-8"');
     return res.status(401).json({ detail: 'Hace falta usuario y contraseña.' });

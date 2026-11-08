@@ -49,6 +49,17 @@ test('con las credenciales correctas entra (la contraseña puede llevar «:»)',
   assert.equal(r.status, 200);
 });
 
+test('el usuario entra sin distinguir mayúsculas; la contraseña sí las distingue', async () => {
+  const bien = await fetch(`${base}/api/ajustes/general`, {
+    headers: { Authorization: basic('Lucas', 'secreta:con:dos-puntos') },
+  });
+  assert.equal(bien.status, 200);
+  const mala = await fetch(`${base}/api/ajustes/general`, {
+    headers: { Authorization: basic('lucas', 'SECRETA:con:dos-puntos') },
+  });
+  assert.equal(mala.status, 401);
+});
+
 test('health y el protocolo clip crew no piden contraseña (tienen su propia clave)', async () => {
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
   assert.equal((await fetch(`${base}/api/crew/v1/status`)).status, 401); // pide la clave de API, no la contraseña
