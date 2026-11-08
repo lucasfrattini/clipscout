@@ -391,6 +391,7 @@ export function createBuscarView(root) {
       const url = new URL(window.location.href);
       url.searchParams.delete('q');
       url.searchParams.delete('searchTerm');
+      url.searchParams.delete('prellenar');
       window.history.replaceState(null, '', url);
     } catch {
       // sin URL: no pasa nada
@@ -746,7 +747,15 @@ export function createBuscarView(root) {
       return '';
     }
   })();
-  if (inicial) entrada.value = inicial;
+  // ?prellenar=: deja el texto escrito, pero la búsqueda la lanza la persona.
+  const prellenado = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get('prellenar') || '';
+    } catch {
+      return '';
+    }
+  })();
+  if (inicial || prellenado) entrada.value = inicial || prellenado;
   cargarSitios().then(() => {
     const hash = window.location.hash;
     if (inicial && (hash === '' || hash.startsWith('#/buscar'))) empezar();

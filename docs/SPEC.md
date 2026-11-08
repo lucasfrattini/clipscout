@@ -19,6 +19,7 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | VID-1  | El análisis de una URL combina sus vías; un dato opcional que falte no elimina el resultado.         | `video-options`, `video-metadata`            |
 | BUS-1  | La búsqueda no se relanza al recargar y cada resultado se puede descartar y restaurar.               | manual                                       |
 | BUS-2  | Un mismo vídeo sale una vez; los vídeos distintos de un álbum se conservan.                          | `dedupe`                                     |
+| BUS-3  | `?prellenar=texto` DEBE dejar el texto escrito sin lanzar la búsqueda; `?q=` sí la lanza.            | manual                                       |
 | JD-1   | Enviar a JDownloader pregunta tipo y nombre de la carpeta, salvo destino fijado.                     | manual                                       |
 | JD-2   | La ventana DEBE proponer carpetas existentes y personas o etiquetas del catálogo sin carpeta propia. | `carpetas.test.js`                           |
 | JD-3   | El modo discreto de clipkeeper NO DEBE ocultar nada en esa ventana.                                  | `carpetas.test.js`, SPEC de clipkeeper DIS-2 |
