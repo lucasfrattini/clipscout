@@ -1,0 +1,88 @@
+/* Pantalla de acceso: la misma de clipkeeper y clonbuster. */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: var(--cc-texto);
+}
+.acceso {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: radial-gradient(circle at 50% 0%, #1b2f5c 0, var(--cc-noche) 60%);
+}
+.acceso-caja {
+  width: min(400px, 100%);
+  text-align: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--cc-carta);
+  border: 1px solid var(--cc-borde);
+}
+.acceso-logo {
+  width: 88px;
+  height: 88px;
+  border-radius: 20px;
+}
+.acceso-crew {
+  margin: 8px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #d97706;
+  font-weight: 700;
+}
+.acceso h1 {
+  margin: 0 0 4px;
+}
+.acceso-texto {
+  color: var(--cc-tenue);
+  margin: 0 0 8px;
+}
+.acceso label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 14px 0;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+}
+.acceso input {
+  width: 100%;
+  font: inherit;
+  font-weight: 400;
+  padding: 9px 12px;
+  border: 1px solid var(--cc-borde-fuerte);
+  border-radius: 8px;
+  background: var(--cc-carta);
+  color: var(--cc-texto);
+}
+.acceso input:focus {
+  outline: 2px solid #d97706;
+  outline-offset: 1px;
+}
+.acceso button {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #d97706;
+  border-radius: 8px;
+  background: #d97706;
+  color: #fff;
+}
+.acceso button:disabled {
+  opacity: 0.6;
+}
+.acceso-error {
+  color: var(--cc-mal);
+  min-height: 1.2em;
+  margin: 0;
+  font-size: 14px;
+}

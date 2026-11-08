@@ -1,6 +1,6 @@
 {
   "name": "clipscout",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "clipscout — explora los enlaces y recursos multimedia de un sitio web recorriendo su paginación.",
   "main": "server.js",
   "engines": {
@@ -24,7 +24,7 @@
     "express": "^4.21.2",
     "http-proxy-agent": "^7.0.2",
     "https-proxy-agent": "^7.0.6",
-    "puppeteer": "^24.19.0"
+    "puppeteer": "^25.16.0"
   },
   "devDependencies": {
     "eslint": "^9.15.0",

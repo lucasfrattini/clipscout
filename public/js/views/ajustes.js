@@ -20,17 +20,33 @@ export const avisarCambio = () => window.dispatchEvent(new Event(EVENTO));
 
 export function createAjustesView(raiz) {
   let general = null;
+  let protegido = false;
   let claveVisible = false;
   let formularioAbierto = false;
 
   async function cargar() {
     try {
       general = await ajustes.general();
+      protegido = (await (await fetch('/api/auth/estado')).json()).protegido;
     } catch (error) {
       toast(error.message, 'error', 6000);
       return;
     }
     pintar();
+  }
+
+  function botonSalir() {
+    return el('button', {
+      className: 'button button--secondary',
+      attrs: { type: 'button' },
+      text: t('ajustes.salir'),
+      on: {
+        click: async () => {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          location.replace('/login');
+        },
+      },
+    });
   }
 
   function pintar() {
@@ -45,7 +61,8 @@ export function createAjustesView(raiz) {
       tarjetaClave(),
       tarjetaConexiones(),
       tarjetaJd(),
-      tarjetaBusqueda()
+      tarjetaBusqueda(),
+      ...(protegido ? [botonSalir()] : [])
     );
   }
 

@@ -10,6 +10,7 @@
  *  - Nada de HTML aquí dentro: todo entra por textContent.
  */
 export const es = {
+  'ajustes.salir': 'Cerrar sesión',
   /* ── Cabecera y navegación ─────────────────────────────────────── */
   'app.subtitulo': 'Explora enlaces y recursos de un sitio',
   'app.saltar': 'Saltar al contenido',

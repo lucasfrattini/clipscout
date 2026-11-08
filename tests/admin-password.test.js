@@ -60,6 +60,41 @@ test('el usuario entra sin distinguir mayúsculas; la contraseña sí las distin
   assert.equal(mala.status, 401);
 });
 
+test('un navegador va a la pantalla de acceso; al entrar, la cookie abre la app', async () => {
+  const html = await fetch(`${base}/`, { headers: { Accept: 'text/html' }, redirect: 'manual' });
+  assert.equal(html.status, 302);
+  assert.equal(html.headers.get('location'), '/login');
+  assert.equal((await fetch(`${base}/login`, { headers: { Accept: 'text/html' } })).status, 200);
+  const entrar = (usuario, contrasena) =>
+    fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario, contrasena }),
+    });
+  assert.equal((await entrar('lucas', 'mala')).status, 401);
+  const ok = await entrar('LUCAS', 'secreta:con:dos-puntos');
+  assert.equal(ok.status, 200);
+  const cookie = ok.headers.get('set-cookie').split(';')[0];
+  assert.match(ok.headers.get('set-cookie'), /HttpOnly/i);
+  const r = await fetch(`${base}/api/ajustes/general`, { headers: { Cookie: cookie } });
+  assert.equal(r.status, 200);
+  const falsa = await fetch(`${base}/api/ajustes/general`, {
+    headers: { Cookie: `${cookie.slice(0, -1)}0` },
+  });
+  assert.equal(falsa.status, 401);
+});
+
+test('tras muchos fallos, el login se bloquea', async () => {
+  const entrar = contrasena =>
+    fetch(`${base}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: 'lucas', contrasena }),
+    });
+  for (let i = 0; i < 8; i++) assert.equal((await entrar('mala')).status, 401);
+  assert.equal((await entrar('secreta:con:dos-puntos')).status, 429);
+});
+
 test('health y el protocolo clip crew no piden contraseña (tienen su propia clave)', async () => {
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
   assert.equal((await fetch(`${base}/api/crew/v1/status`)).status, 401); // pide la clave de API, no la contraseña

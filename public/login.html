@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>clipscout</title>
+    <link rel="icon" href="/img/favicon.ico" />
+    <link rel="stylesheet" href="/styles/crew.css" />
+    <link rel="stylesheet" href="/styles/login.css" />
+  </head>
+  <body>
+    <main class="acceso">
+      <form class="acceso-caja" id="acceso">
+        <img src="/img/crew/clipscout.png" alt="" class="acceso-logo" />
+        <p class="acceso-crew">clip crew</p>
+        <h1>clipscout</h1>
+        <p class="acceso-texto" id="texto"></p>
+        <label>
+          <span id="etq-usuario"></span>
+          <input
+            type="text"
+            id="usuario"
+            autocomplete="username"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            required
+          />
+        </label>
+        <label>
+          <span id="etq-clave"></span>
+          <input type="password" id="clave" autocomplete="current-password" required />
+        </label>
+        <p class="acceso-error" id="error" role="alert"></p>
+        <button id="entrar"></button>
+      </form>
+    </main>
+    <script type="module" src="/js/login.js"></script>
+  </body>
+</html>

@@ -10,6 +10,7 @@
  * because `t()` leaves unknown placeholders untouched. There is a test.
  */
 export const en = {
+  'ajustes.salir': 'Sign out',
   /* ── Header and navigation ─────────────────────────────────────── */
   'app.subtitulo': "Explore a site's links and resources",
   'app.saltar': 'Skip to content',
