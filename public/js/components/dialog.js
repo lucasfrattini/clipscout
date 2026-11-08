@@ -1,5 +1,6 @@
 import { el } from '../dom.js';
 import { t, alCambiarIdioma } from '../i18n/index.js';
+import { nombresCarpeta } from '../carpetas.js';
 
 /**
  * Diálogo modal propio: overlay + caja centrada, con foco atrapado.
@@ -311,9 +312,15 @@ export function chooseDialog({ titleKey, labelKey, labelParams, opciones, nuevaK
  * People/<nombre>, Categories/<nombre> o Unsorted/<nombre>, y lleva la «regla» para que clipkeeper
  * catalogue lo que llegue. Devuelve { carpeta, regla } o null si se cancela.
  *
- * `existentes`: carpetas que ya hay (p. ej. «People/Ana»); `ultima`: la última elegida.
+ * `existentes`: carpetas que ya hay (p. ej. «People/Ana»); `catalogo`: personas y etiquetas de
+ * clipkeeper, tengan carpeta o no; `ultima`: la última elegida.
  */
-export function carpetaDialog({ existentes = [], ultima = null, conPreguntar = false } = {}) {
+export function carpetaDialog({
+  existentes = [],
+  catalogo = {},
+  ultima = null,
+  conPreguntar = false,
+} = {}) {
   const TIPOS = [
     { valor: 'actriz', raiz: 'People' },
     { valor: 'actor', raiz: 'People' },
@@ -361,11 +368,7 @@ export function carpetaDialog({ existentes = [], ultima = null, conPreguntar = f
       const pintarLista = () => {
         if (!tipo) return;
         const raiz = TIPOS.find(x => x.valor === tipo).raiz;
-        const q = nombre.value.trim().toLowerCase();
-        const de = existentes
-          .filter(c => c.startsWith(`${raiz}/`))
-          .map(c => c.slice(raiz.length + 1))
-          .filter(n => n && !n.includes('/') && (!q || n.toLowerCase().includes(q)));
+        const de = nombresCarpeta({ tipo, raiz, existentes, catalogo, filtro: nombre.value });
         lista.replaceChildren(
           ...de.slice(0, 40).map(n =>
             el('button', {

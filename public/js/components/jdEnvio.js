@@ -15,12 +15,14 @@ import { carpetaDialog } from './dialog.js';
 export function createJdEnvio({ visibles, origen = () => '' }) {
   let configurado = false;
   let destinos = null; // null = sin biblioteca de clipkeeper: se escribe la subcarpeta a mano
+  let catalogo = {}; // personas y etiquetas de clipkeeper, aunque no tengan carpeta propia
   let ultima = null; // la última carpeta elegida en esta lista (se propone la primera)
 
   /** Carpeta en dos pasos (qué es → nombre); ver carpetaDialog. */
   function elegirCarpeta() {
     return carpetaDialog({
       existentes: (destinos || []).map(d => d.carpeta),
+      catalogo,
       ultima,
     });
   }
@@ -29,6 +31,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
   function nuevaCarpeta() {
     return carpetaDialog({
       existentes: (destinos || []).map(d => d.carpeta),
+      catalogo,
       ultima,
       conPreguntar: true,
     });
@@ -87,6 +90,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
         const d = await ajustes.destinos();
         const b = (d.bibliotecas || []).find(x => x.id === jd.biblioteca);
         destinos = b ? b.carpetas : null;
+        catalogo = d.catalogo || {};
       } catch {
         destinos = null;
       }
