@@ -3213,3 +3213,33 @@ a {
   max-width: 220px;
   padding: 4px 8px;
 }
+/* Ventana de carpeta: qué es → nombre */
+.dialog__tipos {
+  display: grid;
+  gap: 6px;
+}
+.dialog__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.dialog__chip {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  background: var(--c-surface);
+  color: var(--c-text);
+  cursor: pointer;
+}
+.dialog__chip:hover {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.dialog__opcion--ultima {
+  border-color: var(--c-accent);
+}

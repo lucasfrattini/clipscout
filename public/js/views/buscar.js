@@ -149,7 +149,6 @@ export function createBuscarView(root) {
   let minDuracion = 0; // minutos; 0 = cualquiera
   let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
   let reglaFija = null; // si la carpeta fija es nueva: qué persona/categoría/etiqueta lleva
-  const nuevasCarpetas = []; // creadas aquí (aún sin vídeos, así que clipkeeper todavía no las lista)
 
   const esCopia = r => {
     const c = copias.get(r.url);
@@ -187,44 +186,34 @@ export function createBuscarView(root) {
     minDuracion = Number(duracion.value);
     pintarResultados();
   });
-  const destino = el('select', { className: 'input buscar__destino' });
+  // «Descargar en»: un botón que abre la ventana de carpeta (qué es → nombre), no un desplegable.
+  const destino = el('button', {
+    className: 'button button--secondary button--small buscar__destino',
+    attrs: { type: 'button' },
+    on: {
+      click: async () => {
+        const r = await jd.nuevaCarpeta();
+        if (!r) return;
+        if (r.preguntar) {
+          destinoFijo = null;
+          reglaFija = null;
+        } else {
+          destinoFijo = r.carpeta;
+          reglaFija = r.regla;
+        }
+        pintarDestinos();
+      },
+    },
+  });
   const textoDestino = el('span');
-  const etiquetaDestino = el('label', {
+  const etiquetaDestino = el('span', {
     className: 'buscar__opcion',
     children: [textoDestino, destino],
   });
-  destino.addEventListener('change', async () => {
-    if (destino.value === '__nueva') {
-      const nueva = await jd.nuevaCarpeta();
-      if (nueva) {
-        nuevasCarpetas.push(nueva);
-        destinoFijo = nueva.carpeta;
-        reglaFija = nueva.regla;
-        pintarDestinos(nueva.carpeta);
-      } else {
-        pintarDestinos(destinoFijo === null ? '__preguntar' : destinoFijo);
-      }
-      return;
-    }
-    destinoFijo = destino.value === '__preguntar' ? null : destino.value;
-    reglaFija = nuevasCarpetas.find(n => n.carpeta === destino.value)?.regla || null;
-  });
-  function pintarDestinos(elegir) {
-    const actual = elegir ?? (destino.value || '__preguntar');
-    clear(destino);
-    destino.append(
-      el('option', { attrs: { value: '__preguntar' }, text: t('buscar.destino.preguntar') })
-    );
-    const existentes = (jd.destinos() || []).map(d => d.carpeta);
-    for (const n of nuevasCarpetas) {
-      if (!existentes.includes(n.carpeta)) existentes.unshift(n.carpeta);
-    }
-    for (const c of existentes) {
-      destino.append(el('option', { attrs: { value: c }, text: c }));
-    }
-    destino.append(el('option', { attrs: { value: '' }, text: t('video.jd.porDefecto') }));
-    destino.append(el('option', { attrs: { value: '__nueva' }, text: t('buscar.destino.nueva') }));
-    destino.value = [...destino.options].some(o => o.value === actual) ? actual : '__preguntar';
+  function pintarDestinos() {
+    destino.textContent = `📁 ${
+      destinoFijo === null ? t('buscar.destino.preguntar') : destinoFijo || t('video.jd.porDefecto')
+    }`;
   }
   const descargarTodo = el('button', {
     className: 'button button--small',

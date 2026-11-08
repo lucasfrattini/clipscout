@@ -304,3 +304,161 @@ export function chooseDialog({ titleKey, labelKey, labelParams, opciones, nuevaK
     },
   });
 }
+
+/**
+ * Carpeta de descarga en dos pasos: primero QUÉ es (actriz, actor, artista, categoría, etiqueta)
+ * y luego el NOMBRE (con los que ya existen de ese tipo para tocar). La carpeta se monta sola:
+ * People/<nombre>, Categories/<nombre> o Unsorted/<nombre>, y lleva la «regla» para que clipkeeper
+ * catalogue lo que llegue. Devuelve { carpeta, regla } o null si se cancela.
+ *
+ * `existentes`: carpetas que ya hay (p. ej. «People/Ana»); `ultima`: la última elegida.
+ */
+export function carpetaDialog({ existentes = [], ultima = null, conPreguntar = false } = {}) {
+  const TIPOS = [
+    { valor: 'actriz', raiz: 'People' },
+    { valor: 'actor', raiz: 'People' },
+    { valor: 'artista', raiz: 'People' },
+    { valor: 'categoria', raiz: 'Categories' },
+    { valor: 'etiqueta', raiz: 'Unsorted' },
+  ];
+  const regla = (tipo, nombre) =>
+    ['actriz', 'actor', 'artista'].includes(tipo)
+      ? { personas: [{ nombre, rol: tipo }] }
+      : { etiquetas: [{ nombre, grupo: tipo === 'categoria' ? 'Tipo' : 'Etiqueta' }] };
+
+  return abrirDialogo({
+    role: 'dialog',
+    titleKey: 'carpeta.titulo',
+    valorCancelar: null,
+    render({ cuerpo, acciones, cerrar }) {
+      const texto = el('p', { className: 'dialog__text' });
+      const botones = el('div', { className: 'dialog__tipos' });
+      const paso2 = el('div', { attrs: { hidden: '' } });
+      const nombre = el('input', {
+        className: 'dialog__input input',
+        attrs: { type: 'text', autocomplete: 'off', enterkeyhint: 'done' },
+      });
+      const lista = el('div', { className: 'dialog__chips' });
+      const aceptar = el('button', { className: 'button', attrs: { type: 'button' } });
+      const volver = el('button', {
+        className: 'button button--secondary',
+        attrs: { type: 'button' },
+      });
+      const cancelar = el('button', {
+        className: 'button button--secondary',
+        attrs: { type: 'button' },
+      });
+      let tipo = null;
+
+      const elegirNombre = n => {
+        const limpio = String(n || '')
+          .trim()
+          .replace(/[\\/]+/g, ' ');
+        if (!limpio || !tipo) return;
+        const raiz = TIPOS.find(x => x.valor === tipo).raiz;
+        cerrar({ carpeta: `${raiz}/${limpio}`, regla: regla(tipo, limpio) });
+      };
+      const pintarLista = () => {
+        if (!tipo) return;
+        const raiz = TIPOS.find(x => x.valor === tipo).raiz;
+        const q = nombre.value.trim().toLowerCase();
+        const de = existentes
+          .filter(c => c.startsWith(`${raiz}/`))
+          .map(c => c.slice(raiz.length + 1))
+          .filter(n => n && !n.includes('/') && (!q || n.toLowerCase().includes(q)));
+        lista.replaceChildren(
+          ...de.slice(0, 40).map(n =>
+            el('button', {
+              className: 'dialog__chip',
+              attrs: { type: 'button' },
+              text: n,
+              on: { click: () => elegirNombre(n) },
+            })
+          )
+        );
+      };
+      const irPaso2 = valor => {
+        tipo = valor;
+        botones.hidden = true;
+        paso2.hidden = false;
+        volver.hidden = false;
+        aceptar.hidden = false;
+        texto.textContent = t('carpeta.nombre', { tipo: t(`carpeta.tipo.${tipo}`) });
+        nombre.value = '';
+        pintarLista();
+        nombre.focus();
+      };
+
+      for (const x of TIPOS) {
+        botones.append(
+          el('button', {
+            className: 'dialog__opcion',
+            attrs: { type: 'button', 'data-tipo': x.valor },
+            on: { click: () => irPaso2(x.valor) },
+          })
+        );
+      }
+      const extra = [];
+      if (ultima !== null) {
+        extra.push(
+          el('button', {
+            className: 'dialog__opcion dialog__opcion--ultima',
+            attrs: { type: 'button' },
+            on: { click: () => cerrar({ carpeta: ultima, regla: null }) },
+          })
+        );
+      }
+      if (conPreguntar) {
+        extra.push(
+          el('button', {
+            className: 'dialog__opcion',
+            attrs: { type: 'button', 'data-preguntar': '' },
+            on: { click: () => cerrar({ preguntar: true }) },
+          })
+        );
+      }
+      botones.prepend(...extra);
+      nombre.addEventListener('input', pintarLista);
+      nombre.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          elegirNombre(nombre.value);
+        }
+      });
+      aceptar.addEventListener('click', () => elegirNombre(nombre.value));
+      volver.addEventListener('click', () => {
+        tipo = null;
+        botones.hidden = false;
+        paso2.hidden = true;
+        volver.hidden = true;
+        aceptar.hidden = true;
+        texto.textContent = t('carpeta.que');
+      });
+      cancelar.addEventListener('click', () => cerrar(null));
+      volver.hidden = true;
+      aceptar.hidden = true;
+      paso2.append(nombre, lista);
+      cuerpo.append(texto, botones, paso2);
+      acciones.append(cancelar, volver, aceptar);
+      return {
+        focoInicial: botones.querySelector('button'),
+        refrescar() {
+          if (!tipo) texto.textContent = t('carpeta.que');
+          for (const b of botones.querySelectorAll('[data-tipo]')) {
+            b.textContent = t(`carpeta.tipo.${b.dataset.tipo}`);
+          }
+          const ult = botones.querySelector('.dialog__opcion--ultima');
+          if (ult) {
+            ult.textContent = t('carpeta.ultima', { carpeta: ultima || t('video.jd.porDefecto') });
+          }
+          const preg = botones.querySelector('[data-preguntar]');
+          if (preg) preg.textContent = t('buscar.destino.preguntar');
+          nombre.placeholder = t('carpeta.placeholder');
+          aceptar.textContent = t('carpeta.aceptar');
+          volver.textContent = t('carpeta.volver');
+          cancelar.textContent = t('dialogo.cancelar');
+        },
+      };
+    },
+  });
+}

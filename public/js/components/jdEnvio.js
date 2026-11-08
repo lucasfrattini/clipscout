@@ -1,7 +1,7 @@
 import { ajustes } from '../api.js';
 import { el, toast } from '../dom.js';
 import { t, texto, atributo } from '../i18n/index.js';
-import { chooseDialog, promptDialog } from './dialog.js';
+import { carpetaDialog } from './dialog.js';
 
 /**
  * «Enviar a JDownloader», compartido por el Explorador y la vista Vídeos.
@@ -17,92 +17,27 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
   let destinos = null; // null = sin biblioteca de clipkeeper: se escribe la subcarpeta a mano
   let ultima = null; // la última carpeta elegida en esta lista (se propone la primera)
 
-  /**
-   * Carpeta NUEVA: ¿de quién o de qué es? Con eso la carpeta va a su sitio (People/…,
-   * Categories/…) y clipkeeper cataloga solo lo que llegue (persona con su rol, o categoría/etiqueta).
-   */
-  async function tipoDeCarpetaNueva(texto) {
-    const limpio = texto.replace(/^\/+|\/+$/g, '');
-    const nombre = limpio.split('/').pop();
-    const ruta = prefijo => (limpio.includes('/') ? limpio : `${prefijo}/${nombre}`);
-    const opciones = [
-      { valor: 'actriz', titulo: t('jd.tipo.actriz'), detalle: ruta('People') },
-      { valor: 'actor', titulo: t('jd.tipo.actor'), detalle: ruta('People') },
-      { valor: 'artista', titulo: t('jd.tipo.artista'), detalle: ruta('People') },
-      { valor: 'categoria', titulo: t('jd.tipo.categoria'), detalle: ruta('Categories') },
-      { valor: 'etiqueta', titulo: t('jd.tipo.etiqueta'), detalle: ruta('Unsorted') },
-      { valor: 'carpeta', titulo: t('jd.tipo.carpeta'), detalle: limpio },
-    ];
-    const tipo = await chooseDialog({
-      titleKey: 'jd.tipo.titulo',
-      labelKey: 'jd.tipo.label',
-      labelParams: { nombre },
-      opciones,
+  /** Carpeta en dos pasos (qué es → nombre); ver carpetaDialog. */
+  function elegirCarpeta() {
+    return carpetaDialog({
+      existentes: (destinos || []).map(d => d.carpeta),
+      ultima,
     });
-    if (tipo === null) return null;
-    if (tipo === 'carpeta') return { carpeta: limpio, regla: null };
-    if (['actriz', 'actor', 'artista'].includes(tipo)) {
-      return { carpeta: ruta('People'), regla: { personas: [{ nombre, rol: tipo }] } };
-    }
-    if (tipo === 'categoria') {
-      return { carpeta: ruta('Categories'), regla: { etiquetas: [{ nombre, grupo: 'Tipo' }] } };
-    }
-    return { carpeta: ruta('Unsorted'), regla: { etiquetas: [{ nombre, grupo: 'Etiqueta' }] } };
   }
 
-  async function elegirCarpeta(n) {
-    if (!destinos) {
-      const carpeta = await promptDialog({
-        titleKey: 'video.jd.todos',
-        labelKey: 'video.jd.carpeta',
-        labelParams: { n },
-        defaultValue: ultima || '',
-      });
-      return carpeta === null ? null : { carpeta: carpeta.trim(), regla: null };
-    }
-    const opciones = destinos.map(d => ({
-      valor: d.carpeta,
-      titulo: d.carpeta,
-      detalle: [...(d.personas || []), ...(d.etiquetas || [])].join(' · '),
-    }));
-    opciones.push({
-      valor: '',
-      titulo: t('video.jd.porDefecto'),
-      detalle: t('video.jd.porDefecto.detalle'),
+  /** Para fijar la carpeta de toda una lista («Descargar en»): lo mismo, más «Preguntar cada vez». */
+  function nuevaCarpeta() {
+    return carpetaDialog({
+      existentes: (destinos || []).map(d => d.carpeta),
+      ultima,
+      conPreguntar: true,
     });
-    // La última que se usó en esta lista, la primera: lo normal es seguir mandando ahí.
-    if (ultima !== null) {
-      const i = opciones.findIndex(o => o.valor === ultima);
-      const previa = i >= 0 ? opciones.splice(i, 1)[0] : { valor: ultima, titulo: ultima };
-      opciones.unshift({ ...previa, detalle: t('jd.ultima') });
-    }
-    const elegida = await chooseDialog({
-      titleKey: 'video.jd.todos',
-      labelKey: 'video.jd.elegir',
-      labelParams: { n },
-      opciones,
-      nuevaKey: 'video.jd.nueva',
-    });
-    if (elegida === null) return null;
-    if (opciones.some(o => o.valor === elegida)) return { carpeta: elegida, regla: null };
-    return tipoDeCarpetaNueva(elegida);
-  }
-
-  /** Crear una carpeta nueva ahora (nombre y qué es), sin mandar nada todavía. */
-  async function nuevaCarpeta() {
-    const nombre = await promptDialog({
-      titleKey: 'jd.tipo.titulo',
-      labelKey: 'jd.nueva.nombre',
-      defaultValue: '',
-    });
-    if (nombre === null || !nombre.trim()) return null;
-    return tipoDeCarpetaNueva(nombre.trim());
   }
 
   /** `carpeta` fijada de antemano (p. ej. «Descargar en» del buscador): no se pregunta. */
   async function enviar(links, { carpeta, regla = null } = {}) {
     if (links.length === 0) return;
-    const elegido = carpeta !== undefined ? { carpeta, regla } : await elegirCarpeta(links.length);
+    const elegido = carpeta !== undefined ? { carpeta, regla } : await elegirCarpeta();
     if (elegido === null) return;
     ultima = elegido.carpeta.replace(/^\/+|\/+$/g, '');
     try {
