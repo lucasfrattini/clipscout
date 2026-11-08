@@ -52,7 +52,18 @@ class BrowserPool {
       .launch({
         headless: true,
         args: config.outboundProxy
-          ? [...LAUNCH_ARGS, `--proxy-server=${config.outboundProxy.replace(/\/\/[^@]*@/, '//')}`]
+          ? [
+              ...LAUNCH_ARGS,
+              `--proxy-server=${config.outboundProxy.replace(/\/\/[^@]*@/, '//')}`,
+              // Los que bloquean la VPN van directos (también en el navegador)
+              ...(config.outboundProxyBypass.length
+                ? [
+                    `--proxy-bypass-list=${config.outboundProxyBypass
+                      .flatMap(d => [d, `*.${d}`])
+                      .join(';')}`,
+                  ]
+                : []),
+            ]
           : LAUNCH_ARGS,
         protocolTimeout: config.browser.protocolTimeoutMs,
         // undefined = Chromium propio de Puppeteer; en Docker apunta al de apt

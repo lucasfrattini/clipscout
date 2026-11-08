@@ -141,6 +141,16 @@ const config = {
   // Sirve cuando el operador bloquea un sitio. Lo usan el cliente HTTP y el navegador.
   // En los tests (node --test pone NODE_TEST_CONTEXT) nunca: el .env local no debe colarse ahí.
   outboundProxy: process.env.NODE_TEST_CONTEXT ? '' : (process.env.OUTBOUND_PROXY || '').trim(),
+  // Dominios que NO salen por el proxy (bloquean la VPN): «ejemplo.com,otro.net»
+  outboundProxyBypass: (process.env.OUTBOUND_PROXY_BYPASS || '')
+    .split(',')
+    .map(d =>
+      d
+        .trim()
+        .toLowerCase()
+        .replace(/^\*?\./, '')
+    )
+    .filter(Boolean),
 
   browser: {
     enabled: boolFromEnv('BROWSER_ENABLED', true),

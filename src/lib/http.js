@@ -55,8 +55,10 @@ const throttle = new HostThrottle();
  * puede resolver DNS: no basta por sí solo.
  */
 const agentOptions = { keepAlive: true, lookup: secureLookup };
-let httpAgent = new http.Agent(agentOptions);
-let httpsAgent = new https.Agent(agentOptions);
+const directoHttp = new http.Agent(agentOptions);
+const directoHttps = new https.Agent(agentOptions);
+let httpAgent = directoHttp;
+let httpsAgent = directoHttps;
 
 /*
  * Con OUTBOUND_PROXY todo sale por ese proxy (útil si el operador bloquea un sitio). El proxy
@@ -71,6 +73,29 @@ if (config.outboundProxy) {
   logger.info('Saliendo por proxy', {
     proxy: config.outboundProxy.replace(/\/\/[^@]*@/, '//***@'),
   });
+}
+
+/**
+ * ¿Este destino va SIN el proxy? Algunos sitios bloquean justo la salida de la VPN y desde la
+ * conexión normal funcionan: se listan en OUTBOUND_PROXY_BYPASS (dominios, separados por comas;
+ * vale un subdominio). La lista vive en el .env: no es un dato del repositorio.
+ */
+function sinProxy(url) {
+  if (!config.outboundProxy || config.outboundProxyBypass.length === 0) return false;
+  let host;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return config.outboundProxyBypass.some(d => host === d || host.endsWith(`.${d}`));
+}
+
+/** Agentes para una URL: los del proxy, salvo los dominios que van directos. */
+function agentesPara(url) {
+  return sinProxy(url)
+    ? { httpAgent: directoHttp, httpsAgent: directoHttps }
+    : { httpAgent, httpsAgent };
 }
 
 /**
@@ -146,8 +171,7 @@ async function fetchHtml(url, { timeout, signal } = {}) {
         maxBodyLength: config.http.maxResponseBytes,
         responseType: 'text',
         signal,
-        httpAgent,
-        httpsAgent,
+        ...agentesPara(url),
         beforeRedirect: guardRedirect,
         validateStatus: status => status >= 200 && status < 400,
       });
@@ -240,8 +264,7 @@ async function fetchContentLength(url, { signal, referer } = {}) {
         timeout: config.http.headTimeoutMs,
         maxRedirects: config.http.maxRedirects,
         signal,
-        httpAgent,
-        httpsAgent,
+        ...agentesPara(url),
         beforeRedirect: guardRedirect,
       });
       const contentLength = response.headers['content-length'];
@@ -260,6 +283,7 @@ function agentesSeguros() {
 }
 
 module.exports = {
+  sinProxy,
   agentesSeguros,
   buildHeaders,
   fetchHtml,
