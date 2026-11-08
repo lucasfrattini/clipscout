@@ -147,6 +147,7 @@ export function createBuscarView(root) {
   let copias = new Map();
   let ocultarRepetidos = true;
   let minDuracion = 0; // minutos; 0 = cualquiera
+  const descartados = new Set(); // páginas quitadas a mano de esta búsqueda
   let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
   let reglaFija = null; // si la carpeta fija es nueva: qué persona/categoría/etiqueta lleva
 
@@ -168,6 +169,7 @@ export function createBuscarView(root) {
     const vistas = new Set();
     return resultados.filter(r => {
       if (pestana !== 'todos' && r.sitio !== pestana) return false;
+      if (descartados.has(clavePagina(r))) return false;
       if (
         minDuracion &&
         !(Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60)
@@ -353,6 +355,7 @@ export function createBuscarView(root) {
     if (elegidos.length === 0) return;
     fuente?.close();
     resultados = [];
+    descartados.clear();
     copias = new Map();
     enBiblioteca = new Map();
     pestana = 'todos';
@@ -365,8 +368,10 @@ export function createBuscarView(root) {
     if (!etiquetaWeb.hidden && web.checked) query.set('web', '1');
     if (elegidos.length < sitios.length) query.set('sitios', elegidos.map(s => s.id).join(','));
     try {
+      // Fuera ?q= / ?searchTerm=: si quedara, recargar la página volvería a lanzar la búsqueda.
       const url = new URL(window.location.href);
-      url.searchParams.set('q', q);
+      url.searchParams.delete('q');
+      url.searchParams.delete('searchTerm');
       window.history.replaceState(null, '', url);
     } catch {
       // sin URL: no pasa nada
@@ -572,6 +577,21 @@ export function createBuscarView(root) {
           ],
         }),
         el('div', { className: 'buscar__acciones', children: acciones }),
+        el('button', {
+          className: 'buscar__descartar',
+          attrs: {
+            type: 'button',
+            title: t('buscar.descartar'),
+            'aria-label': t('buscar.descartar'),
+          },
+          text: '✕',
+          on: {
+            click: () => {
+              descartados.add(enlace);
+              pintarResultados();
+            },
+          },
+        }),
       ],
     });
   }
@@ -645,6 +665,21 @@ export function createBuscarView(root) {
     const lista = visibles();
     clear(barra);
     if (lista.length > 0) {
+      if (descartados.size) {
+        barra.append(
+          el('button', {
+            className: 'button button--ghost button--small',
+            attrs: { type: 'button' },
+            text: tp('buscar.descartados', descartados.size),
+            on: {
+              click: () => {
+                descartados.clear();
+                pintarResultados();
+              },
+            },
+          })
+        );
+      }
       const repetidos = ocultarRepetidos ? visibles({ plegar: false }).length - lista.length : 0;
       barra.append(
         el('span', {

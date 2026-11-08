@@ -648,6 +648,9 @@ export const es = {
   'carpeta.placeholder': 'Escribe el nombre…',
   'carpeta.aceptar': 'Guardar aquí',
   'carpeta.volver': 'Atrás',
+  'buscar.descartar': 'Descartar este resultado',
+  'buscar.descartados.uno': '1 descartado · recuperar',
+  'buscar.descartados.varios': '{n} descartados · recuperar',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':
