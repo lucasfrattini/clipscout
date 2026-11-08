@@ -583,6 +583,10 @@ export const en = {
   'buscar.paginas': 'Pages per site',
   'buscar.recortado':
     'There is more: only the first results of this site were checked. Use the Explorer to go deeper.',
+  'buscar.web': 'Also on the web',
+  'buscar.web.titulo':
+    'Also searches “site:site name” on search engines (Google, Bing…) to find videos whose title does not say the name.',
+  'buscar.web.resultado': 'Found with the web search',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
   'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',

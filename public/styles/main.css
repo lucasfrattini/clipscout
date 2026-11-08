@@ -3128,3 +3128,16 @@ a {
   width: auto;
   padding: 4px 8px;
 }
+.buscar__web {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgb(0 0 0 / 65%);
+  font-size: 0.8rem;
+}
+.buscar__opcion input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+}

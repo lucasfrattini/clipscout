@@ -5,6 +5,7 @@ const { readProfiles } = require('./profiles');
 const { crawl, normalizeCrawlParams } = require('./scraper');
 const { hasSearchTemplate, parseExtensionList } = require('../lib/url');
 const { mapLimit } = require('../lib/concurrency');
+const { buscarEnWeb } = require('./web');
 
 /**
  * Búsqueda en TODOS los sitios guardados a la vez.
@@ -38,9 +39,10 @@ async function listarSitios() {
  * @param {object} opciones { signal, emit }
  */
 async function buscarEnTodos(
-  { q, sitios = null, paginas = null },
+  { q, sitios = null, paginas = null, web = false },
   { signal, emit = () => {} } = {}
 ) {
+  const conWeb = web === true && Boolean(config.busqueda.searxngUrl);
   const porSitio = Math.min(
     config.busqueda.maxPaginas,
     Math.max(1, Number.parseInt(paginas, 10) || config.busqueda.paginas)
@@ -55,6 +57,28 @@ async function buscarEnTodos(
     const c = sitio.perfil.config;
     emit({ type: 'sitio_inicio', sitio: sitio.id });
     let total = 0;
+    const vistos = new Set(); // fichas ya revisadas (para no repetirlas en la búsqueda web)
+    const reenviar =
+      ({ web: esWeb = false } = {}) =>
+      evento => {
+        if (evento.type === 'files_found') {
+          const items = (evento.details || [])
+            .filter(Boolean)
+            .map(it => (esWeb ? { ...it, web: true } : it));
+          total += items.length;
+          emit({ type: 'resultados', sitio: sitio.id, items });
+        } else if (evento.type === 'phase1_complete') {
+          emit({ type: 'sitio_progreso', sitio: sitio.id, enlaces: evento.totalLinks });
+        } else if (evento.type === 'phase2_progress') {
+          if (evento.url) vistos.add(evento.url);
+          emit({
+            type: 'sitio_progreso',
+            sitio: sitio.id,
+            hechos: evento.current,
+            enlaces: evento.total,
+          });
+        }
+      };
     try {
       const params = normalizeCrawlParams({
         ...c,
@@ -69,28 +93,30 @@ async function buscarEnTodos(
           extensions: parseExtensionList(c.fileExtensions || '.mp4'),
           maxLinks: config.busqueda.maxEnlaces,
         },
-        {
-          signal,
-          emit: evento => {
-            if (evento.type === 'files_found') {
-              const items = (evento.details || []).filter(Boolean);
-              total += items.length;
-              emit({ type: 'resultados', sitio: sitio.id, items });
-            } else if (evento.type === 'phase1_complete') {
-              emit({ type: 'sitio_progreso', sitio: sitio.id, enlaces: evento.totalLinks });
-            } else if (evento.type === 'phase2_progress') {
-              emit({
-                type: 'sitio_progreso',
-                sitio: sitio.id,
-                hechos: evento.current,
-                enlaces: evento.total,
-              });
-            }
-          },
-        }
+        { signal, emit: reenviar() }
       );
       const bloqueo = resultado.diagnostico?.bloqueo?.sospechoso === true;
       const recortado = resultado.truncated === true;
+
+      // «Tipo Google»: lo que el buscador web encuentra en ese sitio y la búsqueda propia no.
+      if (conWeb && !signal?.aborted) {
+        emit({ type: 'sitio_progreso', sitio: sitio.id, web: true });
+        const urls = (await buscarEnWeb(q, c, { signal })).filter(u => !vistos.has(u));
+        if (urls.length > 0) {
+          await crawl(
+            {
+              ...params,
+              extensions: parseExtensionList(c.fileExtensions || '.mp4'),
+              maxLinks: config.busqueda.maxEnlaces,
+            },
+            {
+              signal,
+              emit: reenviar({ web: true }),
+              linksPrevios: urls.slice(0, config.busqueda.maxEnlaces),
+            }
+          );
+        }
+      }
       emit({ type: 'sitio_fin', sitio: sitio.id, total, bloqueo, recortado });
       return { id: sitio.id, total };
     } catch (error) {

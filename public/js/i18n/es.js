@@ -584,6 +584,10 @@ export const es = {
   'buscar.paginas': 'Páginas por sitio',
   'buscar.recortado':
     'Hay más: solo se revisaron los primeros resultados de este sitio. Para ir a fondo, usa el Explorador.',
+  'buscar.web': 'También en la web',
+  'buscar.web.titulo':
+    'Busca además «site:sitio nombre» en buscadores (Google, Bing…) para encontrar vídeos cuyo título no dice el nombre.',
+  'buscar.web.resultado': 'Encontrado con la búsqueda web',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':

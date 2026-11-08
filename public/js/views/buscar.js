@@ -83,6 +83,28 @@ export function createBuscarView(root) {
     }
   });
   const etiquetaPaginas = el('label', { className: 'buscar__opcion', children: [paginas] });
+
+  // «Tipo Google» (site:sitio nombre) con el SearXNG del servidor, si lo hay.
+  const CLAVE_WEB = 'clipscout:buscar-web';
+  const web = el('input', { attrs: { type: 'checkbox' } });
+  try {
+    web.checked = localStorage.getItem(CLAVE_WEB) !== '0';
+  } catch {
+    web.checked = true;
+  }
+  web.addEventListener('change', () => {
+    try {
+      localStorage.setItem(CLAVE_WEB, web.checked ? '1' : '0');
+    } catch {
+      // sin almacenamiento
+    }
+  });
+  const textoWeb = el('span');
+  const etiquetaWeb = el('label', {
+    className: 'buscar__opcion',
+    attrs: { hidden: '' },
+    children: [web, textoWeb],
+  });
   const textoPaginas = el('span');
   etiquetaPaginas.prepend(textoPaginas);
 
@@ -91,7 +113,7 @@ export function createBuscarView(root) {
     children: [
       el('div', { className: 'buscar__fila', children: [entrada, boton, parar] }),
       chipsSitios,
-      el('div', { className: 'buscar__pie', children: [ayuda, etiquetaPaginas] }),
+      el('div', { className: 'buscar__pie', children: [ayuda, etiquetaWeb, etiquetaPaginas] }),
     ],
     on: {
       submit: e => {
@@ -176,12 +198,15 @@ export function createBuscarView(root) {
           : tp('buscar.ayuda.algunos', activos.length);
     boton.textContent = t('buscar.boton');
     textoPaginas.textContent = t('buscar.paginas');
+    textoWeb.textContent = t('buscar.web');
+    etiquetaWeb.title = t('buscar.web.titulo');
   }
 
   async function cargarSitios() {
     try {
       const r = await fetch('/api/buscar/sitios').then(x => x.json());
       sitios = r.sitios || [];
+      etiquetaWeb.hidden = !r.web;
     } catch {
       sitios = [];
     }
@@ -221,6 +246,7 @@ export function createBuscarView(root) {
     parar.hidden = false;
 
     const query = new URLSearchParams({ q, paginas: paginas.value });
+    if (!etiquetaWeb.hidden && web.checked) query.set('web', '1');
     if (elegidos.length < sitios.length) query.set('sitios', elegidos.map(s => s.id).join(','));
     try {
       const url = new URL(window.location.href);
@@ -380,6 +406,13 @@ export function createBuscarView(root) {
             imagen,
             r.duration ? el('span', { className: 'buscar__duracion', text: r.duration }) : null,
             tengo ? el('span', { className: 'buscar__tengo', text: t('buscar.loTienes') }) : null,
+            r.web
+              ? el('span', {
+                  className: 'buscar__web',
+                  text: '🌐',
+                  attrs: { title: t('buscar.web.resultado') },
+                })
+              : null,
           ],
         }),
         el('div', {

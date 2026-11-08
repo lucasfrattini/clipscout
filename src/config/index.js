@@ -111,6 +111,10 @@ const config = {
     maxPaginas: intFromEnv('BUSQUEDA_MAX_PAGINAS', 10),
     // Fichas que se abren como mucho por sitio (cada una es una visita, a veces con navegador)
     maxEnlaces: intFromEnv('BUSQUEDA_MAX_ENLACES', 30),
+    // Búsqueda web («site:») con SearXNG; vacío = desactivada
+    searxngUrl: (process.env.SEARXNG_URL || '').trim(),
+    webPaginas: intFromEnv('BUSQUEDA_WEB_PAGINAS', 2),
+    webTimeoutMs: intFromEnv('BUSQUEDA_WEB_TIMEOUT_MS', 20000),
   },
 
   throttle: {

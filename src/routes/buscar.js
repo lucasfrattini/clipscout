@@ -12,7 +12,10 @@ const router = express.Router();
 router.get('/buscar/sitios', async (req, res, next) => {
   try {
     const sitios = await listarSitios();
-    res.json({ sitios: sitios.map(s => ({ id: s.id, nombre: s.nombre })) });
+    res.json({
+      sitios: sitios.map(s => ({ id: s.id, nombre: s.nombre })),
+      web: Boolean(config.busqueda.searxngUrl),
+    });
   } catch (error) {
     next(error);
   }
@@ -55,7 +58,7 @@ router.get('/buscar/stream', async (req, res) => {
             .filter(Number.isInteger)
         : null;
     const r = await buscarEnTodos(
-      { q, sitios, paginas: req.query.paginas },
+      { q, sitios, paginas: req.query.paginas, web: req.query.web === '1' },
       { signal: controller.signal, emit: send }
     );
     send({ type: 'fin', ...r });
