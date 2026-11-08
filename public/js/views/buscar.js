@@ -125,13 +125,15 @@ export function createBuscarView(root) {
 
   /* ── Resultados ─────────────────────────────────────────────────── */
   const pestanas = el('div', { className: 'buscar__pestanas', attrs: { role: 'tablist' } });
+  // Estado de cada sitio mientras busca: así se ve que sigue trabajando y por dónde va.
+  const progreso = el('ul', { className: 'buscar__progreso', attrs: { 'aria-live': 'polite' } });
   const barra = el('div', { className: 'buscar__barra' });
   const rejilla = el('div', { className: 'buscar__rejilla' });
   const vacio = el('p', { className: 'buscar__vacio' });
   const zonaResultados = el('section', {
     className: 'buscar__resultados',
     attrs: { hidden: '' },
-    children: [pestanas, barra, vacio, rejilla],
+    children: [progreso, pestanas, barra, vacio, rejilla],
   });
 
   const titulo = el('h2', { className: 'buscar__titulo', attrs: { id: 'buscar-heading' } });
@@ -266,7 +268,13 @@ export function createBuscarView(root) {
       }
       if (m.type === 'sitio_inicio') estado.set(m.sitio, { ...estado.get(m.sitio), fase: 'busca' });
       else if (m.type === 'sitio_progreso') {
-        estado.set(m.sitio, { ...estado.get(m.sitio), hechos: m.hechos, enlaces: m.enlaces });
+        const previo = estado.get(m.sitio) || {};
+        estado.set(
+          m.sitio,
+          m.web
+            ? { ...previo, web: true, hechos: 0, enlaces: 0 }
+            : { ...previo, hechos: m.hechos ?? 0, enlaces: m.enlaces ?? previo.enlaces }
+        );
       } else if (m.type === 'resultados') {
         for (const it of m.items) resultados.push({ ...it, sitio: m.sitio });
         estado.set(m.sitio, {
@@ -337,7 +345,7 @@ export function createBuscarView(root) {
     const marca = !e
       ? ''
       : e.fase === 'busca' || e.fase === 'espera'
-        ? ' …'
+        ? ' ⏳'
         : e.fase === 'error'
           ? ' ⚠'
           : e.bloqueo
@@ -430,8 +438,45 @@ export function createBuscarView(root) {
     });
   }
 
+  function lineaSitio(id, e) {
+    const s = sitios.find(x => x.id === id);
+    let texto;
+    if (e.fase === 'espera') texto = t('buscar.estado.cola');
+    else if (e.fase === 'busca' && e.web) texto = t('buscar.estado.web');
+    else if (e.fase === 'busca' && e.enlaces) {
+      texto = t('buscar.estado.revisando', { hechos: e.hechos || 0, total: e.enlaces });
+    } else if (e.fase === 'busca') texto = t('buscar.estado.buscando');
+    else if (e.fase === 'error') texto = t('buscar.estado.error', { error: e.error });
+    else texto = tp('buscar.resultados', e.total || 0);
+    const enCurso = e.fase === 'busca' || e.fase === 'espera';
+    return el('li', {
+      className: `buscar__linea${enCurso ? ' buscar__linea--curso' : ''}${e.fase === 'error' ? ' buscar__linea--error' : ''}`,
+      children: [
+        el('span', {
+          className: enCurso ? 'buscar__girando' : 'buscar__hecho',
+          text: enCurso ? '' : e.fase === 'error' ? '⚠' : '✓',
+        }),
+        el('strong', { text: s?.nombre || '' }),
+        el('span', { text: texto }),
+      ],
+    });
+  }
+
   function pintarResultados() {
     if (zonaResultados.hidden) return;
+    clear(progreso);
+    const quedan = [...estado.values()].filter(
+      e => e.fase === 'espera' || e.fase === 'busca'
+    ).length;
+    progreso.append(
+      el('li', {
+        className: 'buscar__resumen',
+        text: quedan
+          ? t('buscar.estado.quedan', { n: quedan, total: estado.size })
+          : t('buscar.estado.terminado'),
+      })
+    );
+    for (const [id, e] of estado) progreso.append(lineaSitio(id, e));
     clear(pestanas);
     const buscando = [...estado.values()].some(e => e.fase === 'espera' || e.fase === 'busca');
     pestanas.append(

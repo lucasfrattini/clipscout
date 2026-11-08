@@ -587,6 +587,13 @@ export const en = {
   'buscar.web.titulo':
     'Also searches “site:site name” on search engines (Google, Bing…) to find videos whose title does not say the name.',
   'buscar.web.resultado': 'Found with the web search',
+  'buscar.estado.cola': 'queued…',
+  'buscar.estado.buscando': 'searching…',
+  'buscar.estado.revisando': 'checking {hechos} of {total} pages…',
+  'buscar.estado.web': 'also searching the web…',
+  'buscar.estado.error': 'error: {error}',
+  'buscar.estado.quedan': 'Searching: {n} of {total} sites left',
+  'buscar.estado.terminado': 'Search finished',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
   'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',

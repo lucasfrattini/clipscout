@@ -588,6 +588,13 @@ export const es = {
   'buscar.web.titulo':
     'Busca además «site:sitio nombre» en buscadores (Google, Bing…) para encontrar vídeos cuyo título no dice el nombre.',
   'buscar.web.resultado': 'Encontrado con la búsqueda web',
+  'buscar.estado.cola': 'en cola…',
+  'buscar.estado.buscando': 'buscando…',
+  'buscar.estado.revisando': 'revisando {hechos} de {total} páginas…',
+  'buscar.estado.web': 'buscando también en la web…',
+  'buscar.estado.error': 'error: {error}',
+  'buscar.estado.quedan': 'Buscando: faltan {n} de {total} sitios',
+  'buscar.estado.terminado': 'Búsqueda terminada',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':

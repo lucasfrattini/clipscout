@@ -3141,3 +3141,53 @@ a {
   width: auto;
   margin: 0;
 }
+.buscar__progreso {
+  list-style: none;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+.buscar__resumen {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.buscar__linea {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--c-text-muted);
+}
+.buscar__linea strong {
+  color: var(--c-text);
+  min-width: 90px;
+}
+.buscar__linea--error {
+  color: var(--c-danger);
+}
+.buscar__hecho {
+  width: 14px;
+  text-align: center;
+  color: var(--c-success);
+}
+.buscar__linea--error .buscar__hecho {
+  color: var(--c-danger);
+}
+.buscar__girando {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--c-border-strong);
+  border-top-color: var(--c-accent);
+  border-radius: 50%;
+  animation: buscar-gira 0.8s linear infinite;
+  flex: none;
+}
+@keyframes buscar-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
