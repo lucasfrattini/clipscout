@@ -582,6 +582,8 @@ export const es = {
   'buscar.placeholder': 'Nombre de una persona, un título…',
   'buscar.boton': 'Buscar',
   'buscar.paginas': 'Páginas por sitio',
+  'buscar.recortado':
+    'Hay más: solo se revisaron los primeros resultados de este sitio. Para ir a fondo, usa el Explorador.',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':

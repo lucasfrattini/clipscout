@@ -64,7 +64,11 @@ async function buscarEnTodos(
         withThumbnails: true,
       });
       const resultado = await crawl(
-        { ...params, extensions: parseExtensionList(c.fileExtensions || '.mp4') },
+        {
+          ...params,
+          extensions: parseExtensionList(c.fileExtensions || '.mp4'),
+          maxLinks: config.busqueda.maxEnlaces,
+        },
         {
           signal,
           emit: evento => {
@@ -86,7 +90,8 @@ async function buscarEnTodos(
         }
       );
       const bloqueo = resultado.diagnostico?.bloqueo?.sospechoso === true;
-      emit({ type: 'sitio_fin', sitio: sitio.id, total, bloqueo });
+      const recortado = resultado.truncated === true;
+      emit({ type: 'sitio_fin', sitio: sitio.id, total, bloqueo, recortado });
       return { id: sitio.id, total };
     } catch (error) {
       emit({ type: 'sitio_fin', sitio: sitio.id, total, error: error.message });

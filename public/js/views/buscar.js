@@ -253,6 +253,7 @@ export function createBuscarView(root) {
           fase: m.error ? 'error' : 'fin',
           error: m.error,
           bloqueo: m.bloqueo,
+          recortado: m.recortado,
         });
       } else if (m.type === 'fin') return terminar();
       else if (m.type === 'error') {
@@ -322,9 +323,14 @@ export function createBuscarView(root) {
         type: 'button',
         role: 'tab',
         'aria-selected': String(activa),
-        title: e?.error || (e?.bloqueo ? t('buscar.bloqueo') : ''),
+        title:
+          e?.error ||
+          (e?.bloqueo ? t('buscar.bloqueo') : e?.recortado ? t('buscar.recortado') : ''),
       },
-      children: [`${etiqueta} `, el('span', { className: 'buscar__n', text: `${n}${marca}` })],
+      children: [
+        `${etiqueta} `,
+        el('span', { className: 'buscar__n', text: `${n}${e?.recortado ? '+' : ''}${marca}` }),
+      ],
       on: {
         click: () => {
           pestana = id;

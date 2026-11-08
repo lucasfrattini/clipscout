@@ -581,6 +581,8 @@ export const en = {
   'buscar.placeholder': 'A person’s name, a title…',
   'buscar.boton': 'Search',
   'buscar.paginas': 'Pages per site',
+  'buscar.recortado':
+    'There is more: only the first results of this site were checked. Use the Explorer to go deeper.',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
   'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',

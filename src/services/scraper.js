@@ -625,6 +625,8 @@ async function crawl(params, opciones = {}) {
     licenseFilter = 'off',
     withSizes = false,
     withThumbnails = false,
+    /** Tope de fichas a revisar en la fase 2 (la pestaña Buscar: una búsqueda rápida). 0 = sin tope. */
+    maxLinks = 0,
   } = params;
 
   await assertUrlIsSafe(searchUrl);
@@ -670,6 +672,11 @@ async function crawl(params, opciones = {}) {
     links = fase1.links;
     pagesScraped = fase1.pagesScraped;
     linksTruncated = fase1.truncated;
+    // Se avisa (truncated) en vez de recortar en silencio: quien lo pidió sabe que hay más.
+    if (maxLinks > 0 && links.length > maxLinks) {
+      links = links.slice(0, maxLinks);
+      linksTruncated = true;
+    }
     scrollInfo = fase1.scroll;
     modoUsado = fase1.paginationMode;
     diagnostico = fase1.diagnostico;
