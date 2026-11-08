@@ -6,7 +6,7 @@ const config = require('../config');
 const logger = require('../lib/logger');
 const { AppError } = require('../lib/errors');
 const { assertUrlIsSafe } = require('../lib/ssrf');
-const { buildHeaders, agentesSeguros } = require('../lib/http');
+const { buildHeaders, agentesPara } = require('../lib/http');
 
 /**
  * Miniaturas servidas por el BACKEND, nunca por el navegador del usuario.
@@ -39,6 +39,31 @@ const { buildHeaders, agentesSeguros } = require('../lib/http');
 
 /** Tipos que se aceptan servir. Cualquier otro se rechaza. */
 const TIPOS_PERMITIDOS = /^image\/(jpeg|png|webp|gif|avif)$/i;
+
+/**
+ * Tipo por los primeros bytes. Algunos CDN sirven las imágenes como `binary/octet-stream`: se
+ * aceptan si de verdad lo son (firma de JPEG, PNG, GIF o WebP), nunca otra cosa.
+ */
+function tipoPorFirma(buf) {
+  if (!buf || buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'image/jpeg';
+  if (buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return 'image/png';
+  }
+  if (buf.subarray(0, 4).toString('ascii') === 'GIF8') return 'image/gif';
+  if (
+    buf.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buf.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  return null;
+}
+
+/** «…/preview.jpg/contents/xyz/» → «…/preview.jpg»: restos pegados detrás de la extensión. */
+function limpiarUrlImagen(url) {
+  return String(url).replace(/(\.(?:jpe?g|png|webp|gif|avif))\/[^?#]*$/i, '$1');
+}
 
 class CacheDeMiniaturas {
   constructor({ maxEntradas, maxBytes } = {}) {
@@ -88,26 +113,40 @@ const cache = new CacheDeMiniaturas();
  * Pasa por las mismas validaciones que cualquier otra petición saliente:
  * SSRF antes de pedir y agentes con validación de IP al conectar.
  */
-async function obtenerMiniatura(url, { signal } = {}) {
+async function obtenerMiniatura(urlPedida, { signal } = {}) {
+  const url = limpiarUrlImagen(urlPedida);
   const enCache = cache.get(url);
   if (enCache) return { ...enCache, deCache: true };
 
   await assertUrlIsSafe(url);
 
-  const respuesta = await axios.get(url, {
-    headers: buildHeaders({ Accept: 'image/avif,image/webp,image/png,image/*;q=0.8' }),
-    timeout: config.thumbnails.timeoutMs,
-    maxRedirects: config.http.maxRedirects,
-    maxContentLength: config.thumbnails.maxBytes,
-    maxBodyLength: config.thumbnails.maxBytes,
-    responseType: 'arraybuffer',
-    signal,
-    ...agentesSeguros(),
-  });
+  let respuesta;
+  try {
+    respuesta = await axios.get(url, {
+      headers: buildHeaders({ Accept: 'image/avif,image/webp,image/png,image/*;q=0.8' }),
+      timeout: config.thumbnails.timeoutMs,
+      maxRedirects: config.http.maxRedirects,
+      maxContentLength: config.thumbnails.maxBytes,
+      maxBodyLength: config.thumbnails.maxBytes,
+      responseType: 'arraybuffer',
+      signal,
+      ...agentesPara(url),
+    });
+  } catch (error) {
+    // El sitio no la da (404, conexión cortada…): es un fallo del origen, no nuestro.
+    const estado = error?.response?.status;
+    throw new AppError(
+      `No se pudo traer la miniatura${estado ? ` (HTTP ${estado})` : ''}`,
+      estado === 404 ? 404 : 502,
+      'THUMBNAIL_UNAVAILABLE'
+    );
+  }
 
-  const contentType = String(respuesta.headers['content-type'] || '')
+  const buffer = Buffer.from(respuesta.data);
+  let contentType = String(respuesta.headers['content-type'] || '')
     .split(';')[0]
     .trim();
+  if (!TIPOS_PERMITIDOS.test(contentType)) contentType = tipoPorFirma(buffer) || contentType;
 
   // No se sirve lo que no sea una imagen: sin esto, este endpoint sería un
   // proxy genérico para cualquier contenido.
@@ -115,11 +154,18 @@ async function obtenerMiniatura(url, { signal } = {}) {
     throw new AppError(`El destino no devolvió una imagen (${contentType})`, 415, 'NOT_AN_IMAGE');
   }
 
-  const entrada = { buffer: Buffer.from(respuesta.data), contentType };
+  const entrada = { buffer, contentType };
   cache.set(url, entrada);
   logger.debug(`Miniatura cacheada (${cache.tamano} en memoria): ${url}`);
 
   return { ...entrada, deCache: false };
 }
 
-module.exports = { obtenerMiniatura, cache, CacheDeMiniaturas, TIPOS_PERMITIDOS };
+module.exports = {
+  obtenerMiniatura,
+  cache,
+  CacheDeMiniaturas,
+  TIPOS_PERMITIDOS,
+  tipoPorFirma,
+  limpiarUrlImagen,
+};

@@ -190,3 +190,17 @@ test('sin url, el endpoint responde 400', async t => {
   const res = await fetch(`http://127.0.0.1:${nuestro.puerto}/api/thumbnail`);
   assert.strictEqual(res.status, 400);
 });
+
+test('miniaturas: firma de imagen y restos tras la extensión', () => {
+  const { tipoPorFirma, limpiarUrlImagen } = require('../src/services/thumbnails');
+  assert.equal(
+    tipoPorFirma(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0])),
+    'image/jpeg'
+  );
+  assert.equal(tipoPorFirma(Buffer.from('<html>no soy imagen</html>')), null);
+  assert.equal(
+    limpiarUrlImagen('https://ejemplo.com/s/1/preview.jpg/contents/abc/'),
+    'https://ejemplo.com/s/1/preview.jpg'
+  );
+  assert.equal(limpiarUrlImagen('https://ejemplo.com/a.jpg?x=1'), 'https://ejemplo.com/a.jpg?x=1');
+});

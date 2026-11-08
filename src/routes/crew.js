@@ -5,6 +5,7 @@ const express = require('express');
 
 const crew = require('../services/crew');
 const jd = require('../services/jdownloader');
+const ajustesBusqueda = require('../services/ajustesBusqueda');
 
 /**
  * Rutas de clip crew.
@@ -153,6 +154,27 @@ router.post(
       titulos.map(x => String(x).slice(0, 300)),
       Array.isArray(duraciones) ? duraciones.slice(0, 200) : []
     );
+  })
+);
+
+/* ── Búsqueda web y red (SearXNG, buscadores, sitios sin VPN) ─────────── */
+
+router.get(
+  '/ajustes/busqueda',
+  manejar(() => ajustesBusqueda.leer())
+);
+
+router.put(
+  '/ajustes/busqueda',
+  manejar(req => ajustesBusqueda.guardar(req.body || {}))
+);
+
+router.post(
+  '/ajustes/busqueda/probar',
+  manejar(async req => {
+    const b = req.body || {};
+    const actual = await ajustesBusqueda.leer();
+    return ajustesBusqueda.probar(b.searxngUrl || actual.searxngUrl, b.motores ?? actual.motores);
   })
 );
 

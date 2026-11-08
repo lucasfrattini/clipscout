@@ -3,17 +3,8 @@ import { createExplorerView } from './views/explorer.js';
 import { createBuscarView } from './views/buscar.js';
 import { createVideoView } from './views/video.js';
 import { createAjustesView, initCrewCabecera } from './views/ajustes.js';
-import { toast } from './dom.js';
-import {
-  t,
-  IDIOMAS,
-  idiomaActual,
-  cambiarIdioma,
-  alCambiarIdioma,
-  traducirDocumento,
-} from './i18n/index.js';
-
-const THEME_KEY = 'clipscout:theme';
+import { aplicarTema, temaGuardado } from './tema.js';
+import { t, alCambiarIdioma, traducirDocumento } from './i18n/index.js';
 
 const DEFAULT_LIMITS = {
   maxPages: 50,
@@ -23,78 +14,8 @@ const DEFAULT_LIMITS = {
   defaultConcurrency: 4,
 };
 
-/* ── Tema ──────────────────────────────────────────────────────────── */
-
-function initTheme() {
-  const toggle = document.getElementById('theme-toggle');
-
-  const apply = theme => {
-    if (theme === 'system') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', theme);
-  };
-
-  let current = 'system';
-  try {
-    // La app se llamaba URL Explorer: se respeta el tema guardado con la clave antigua.
-    current =
-      localStorage.getItem(THEME_KEY) || localStorage.getItem('urlexplorer:theme') || 'system';
-  } catch {
-    current = 'system';
-  }
-  apply(current);
-
-  // El título dice el tema vigente, así que se rehace también al cambiar de
-  // idioma: si no, se quedaría "Tema: oscuro" con la interfaz ya en inglés.
-  const refrescarTitulo = () => {
-    if (toggle) toggle.title = t('tema.actual', { modo: t(`tema.modo.${current}`) });
-  };
-  alCambiarIdioma(refrescarTitulo);
-
-  toggle?.addEventListener('click', () => {
-    const order = ['system', 'light', 'dark'];
-    current = order[(order.indexOf(current) + 1) % order.length];
-    apply(current);
-    refrescarTitulo();
-    try {
-      localStorage.setItem(THEME_KEY, current);
-    } catch {
-      // sin almacenamiento: el tema no persiste, no es crítico
-    }
-  });
-}
-
-/* ── Idioma ────────────────────────────────────────────────────────── */
-
-/**
- * Selector de idioma de la cabecera.
- *
- * El tema vive en `localStorage` y el idioma en `sessionStorage`, y no es un
- * descuido: el tema es una preferencia de la persona que usa el ordenador,
- * mientras que aquí varias personas comparten la máquina y la sesión tiene
- * que empezar limpia, detectando de nuevo el idioma del navegador.
- */
-function initLanguage() {
-  const botones = [...document.querySelectorAll('.langswitch__option')];
-
-  for (const boton of botones) {
-    boton.addEventListener('click', () => {
-      cambiarIdioma(boton.dataset.lang);
-      toast(t('idioma.cambiado'));
-    });
-  }
-
-  // El estado marcado se recalcula al cambiar el idioma, venga del clic o de
-  // la detección inicial.
-  alCambiarIdioma(actual => {
-    for (const boton of botones) {
-      const activo = boton.dataset.lang === actual;
-      boton.setAttribute('aria-pressed', String(activo));
-      boton.setAttribute('title', t(`idioma.${boton.dataset.lang}`));
-    }
-  });
-
-  if (!IDIOMAS.includes(idiomaActual())) cambiarIdioma('en');
-}
+/* ── Idioma y tema ─────────────────────────────────────────────────── */
+// Se eligen en Ajustes → Apariencia (como en clipkeeper y clonbuster), no en la cabecera.
 
 /* ── Navegación entre vistas ───────────────────────────────────────── */
 
@@ -217,8 +138,7 @@ async function main() {
   // El idioma va PRIMERO: todo lo que se construya después ya nace traducido
   // y no hay un parpadeo en español antes de pasar a inglés.
   traducirDocumento();
-  initLanguage();
-  initTheme();
+  aplicarTema(temaGuardado());
 
   const limits = { ...DEFAULT_LIMITS, ...(await initHealth()) };
 

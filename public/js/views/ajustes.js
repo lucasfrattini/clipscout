@@ -8,7 +8,8 @@
 import { ajustes } from '../api.js';
 import { confirmDialog } from '../components/dialog.js';
 import { el, toast } from '../dom.js';
-import { alCambiarIdioma, t } from '../i18n/index.js';
+import { alCambiarIdioma, cambiarIdioma, idiomaActual, IDIOMAS, t } from '../i18n/index.js';
+import { cambiarTema, temaGuardado, TEMAS } from '../tema.js';
 
 const APPS = ['clipkeeper', 'clonbuster', 'clipscout'];
 const PUERTOS = { clipkeeper: 8096, clonbuster: 8095, clipscout: 3001 };
@@ -40,9 +41,11 @@ export function createAjustesView(raiz) {
         text: t('nav.ajustes'),
       }),
       tarjetaGeneral(),
+      tarjetaApariencia(),
       tarjetaClave(),
       tarjetaConexiones(),
-      tarjetaJd()
+      tarjetaJd(),
+      tarjetaBusqueda()
     );
   }
 
@@ -280,6 +283,151 @@ export function createAjustesView(raiz) {
           children: [
             el('h3', { className: 'card__title', text: t('aj.jd.titulo') }),
             el('p', { className: 'card__hint', text: t('aj.jd.hint') }),
+          ],
+        }),
+        form,
+      ],
+    });
+  }
+
+  /* ── Apariencia: idioma y tema ─────────────────────────────────────── */
+
+  function tarjetaApariencia() {
+    const idioma = el('select', {
+      className: 'input',
+      children: IDIOMAS.map(i =>
+        el('option', { attrs: { value: i }, text: i === 'es' ? 'Español' : 'English' })
+      ),
+      on: { change: e => cambiarIdioma(e.target.value) },
+    });
+    idioma.value = idiomaActual();
+    const tema = el('select', {
+      className: 'input',
+      children: TEMAS.map(x => el('option', { attrs: { value: x }, text: t(`tema.modo.${x}`) })),
+      on: { change: e => cambiarTema(e.target.value) },
+    });
+    tema.value = temaGuardado();
+    return el('section', {
+      className: 'card',
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [el('h3', { className: 'card__title', text: t('aj.apar.titulo') })],
+        }),
+        el('div', {
+          className: 'card__body ajustes-form',
+          children: [
+            campo(t('aj.apar.idioma'), idioma),
+            campo(t('aj.apar.tema'), tema, t('aj.apar.hint')),
+          ],
+        }),
+      ],
+    });
+  }
+
+  /* ── Búsqueda web y red ────────────────────────────────────────────── */
+
+  function tarjetaBusqueda() {
+    const url = el('input', {
+      className: 'input',
+      attrs: { type: 'text', spellcheck: 'false', placeholder: 'http://192.168.1.10:8899' },
+    });
+    const motores = el('input', {
+      className: 'input',
+      attrs: { type: 'text', spellcheck: 'false', placeholder: 'bing,yahoo' },
+    });
+    const paginas = el('select', {
+      className: 'input',
+      children: [1, 2, 3, 4, 5].map(n => el('option', { attrs: { value: n }, text: n })),
+    });
+    const sinProxy = el('textarea', {
+      className: 'input',
+      attrs: { rows: 3, spellcheck: 'false', placeholder: 'ejemplo.com' },
+    });
+    const resultado = el('p', { className: 'ajustes-resultado' });
+    const mostrar = r => {
+      resultado.className = `ajustes-resultado ${r.ok ? 'ajustes-resultado--ok' : 'ajustes-resultado--mal'}`;
+      resultado.textContent = r.ok
+        ? t('aj.web.responde', {
+            n: r.resultados,
+            fallan: r.sinRespuesta.length ? r.sinRespuesta.join(' · ') : '—',
+          })
+        : r.error;
+    };
+    ajustes
+      .busqueda()
+      .then(d => {
+        url.value = d.searxngUrl || '';
+        motores.value = d.motores || '';
+        paginas.value = String(d.webPaginas || 2);
+        sinProxy.value = (d.sinProxy || []).join('\n');
+      })
+      .catch(() => {});
+    const form = el('form', {
+      className: 'card__body ajustes-form',
+      children: [
+        campo(t('aj.web.url'), url, t('aj.web.url.hint')),
+        campo(t('aj.web.motores'), motores, t('aj.web.motores.hint')),
+        campo(t('aj.web.paginas'), paginas),
+        campo(t('aj.web.sinProxy'), sinProxy, t('aj.web.sinProxy.hint')),
+        el('div', {
+          className: 'ajustes-acciones',
+          children: [
+            el('button', {
+              className: 'button button--small button--secondary',
+              attrs: { type: 'button' },
+              text: t('aj.con.probar'),
+              on: {
+                click: async () => {
+                  try {
+                    mostrar(
+                      await ajustes.probarBusqueda({
+                        searxngUrl: url.value,
+                        motores: motores.value,
+                      })
+                    );
+                  } catch (error) {
+                    mostrar({ ok: false, error: error.message });
+                  }
+                },
+              },
+            }),
+            el('button', {
+              className: 'button button--small',
+              attrs: { type: 'submit' },
+              text: t('aj.guardar'),
+            }),
+          ],
+        }),
+        resultado,
+      ],
+      on: {
+        submit: async e => {
+          e.preventDefault();
+          try {
+            const d = await ajustes.guardarBusqueda({
+              searxngUrl: url.value,
+              motores: motores.value,
+              webPaginas: Number(paginas.value),
+              sinProxy: sinProxy.value,
+            });
+            motores.value = d.motores;
+            sinProxy.value = d.sinProxy.join('\n');
+            toast(t('aj.guardado'));
+          } catch (error) {
+            mostrar({ ok: false, error: error.message });
+          }
+        },
+      },
+    });
+    return el('section', {
+      className: 'card',
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.web.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.web.hint') }),
           ],
         }),
         form,

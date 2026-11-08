@@ -32,21 +32,37 @@ function consultaSite(q, searchUrl, linkPattern = '') {
   return `site:${host}${prefijo} ${q}`;
 }
 
+/** Minúsculas, sin acentos ni nada que no sea letra o número. */
+function plano(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Devuelve `{ fichas, listados }`:
+ * - fichas: páginas de vídeo del sitio (coinciden con su patrón de enlace);
+ * - listados: otras páginas del MISMO sitio cuya ruta nombra lo buscado (perfil de la modelo,
+ *   etiqueta, canal…): se recorren como una búsqueda más para sacar sus fichas.
+ */
 async function buscarEnWeb(q, perfilConfig, { signal } = {}) {
+  const vacio = { fichas: [], listados: [] };
   const base = config.busqueda.searxngUrl;
-  if (!base) return [];
+  if (!base) return vacio;
   const host = hostDe(perfilConfig.searchUrl);
-  if (!host) return [];
+  if (!host) return vacio;
+  const termino = plano(q);
+  const listados = new Set();
   const coincide = createLinkMatcher(perfilConfig.linkPattern || '');
   const consulta = consultaSite(q, perfilConfig.searchUrl, perfilConfig.linkPattern);
   const vistas = new Set();
   for (let pagina = 1; pagina <= config.busqueda.webPaginas; pagina++) {
     if (signal?.aborted) break;
-    const url = `${base.replace(/\/+$/, '')}/search?${new URLSearchParams({
-      q: consulta,
-      format: 'json',
-      pageno: String(pagina),
-    })}`;
+    const params = new URLSearchParams({ q: consulta, format: 'json', pageno: String(pagina) });
+    if (config.busqueda.webMotores) params.set('engines', config.busqueda.webMotores);
+    const url = `${base.replace(/\/+$/, '')}/search?${params}`;
     let datos;
     try {
       const r = await fetch(url, {
@@ -72,12 +88,14 @@ async function buscarEnWeb(q, perfilConfig, { signal } = {}) {
       if (!/^https?:$/.test(u.protocol)) continue;
       const h = u.hostname.replace(/^www\./, '');
       if (h !== host && !h.endsWith(`.${host}`)) continue;
-      if (!coincide.test(u.href)) continue;
-      vistas.add(u.href);
+      if (coincide.test(u.href)) vistas.add(u.href);
+      else if (termino.length >= 4 && plano(decodeURIComponent(u.pathname)).includes(termino)) {
+        listados.add(u.href);
+      }
     }
     if (vistas.size === antes) break; // esta página no trajo nada nuevo
   }
-  return [...vistas];
+  return { fichas: [...vistas], listados: [...listados].slice(0, config.busqueda.webListados) };
 }
 
 module.exports = { buscarEnWeb, consultaSite, hostDe };

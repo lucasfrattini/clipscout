@@ -19,3 +19,12 @@ test('búsqueda web: dominio y «site:» desde la configuración guardada', () =
   );
   assert.equal(consultaSite('Ana', 'https://ejemplo.com/?s={q}', ''), 'site:ejemplo.com Ana');
 });
+
+test('ajustes de búsqueda: dominios y buscadores se limpian', () => {
+  const { limpiarDominios, limpiarMotores } = require('../src/services/ajustesBusqueda');
+  assert.deepEqual(limpiarDominios('https://www.ejemplo.com/x, *.otro.net  basura'), [
+    'ejemplo.com',
+    'otro.net',
+  ]);
+  assert.equal(limpiarMotores(' Bing, yahoo ;drop'), 'bing,yahoo');
+});

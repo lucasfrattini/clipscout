@@ -594,6 +594,23 @@ export const en = {
   'buscar.estado.error': 'error: {error}',
   'buscar.estado.quedan': 'Searching: {n} of {total} sites left',
   'buscar.estado.terminado': 'Search finished',
+  'aj.apar.titulo': 'Appearance',
+  'aj.apar.idioma': 'Language',
+  'aj.apar.tema': 'Theme',
+  'aj.apar.hint': 'Remembered in this browser.',
+  'aj.web.titulo': 'Web search and network',
+  'aj.web.hint':
+    'The “Google-like” search of the Search tab (with your own SearXNG) and the sites that must not go through the VPN.',
+  'aj.web.url': 'SearXNG address',
+  'aj.web.url.hint': 'Empty = no web search.',
+  'aj.web.motores': 'Search engines',
+  'aj.web.motores.hint':
+    'The ones SearXNG queries, comma-separated. If one blocks (Test tells you), remove it.',
+  'aj.web.paginas': 'Result pages per site',
+  'aj.web.sinProxy': 'Sites without VPN',
+  'aj.web.sinProxy.hint':
+    'One domain per line. They go direct, without the proxy: for those that block the VPN exit.',
+  'aj.web.responde': '✓ Responds: {n} test results. Not responding: {fallan}',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
   'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',

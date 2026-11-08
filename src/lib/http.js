@@ -284,6 +284,7 @@ function agentesSeguros() {
 
 module.exports = {
   sinProxy,
+  agentesPara,
   agentesSeguros,
   buildHeaders,
   fetchHtml,

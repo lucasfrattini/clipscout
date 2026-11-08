@@ -77,14 +77,13 @@ function idiomasDelNavegador() {
 /**
  * Idioma inicial.
  *
- * La elección manual manda sobre la detección, pero solo dentro de la
- * sesión: va en `sessionStorage`, nunca en `localStorage` ni en una cookie,
- * igual que el formulario recordado. Varias personas
- * comparten este ordenador; al cerrar la pestaña se vuelve a detectar.
+ * La elección hecha en Ajustes → Apariencia manda sobre la detección y se
+ * recuerda en este navegador (`localStorage`), igual que en clipkeeper y
+ * clonbuster. Sin elección, el idioma del navegador.
  */
 function idiomaInicial() {
   try {
-    const guardado = sessionStorage.getItem(STORAGE_KEY);
+    const guardado = localStorage.getItem(STORAGE_KEY);
     if (guardado && IDIOMAS.includes(guardado)) return guardado;
   } catch {
     // Almacenamiento bloqueado: se detecta y ya está
@@ -151,7 +150,7 @@ export function cambiarIdioma(nuevo) {
   idioma = nuevo;
 
   try {
-    sessionStorage.setItem(STORAGE_KEY, idioma);
+    localStorage.setItem(STORAGE_KEY, idioma);
   } catch {
     // Sin almacenamiento el idioma no sobrevive a una recarga; no es crítico
   }

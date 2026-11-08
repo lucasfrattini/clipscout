@@ -462,8 +462,9 @@ async function findFiles(urls, options) {
           const declaredSize = withSizes ? extractSizeBytes(doc) : null;
           // Del MISMO documento ya parseado: no cuesta ni petición ni parseo
           const paginaTitulo = extractTitle(doc);
-          const paginaThumbnail =
-            withThumbnails && esFicheroUnico ? extractThumbnail(doc, url) : null;
+          // La imagen de la ficha (og:image…) vale también cuando la ficha tiene varios ficheros,
+          // como reserva para los que no tienen la suya: mejor eso que una miniatura vacía.
+          const paginaThumbnail = withThumbnails ? extractThumbnail(doc, url) : null;
           const miniaturasPorFichero = withThumbnails ? extractFileThumbnails(doc, url) : new Map();
           const added = [];
 

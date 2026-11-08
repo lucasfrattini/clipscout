@@ -595,6 +595,23 @@ export const es = {
   'buscar.estado.error': 'error: {error}',
   'buscar.estado.quedan': 'Buscando: faltan {n} de {total} sitios',
   'buscar.estado.terminado': 'Búsqueda terminada',
+  'aj.apar.titulo': 'Apariencia',
+  'aj.apar.idioma': 'Idioma',
+  'aj.apar.tema': 'Tema',
+  'aj.apar.hint': 'Se recuerda en este navegador.',
+  'aj.web.titulo': 'Búsqueda web y red',
+  'aj.web.hint':
+    'La búsqueda «tipo Google» de la pestaña Buscar (con tu propio SearXNG) y los sitios que no deben salir por la VPN.',
+  'aj.web.url': 'Dirección de SearXNG',
+  'aj.web.url.hint': 'Vacía = sin búsqueda web.',
+  'aj.web.motores': 'Buscadores',
+  'aj.web.motores.hint':
+    'Los que consulta SearXNG, separados por comas. Si uno bloquea (Probar lo dice), quítalo.',
+  'aj.web.paginas': 'Páginas de resultados por sitio',
+  'aj.web.sinProxy': 'Sitios sin VPN',
+  'aj.web.sinProxy.hint':
+    'Un dominio por línea. Van directos, sin el proxy: para los que bloquean la salida de la VPN.',
+  'aj.web.responde': '✓ Responde: {n} resultados de prueba. Sin respuesta: {fallan}',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':

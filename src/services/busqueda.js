@@ -101,20 +101,38 @@ async function buscarEnTodos(
       // «Tipo Google»: lo que el buscador web encuentra en ese sitio y la búsqueda propia no.
       if (conWeb && !signal?.aborted) {
         emit({ type: 'sitio_progreso', sitio: sitio.id, web: true });
-        const urls = (await buscarEnWeb(q, c, { signal })).filter(u => !vistos.has(u));
+        const web = await buscarEnWeb(q, c, { signal });
+        const extensiones = parseExtensionList(c.fileExtensions || '.mp4');
+        const urls = web.fichas.filter(u => !vistos.has(u));
         if (urls.length > 0) {
           await crawl(
-            {
-              ...params,
-              extensions: parseExtensionList(c.fileExtensions || '.mp4'),
-              maxLinks: config.busqueda.maxEnlaces,
-            },
+            { ...params, extensions: extensiones, maxLinks: config.busqueda.maxEnlaces },
             {
               signal,
               emit: reenviar({ web: true }),
               linksPrevios: urls.slice(0, config.busqueda.maxEnlaces),
             }
           );
+        }
+        // Perfil de la modelo, etiqueta… del mismo sitio: se recorren como una búsqueda más.
+        for (const listado of web.listados) {
+          if (signal?.aborted) break;
+          try {
+            const p = normalizeCrawlParams({
+              ...c,
+              searchUrl: listado,
+              searchTerm: '',
+              pageParam: '',
+              endPage: c.startPage || 1,
+              withThumbnails: true,
+            });
+            await crawl(
+              { ...p, extensions: extensiones, maxLinks: config.busqueda.maxEnlaces },
+              { signal, emit: reenviar({ web: true }) }
+            );
+          } catch {
+            // un listado que falla no corta la búsqueda del sitio
+          }
         }
       }
       emit({ type: 'sitio_fin', sitio: sitio.id, total, bloqueo, recortado });

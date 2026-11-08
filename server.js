@@ -14,6 +14,11 @@ const { pool } = require('./src/lib/browser');
 
 const app = createApp();
 
+// Lo guardado en Ajustes (búsqueda web, sitios sin VPN) pasa a la configuración en memoria.
+require('./src/services/ajustesBusqueda')
+  .cargar()
+  .catch(error => logger.warn('No se pudieron cargar los ajustes de búsqueda', error.message));
+
 const server = app.listen(config.port, () => {
   logger.info(`clipscout escuchando en http://localhost:${config.port}`);
 });

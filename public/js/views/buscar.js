@@ -385,6 +385,11 @@ export function createBuscarView(root) {
             alt: '',
             loading: 'lazy',
           },
+          // Si el sitio no la da, el hueco de siempre en vez de una imagen rota
+          on: {
+            error: e =>
+              e.currentTarget.replaceWith(el('span', { className: 'buscar__sin', text: '▶' })),
+          },
         })
       : el('span', { className: 'buscar__sin', text: '▶' });
     const acciones = [
