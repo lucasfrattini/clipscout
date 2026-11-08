@@ -383,7 +383,7 @@ export function carpetaDialog({ existentes = [], ultima = null, conPreguntar = f
         paso2.hidden = false;
         volver.hidden = false;
         aceptar.hidden = false;
-        texto.textContent = t('carpeta.nombre', { tipo: t(`carpeta.tipo.${tipo}`) });
+        texto.textContent = t('carpeta.nombre', { tipo: t(`carpeta.tipo.${tipo}`).toLowerCase() });
         nombre.value = '';
         pintarLista();
         nombre.focus();

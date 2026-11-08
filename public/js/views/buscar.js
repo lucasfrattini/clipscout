@@ -154,14 +154,32 @@ export function createBuscarView(root) {
     const c = copias.get(r.url);
     return Boolean(c && c.representante !== r.url);
   };
-  const visibles = () =>
-    resultados.filter(
-      r =>
-        (pestana === 'todos' || r.sitio === pestana) &&
-        (!ocultarRepetidos || !esCopia(r)) &&
-        (!minDuracion ||
-          (Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60))
-    );
+  // Una tarjeta por página: un álbum con varios vídeos llegaba como N resultados iguales (y al
+  // descargar se mandaba la misma página N veces). Con «Ocultar repetidos», solo el primero, con
+  // cuántos más tiene; también se pliegan las copias que detecta el servidor.
+  const clavePagina = r => r.sourceUrl || r.url;
+  const porPagina = () => {
+    const n = new Map();
+    for (const r of resultados) n.set(clavePagina(r), (n.get(clavePagina(r)) || 0) + 1);
+    return n;
+  };
+  let cuentaPagina = new Map(); // resultados por página, para el «+N» de cada tarjeta
+  const visibles = ({ plegar = ocultarRepetidos } = {}) => {
+    const vistas = new Set();
+    return resultados.filter(r => {
+      if (pestana !== 'todos' && r.sitio !== pestana) return false;
+      if (
+        minDuracion &&
+        !(Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60)
+      ) {
+        return false;
+      }
+      if (!plegar) return true;
+      if (esCopia(r) || vistas.has(clavePagina(r))) return false;
+      vistas.add(clavePagina(r));
+      return true;
+    });
+  };
   const jd = createJdEnvio({ visibles: () => visibles().map(r => r.sourceUrl || r.url) });
   const descargar = links =>
     jd.enviar(links, destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija });
@@ -522,13 +540,18 @@ export function createBuscarView(root) {
             imagen,
             r.duration ? el('span', { className: 'buscar__duracion', text: r.duration }) : null,
             tengo ? el('span', { className: 'buscar__tengo', text: t('buscar.loTienes') }) : null,
-            copias.get(r.url)?.representante === r.url
-              ? el('span', {
-                  className: 'buscar__copias',
-                  text: `+${copias.get(r.url).n - 1}`,
-                  attrs: { title: tp('buscar.copias', copias.get(r.url).n - 1) },
-                })
-              : null,
+            (() => {
+              const extra =
+                (copias.get(r.url)?.representante === r.url ? copias.get(r.url).n - 1 : 0) +
+                (ocultarRepetidos ? (cuentaPagina.get(clavePagina(r)) || 1) - 1 : 0);
+              return extra > 0
+                ? el('span', {
+                    className: 'buscar__copias',
+                    text: `+${extra}`,
+                    attrs: { title: tp('buscar.copias', extra) },
+                  })
+                : null;
+            })(),
             r.web
               ? el('span', {
                   className: 'buscar__web',
@@ -622,7 +645,7 @@ export function createBuscarView(root) {
     const lista = visibles();
     clear(barra);
     if (lista.length > 0) {
-      const repetidos = resultados.filter(esCopia).length;
+      const repetidos = ocultarRepetidos ? visibles({ plegar: false }).length - lista.length : 0;
       barra.append(
         el('span', {
           className: 'buscar__cuenta',
@@ -651,6 +674,7 @@ export function createBuscarView(root) {
           : t('buscar.nada');
 
     clear(rejilla);
+    cuentaPagina = porPagina();
     for (const r of lista) rejilla.append(tarjeta(r));
   }
 
