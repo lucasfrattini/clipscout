@@ -720,8 +720,16 @@ a {
 }
 
 @media (max-width: 720px) {
+  /* El campo y su × en una línea; «Que lo configure por mí», debajo. */
   .url-row {
-    flex-direction: column;
+    flex-wrap: wrap;
+  }
+  .url-row .input {
+    flex: 1 1 0;
+  }
+  .url-row .button:not(:last-child) {
+    order: 3;
+    flex: 1 1 100%;
   }
 }
 
@@ -3266,4 +3274,24 @@ a {
 }
 .buscar__descartar:hover {
   background: var(--c-danger);
+}
+
+/* Ajustes: dos columnas en pantallas anchas, en lugar de una tira muy larga. */
+.card[hidden] {
+  display: none;
+}
+@media (min-width: 1000px) {
+  #view-ajustes {
+    columns: 2;
+    column-gap: var(--space-4);
+  }
+  #view-ajustes > * {
+    break-inside: avoid;
+  }
+}
+@media (max-width: 720px) {
+  .buscar__sitios {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
 }

@@ -809,11 +809,7 @@ export function createExplorerView(container, { limits }) {
       bloqueDirecciones,
       terminoToggle,
       campoTermino,
-
-      el('div', {
-        className: 'button-row button-row--principal',
-        children: [submitButton, continueButton, resetButton],
-      }),
+      detectSlot,
 
       bloqueObjetivo,
       // El rango de páginas (dentro de `chipsBloque`, en `rangoPill`) es de
@@ -822,7 +818,12 @@ export function createExplorerView(container, { limits }) {
       chipsBloque,
 
       advanced,
-      detectSlot,
+
+      // Al final: el botón se pulsa después de decidir las opciones de arriba.
+      el('div', {
+        className: 'button-row button-row--principal',
+        children: [submitButton, continueButton, resetButton],
+      }),
     ],
   });
 

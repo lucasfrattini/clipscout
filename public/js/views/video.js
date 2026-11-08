@@ -1275,6 +1275,7 @@ export function createVideoView(container) {
   }
 
   function renderSkeleton() {
+    resultsCard.hidden = false;
     show(emptySlot, false);
     show(listWrap, false);
     show(grid, true);
@@ -1295,6 +1296,8 @@ export function createVideoView(container) {
   }
 
   function renderInitialEmpty() {
+    // Sin análisis todavía no hay nada que enseñar ni que filtrar.
+    resultsCard.hidden = true;
     clear(typeFilterBar);
     contador.textContent = '';
     undoButton.hidden = true;
@@ -1335,6 +1338,7 @@ export function createVideoView(container) {
       renderInitialEmpty();
       return;
     }
+    resultsCard.hidden = false;
 
     const base = order.map(u => meta.get(u)).filter(Boolean);
     const rangoDuracion = filtroDuracion.getRange();
