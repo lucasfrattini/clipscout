@@ -153,10 +153,12 @@ async function buscarEnTodos(
   const { grupos } = groupDuplicates(todosLosItems);
   emit({
     type: 'duplicados',
-    grupos: grupos.map(g => ({
-      representante: g.representante.url,
-      miembros: g.miembros.map(m => m.url),
-    })),
+    grupos: grupos
+      .filter(g => g.miembros.length > 1)
+      .map(g => ({
+        representante: g.representante.url,
+        miembros: g.miembros.map(m => m.url),
+      })),
   });
 
   return { sitios: resumen, total: resumen.reduce((n, r) => n + (r?.total || 0), 0) };

@@ -54,6 +54,12 @@ async function buscarEnWeb(q, perfilConfig, { signal } = {}) {
   const host = hostDe(perfilConfig.searchUrl);
   if (!host) return vacio;
   const termino = plano(q);
+  let canonico = host;
+  try {
+    canonico = new URL(String(perfilConfig.searchUrl).replace(/\{[^}]*\}/g, 'x')).hostname;
+  } catch {
+    // se queda el dominio sin www
+  }
   const listados = new Set();
   const coincide = createLinkMatcher(perfilConfig.linkPattern || '');
   const consulta = consultaSite(q, perfilConfig.searchUrl, perfilConfig.linkPattern);
@@ -88,6 +94,8 @@ async function buscarEnWeb(q, perfilConfig, { signal } = {}) {
       if (!/^https?:$/.test(u.protocol)) continue;
       const h = u.hostname.replace(/^www\./, '');
       if (h !== host && !h.endsWith(`.${host}`)) continue;
+      // es.sitio.com, de.sitio.com… son la misma ficha: se usa el dominio de la configuración.
+      u.hostname = canonico;
       if (coincide.test(u.href)) vistas.add(u.href);
       else if (termino.length >= 4 && plano(decodeURIComponent(u.pathname)).includes(termino)) {
         listados.add(u.href);

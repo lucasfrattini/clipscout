@@ -115,7 +115,9 @@ const config = {
     searxngUrl: (process.env.SEARXNG_URL || '').trim(),
     webPaginas: intFromEnv('BUSQUEDA_WEB_PAGINAS', 2),
     // Buscadores que consulta SearXNG (los que no bloquean); se cambia en Ajustes
-    webMotores: (process.env.BUSQUEDA_WEB_MOTORES || 'bing,yahoo').trim(),
+    webMotores: (
+      process.env.BUSQUEDA_WEB_MOTORES || 'startpage,duckduckgo,bing,qwant,yahoo,yandex'
+    ).trim(),
     webTimeoutMs: intFromEnv('BUSQUEDA_WEB_TIMEOUT_MS', 20000),
     // Páginas de listado (perfil, etiqueta…) halladas en la web que se recorren por sitio
     webListados: intFromEnv('BUSQUEDA_WEB_LISTADOS', 3),
