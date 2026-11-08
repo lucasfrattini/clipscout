@@ -86,6 +86,11 @@ function createApp() {
    */
   app.use('/api', createRateLimiter(config.thumbnails.rateLimit), thumbnailRoutes);
 
+  // Lo caro tiene su propio límite, más estricto; el resto de /api va con el general.
+  app.use(
+    ['/api/scrape', '/api/video', '/api/buscar/stream'],
+    createRateLimiter({ maxRequests: config.security.rateLimit.maxPesadas })
+  );
   app.use('/api', createRateLimiter(), apiRoutes);
 
   // no-cache no significa "no guardes", sino "revalida siempre antes de

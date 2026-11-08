@@ -251,7 +251,10 @@ const config = {
     trustProxy: trustProxyFromEnv('TRUST_PROXY', false),
     rateLimit: {
       windowMs: intFromEnv('RATE_LIMIT_WINDOW_MS', 60 * 1000),
-      maxRequests: intFromEnv('RATE_LIMIT_MAX_REQUESTS', 30),
+      // Lo barato (ajustes, perfiles, estado): abrir Ajustes ya son ~10 peticiones.
+      maxRequests: intFromEnv('RATE_LIMIT_MAX_REQUESTS', 300),
+      // Lo caro (crawls, análisis de vídeo, búsquedas en todos los sitios), por separado.
+      maxPesadas: intFromEnv('RATE_LIMIT_MAX_HEAVY', 30),
     },
   },
 
