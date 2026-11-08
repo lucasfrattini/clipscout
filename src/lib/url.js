@@ -34,7 +34,17 @@ function toAbsoluteUrl(href, baseUrl) {
  *   https://sitio.com/search/{q}/
  *   https://sitio.com/buscar?q={q}&page={page}
  */
-const SEARCH_TEMPLATE = /\{(?:q|query|termino|término)\}/gi;
+// {q} tal cual (codificado); {q:slug} en minúsculas, sin acentos ni espacios: para sitios cuyas
+// páginas son /modelo/<nombre> («Ana Pérez» → «anaperez»).
+const SEARCH_TEMPLATE = /\{(?:q|query|termino|término)(?::(slug))?\}/gi;
+
+function aSlug(texto) {
+  return String(texto ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
 
 /** ¿La URL espera un término de búsqueda? */
 function hasSearchTemplate(url) {
@@ -50,8 +60,10 @@ function hasSearchTemplate(url) {
  */
 function applySearchTerm(url, term) {
   if (typeof url !== 'string') return url;
-  const encoded = encodeURIComponent(String(term ?? '').trim());
-  return url.replace(SEARCH_TEMPLATE, encoded);
+  const limpio = String(term ?? '').trim();
+  return url.replace(SEARCH_TEMPLATE, (_, modo) =>
+    encodeURIComponent(modo ? aSlug(limpio) : limpio)
+  );
 }
 
 /**

@@ -364,3 +364,11 @@ test('hasSearchTemplate', () => {
   assert.equal(hasSearchTemplate('https://s.com/?q=fijo'), false);
   assert.equal(hasSearchTemplate(null), false);
 });
+
+test('applySearchTerm — {q:slug} para páginas /modelo/<nombre>', () => {
+  assert.equal(
+    applySearchTerm('https://ejemplo.com/m/{q:slug}', 'Ana Pérez'),
+    'https://ejemplo.com/m/anaperez'
+  );
+  assert.equal(hasSearchTemplate('https://ejemplo.com/m/{q:slug}'), true);
+});
