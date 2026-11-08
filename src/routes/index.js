@@ -7,6 +7,7 @@ const scrapeRoutes = require('./scrape');
 const videoRoutes = require('./video');
 const profileRoutes = require('./profiles');
 const crewRoutes = require('./crew');
+const buscarRoutes = require('./buscar');
 
 const router = express.Router();
 
@@ -31,5 +32,6 @@ router.use(scrapeRoutes);
 router.use(videoRoutes);
 router.use(profileRoutes);
 router.use(crewRoutes);
+router.use(buscarRoutes);
 
 module.exports = router;

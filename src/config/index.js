@@ -101,6 +101,14 @@ const config = {
     maxDurationMs: intFromEnv('CRAWL_MAX_DURATION_MS', 10 * 60 * 1000),
   },
 
+  // Búsqueda en todos los sitios guardados a la vez (pestaña Buscar)
+  busqueda: {
+    // Sitios que se recorren en paralelo: cada uno puede abrir un navegador
+    sitiosALaVez: intFromEnv('BUSQUEDA_SITIOS_A_LA_VEZ', 3),
+    // Páginas de resultados por sitio: es una búsqueda rápida, no un barrido
+    paginas: intFromEnv('BUSQUEDA_PAGINAS', 2),
+  },
+
   throttle: {
     // Espacio mínimo entre dos peticiones al MISMO dominio
     minIntervalMs: intFromEnv('THROTTLE_MIN_INTERVAL_MS', 250),

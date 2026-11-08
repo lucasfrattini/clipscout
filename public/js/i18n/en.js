@@ -572,4 +572,29 @@ export const en = {
   'video.jd.porDefecto.detalle': 'JDownloader’s download folder, no subfolder',
   'video.jd.nueva': 'New folder: “{nombre}”',
   'dialogo.buscar': 'Search…',
+
+  /* ── Buscar (en todos los sitios a la vez) ─────────────────────── */
+  'nav.buscar': 'Search',
+  'head.buscar.titulo': 'Search — clipscout',
+  'head.buscar.desc': 'Search for a name on all your saved sites at once.',
+  'buscar.titulo': 'Search all your sites',
+  'buscar.placeholder': 'A person’s name, a title…',
+  'buscar.boton': 'Search',
+  'buscar.parar': 'Stop',
+  'buscar.todos': 'All',
+  'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',
+  'buscar.ayuda.algunos.uno': 'Searches only the selected site. “All” searches every site again.',
+  'buscar.ayuda.algunos.varios':
+    'Searches the {n} selected sites. “All” searches every site again.',
+  'buscar.sinSitios':
+    'No sites to search yet: in the Explorer, save a configuration with the search term inside its address.',
+  'buscar.resultados.uno': '1 result',
+  'buscar.resultados.varios': '{n} results',
+  'buscar.buscando': 'Searching…',
+  'buscar.nada': 'Nothing found.',
+  'buscar.errorSitio': 'This site returned an error: {error}',
+  'buscar.bloqueo': 'The site may be throttling requests: some results are missing.',
+  'buscar.abrir': 'Open',
+  'buscar.jd': '⬇ Download',
+  'buscar.loTienes': '✓ Already have it',
 };

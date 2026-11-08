@@ -11,6 +11,7 @@ import {
   copyToClipboard,
   downloadText,
   toast,
+  enfocarAlAbrir,
 } from '../dom.js';
 import { ajustes, openVideoStream } from '../api.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
@@ -1639,7 +1640,7 @@ export function createVideoView(container) {
 
   return {
     focus() {
-      urlInput.focus();
+      enfocarAlAbrir(urlInput);
     },
     teardown() {
       streamActual?.close();

@@ -42,7 +42,10 @@
             data-i18n-attr="aria-label"
             aria-label="Herramientas"
           >
-            <button class="tab" data-view="explorer" type="button" aria-current="page">
+            <button class="tab" data-view="buscar" type="button" aria-current="page">
+              <span class="tab__label" data-i18n="nav.buscar">Buscar</span>
+            </button>
+            <button class="tab" data-view="explorer" type="button">
               <span class="tab__label" data-i18n="nav.explorador">Explorador</span>
             </button>
             <button class="tab" data-view="video" type="button">
@@ -88,7 +91,13 @@
       </header>
 
       <main id="main" class="main">
-        <section id="view-explorer" class="view" aria-labelledby="explorer-heading"></section>
+        <section id="view-buscar" class="view" aria-labelledby="buscar-heading"></section>
+        <section
+          id="view-explorer"
+          class="view"
+          hidden
+          aria-labelledby="explorer-heading"
+        ></section>
         <section id="view-video" class="view" hidden aria-labelledby="video-heading"></section>
         <section id="view-ajustes" class="view" hidden aria-labelledby="ajustes-heading"></section>
       </main>

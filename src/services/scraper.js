@@ -18,6 +18,7 @@ const {
   extractDurationSeconds,
   extractSizeBytes,
   extractThumbnail,
+  extractTitle,
   extractFileThumbnails,
   extractFileDurations,
   formatDuration,
@@ -460,6 +461,7 @@ async function findFiles(urls, options) {
           // salgan varios ficheros.
           const declaredSize = withSizes ? extractSizeBytes(doc) : null;
           // Del MISMO documento ya parseado: no cuesta ni petición ni parseo
+          const paginaTitulo = extractTitle(doc);
           const paginaThumbnail =
             withThumbnails && esFicheroUnico ? extractThumbnail(doc, url) : null;
           const miniaturasPorFichero = withThumbnails ? extractFileThumbnails(doc, url) : new Map();
@@ -489,6 +491,7 @@ async function findFiles(urls, options) {
                 suspect: info?.suspect === true,
                 suspectReason: info?.reason || null,
                 sourceUrl: url,
+                title: paginaTitulo,
                 thumbnail: miniaturasPorFichero.get(file) ?? paginaThumbnail,
               });
             }

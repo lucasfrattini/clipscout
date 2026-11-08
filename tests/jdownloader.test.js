@@ -11,10 +11,14 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-jd-'));
 process.env.CREW_PATH = path.join(dir, 'crew.json');
 
 const { createApp } = require('../src/app');
-const { limpiarSubcarpeta } = require('../src/services/jdownloader');
+const { limpiarSubcarpeta, descargarCuandoEste } = require('../src/services/jdownloader');
 
 // JDownloader falso: la «Deprecated API» (parámetros JSON en la query, respuesta {data}).
 const recibidos = [];
+let llamadasJobs = 0;
+const consultasLinks = [];
+const movidos = [];
+let arrancado = 0;
 const jdFalso = http.createServer((req, res) => {
   const [ruta, query = ''] = req.url.split('?');
   const params = query ? query.split('&').map(p => JSON.parse(decodeURIComponent(p))) : [];
@@ -24,6 +28,26 @@ const jdFalso = http.createServer((req, res) => {
   if (ruta === '/linkgrabberv2/addLinks') {
     recibidos.push(params[0]);
     return responder({ id: 99 });
+  }
+  if (ruta === '/linkgrabberv2/queryLinkCrawlerJobs') {
+    llamadasJobs += 1;
+    return responder([{ jobId: 99, crawling: llamadasJobs < 2, checking: false }]);
+  }
+  if (ruta === '/linkgrabberv2/queryLinks') {
+    consultasLinks.push(params[0]);
+    return responder([
+      { uuid: 1, availability: 'ONLINE' },
+      { uuid: 2, availability: 'OFFLINE' },
+      { uuid: 3, availability: 'UNKNOWN' },
+    ]);
+  }
+  if (ruta === '/linkgrabberv2/moveToDownloadlist') {
+    movidos.push(params[0]);
+    return responder(null);
+  }
+  if (ruta === '/downloadcontroller/start') {
+    arrancado += 1;
+    return responder(true);
   }
   res.statusCode = 404;
   return res.end('{}');
@@ -114,4 +138,13 @@ test('probar, guardar y enviar a una subcarpeta', async () => {
   });
   assert.equal(recibidos.at(-1).destinationFolder, undefined);
   assert.match(recibidos.at(-1).packageName, /^clipscout /, 'sin carpeta también va en un paquete');
+});
+
+test('tras enviar: espera al análisis, pasa a descargas lo de ESE envío y arranca', async () => {
+  const n = await descargarCuandoEste(jdUrl, 99, { cadaMs: 5 });
+  assert.equal(n, 2);
+  assert.ok(llamadasJobs >= 2, 'espera mientras sigue analizando');
+  assert.deepEqual(consultasLinks.at(-1).jobUUIDs, [99]);
+  assert.deepEqual(movidos.at(-1), [1, 3]); // el caído no
+  assert.ok(arrancado >= 1);
 });

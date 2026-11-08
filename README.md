@@ -167,15 +167,15 @@ without copying links by hand.
 
 **1. Turn on JDownloader's local API** (once):
 
-- *Desktop JDownloader*: **Settings → Advanced Settings**, search `RemoteAPI` and set
+- _Desktop JDownloader_: **Settings → Advanced Settings**, search `RemoteAPI` and set
   `Deprecated API enabled` **on** and `Deprecated API localhost only` **off**. Restart JDownloader.
-- *JDownloader in Docker* (e.g. `jlesage/jdownloader-2`): do the same from its web UI
+- _JDownloader in Docker_ (e.g. `jlesage/jdownloader-2`): do the same from its web UI
   (port `5800`) and also publish the API port in its compose file:
 
   ```yaml
   ports:
-    - "5800:5800"   # web UI
-    - "3128:3128"   # local API used by clipscout
+    - '5800:5800' # web UI
+    - '3128:3128' # local API used by clipscout
   ```
 
   Check it from the clipscout machine: `curl http://<jdownloader-ip>:3128/jd/version` should
@@ -185,13 +185,13 @@ without copying links by hand.
 `http://<jdownloader-ip>:3128`, press **Test** and **Save**. Optional:
 
 - **Start downloads right away** (autostart), or leave them in JDownloader's link grabber.
-- **clipkeeper library**: if clipkeeper is connected, pick the library that *is* JDownloader's
+- **clipkeeper library**: if clipkeeper is connected, pick the library that _is_ JDownloader's
   download folder. Its subfolders then become the destinations you choose from.
 
 **3. Send**: **Send to JDownloader** appears above the results (Explorer and Videos tab; it sends
 everything visible) and on every video card of the Videos tab. Pressing it asks for the
 destination folder — the library's folders, each with the people and tags it holds, a search box,
-*default folder*, or *new folder*.
+_default folder_, or _new folder_.
 
 What happens then:
 
@@ -203,7 +203,7 @@ What happens then:
 - When a page offers the same file on several hosts, clipscout keeps the ones JDownloader can
   download **without an account** and drops premium-only hosts. Some free hosts still ask for a
   CAPTCHA: JDownloader shows it in its own window (or web UI on port `5800`), or you can plug a
-  CAPTCHA-solving service into JDownloader under *Settings → Captchas*.
+  CAPTCHA-solving service into JDownloader under _Settings → Captchas_.
 
 > Calls to other clip crew apps only go to the URLs you add in **Settings**, and only to their
 > `/api/crew/v1/...` endpoints (and, for JDownloader, to its API). The SSRF protection that keeps crawls away from private addresses
@@ -211,7 +211,7 @@ What happens then:
 
 | Variable          | Default          | What it does                                                                                                                                                       |
 | ----------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `OUTBOUND_PROXY`  | _(empty)_        | Optional outbound proxy for crawls and the browser, e.g. `http://192.168.1.10:8118` (the Privoxy of a VPN container). Useful when your ISP blocks a site |
+| `OUTBOUND_PROXY`  | _(empty)_        | Optional outbound proxy for crawls and the browser, e.g. `http://192.168.1.10:8118` (the Privoxy of a VPN container). Useful when your ISP blocks a site           |
 | `ADMIN_PASSWORD`  | _(empty)_        | Optional password for the whole app (HTTP Basic, user `ADMIN_USER`, default `admin`). Recommended if more devices can reach it: the Settings tab shows the API key |
 | `CREW_PATH`       | `data/crew.json` | API key, instance name and connections                                                                                                                             |
 | `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another clip crew app                                                                                                                      |

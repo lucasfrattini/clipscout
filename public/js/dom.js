@@ -214,3 +214,12 @@ export function downloadText(filename, text, tipo = 'text/plain') {
   anchor.remove();
   URL.revokeObjectURL(url);
 }
+
+/**
+ * ¿Se puede poner el cursor en un campo al abrir una vista? Solo con ratón: en el móvil, enfocar
+ * un campo saca el teclado y el navegador desplaza la página hasta él, así que al entrar la
+ * cabecera «se iba sola» hacia arriba.
+ */
+export function enfocarAlAbrir(campo) {
+  if (window.matchMedia?.('(pointer: fine)').matches) campo?.focus();
+}

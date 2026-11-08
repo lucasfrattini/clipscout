@@ -573,4 +573,30 @@ export const es = {
   'video.jd.porDefecto.detalle': 'La de descargas de JDownloader, sin subcarpeta',
   'video.jd.nueva': 'Carpeta nueva: «{nombre}»',
   'dialogo.buscar': 'Buscar…',
+
+  /* ── Buscar (en todos los sitios a la vez) ─────────────────────── */
+  'nav.buscar': 'Buscar',
+  'head.buscar.titulo': 'Buscar — clipscout',
+  'head.buscar.desc': 'Busca un nombre en todos tus sitios guardados a la vez.',
+  'buscar.titulo': 'Buscar en todos tus sitios',
+  'buscar.placeholder': 'Nombre de una persona, un título…',
+  'buscar.boton': 'Buscar',
+  'buscar.parar': 'Parar',
+  'buscar.todos': 'Todos',
+  'buscar.ayuda.todos':
+    'Busca en tus {n} sitios guardados a la vez. Toca uno para buscar solo en ese.',
+  'buscar.ayuda.algunos.uno': 'Busca solo en el sitio marcado. «Todos» vuelve a buscar en todos.',
+  'buscar.ayuda.algunos.varios':
+    'Busca en los {n} sitios marcados. «Todos» vuelve a buscar en todos.',
+  'buscar.sinSitios':
+    'Todavía no hay sitios donde buscar: en el Explorador, guarda una configuración con el término de búsqueda dentro de la dirección.',
+  'buscar.resultados.uno': '1 resultado',
+  'buscar.resultados.varios': '{n} resultados',
+  'buscar.buscando': 'Buscando…',
+  'buscar.nada': 'No se encontró nada.',
+  'buscar.errorSitio': 'Este sitio dio un error: {error}',
+  'buscar.bloqueo': 'Puede que el sitio esté frenando las peticiones: faltan resultados.',
+  'buscar.abrir': 'Abrir',
+  'buscar.jd': '⬇ Descargar',
+  'buscar.loTienes': '✓ Ya lo tienes',
 };

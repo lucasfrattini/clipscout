@@ -1,5 +1,6 @@
 import { getHealth } from './api.js';
 import { createExplorerView } from './views/explorer.js';
+import { createBuscarView } from './views/buscar.js';
 import { createVideoView } from './views/video.js';
 import { createAjustesView, initCrewCabecera } from './views/ajustes.js';
 import { toast } from './dom.js';
@@ -100,6 +101,7 @@ function initLanguage() {
 function initRouter(views) {
   const tabs = [...document.querySelectorAll('.tab')];
   const sections = {
+    buscar: document.getElementById('view-buscar'),
     explorer: document.getElementById('view-explorer'),
     video: document.getElementById('view-video'),
     ajustes: document.getElementById('view-ajustes'),
@@ -120,7 +122,7 @@ function initRouter(views) {
   }
 
   function activate(name, { updateHash = true } = {}) {
-    if (!sections[name]) name = 'explorer';
+    if (!sections[name]) name = 'buscar';
 
     aplicarCabecera(name);
 
@@ -149,17 +151,17 @@ function initRouter(views) {
   }
 
   window.addEventListener('hashchange', () => {
-    activate(window.location.hash.replace('#/', '') || 'explorer', { updateHash: false });
+    activate(window.location.hash.replace('#/', '') || 'buscar', { updateHash: false });
   });
 
-  const initial = window.location.hash.replace('#/', '') || 'explorer';
+  const initial = window.location.hash.replace('#/', '') || 'buscar';
   activate(initial);
 
   // El título es texto calculado, así que se rehace al cambiar de idioma: si
   // no, se quedaría en español con la interfaz ya en inglés.
   alCambiarIdioma(() => {
-    const actual = window.location.hash.replace('#/', '') || 'explorer';
-    aplicarCabecera(sections[actual] ? actual : 'explorer');
+    const actual = window.location.hash.replace('#/', '') || 'buscar';
+    aplicarCabecera(sections[actual] ? actual : 'buscar');
   });
 }
 
@@ -221,6 +223,7 @@ async function main() {
   const limits = { ...DEFAULT_LIMITS, ...(await initHealth()) };
 
   const views = {
+    buscar: createBuscarView(document.getElementById('view-buscar')),
     explorer: createExplorerView(document.getElementById('view-explorer'), { limits }),
     video: createVideoView(document.getElementById('view-video')),
     ajustes: createAjustesView(document.getElementById('view-ajustes')),

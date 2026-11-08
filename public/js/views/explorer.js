@@ -1,4 +1,4 @@
-import { el, setChildren, clear, alertBox, show, toast } from '../dom.js';
+import { el, setChildren, clear, alertBox, show, toast, enfocarAlAbrir } from '../dom.js';
 import { openScrapeStream, detectConfig, pauseScrape } from '../api.js';
 import { createProgressPanel } from '../components/progress.js';
 import { createResultList } from '../components/resultList.js';
@@ -2083,7 +2083,7 @@ export function createExplorerView(container, { limits }) {
 
   return {
     focus() {
-      fields.searchUrl.focus();
+      enfocarAlAbrir(fields.searchUrl);
     },
     teardown() {
       stopStream();

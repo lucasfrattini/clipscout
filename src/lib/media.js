@@ -426,7 +426,27 @@ function thumbnailFromJsonLd($) {
   return encontrada;
 }
 
+/**
+ * Título de la ficha: lo que el sitio declara para compartirla (og:title), o el <title>.
+ * Del documento YA parseado en la fase 2, así que no cuesta nada. Se recorta el sufijo
+ * habitual « - NombreDelSitio» solo si es corto, para no comerse títulos con guiones.
+ */
+function extractTitle(html) {
+  if (!esDocumento(html) && (typeof html !== 'string' || html.trim() === '')) return null;
+  const $ = asDocument(html);
+  const bruto =
+    $('meta[property="og:title"]').attr('content') ||
+    $('meta[name="twitter:title"]').attr('content') ||
+    $('title').first().text() ||
+    '';
+  let titulo = String(bruto).replace(/\s+/g, ' ').trim();
+  const corte = titulo.match(/^(.{8,}?)\s+[-|–—]\s+[^-|–—]{2,30}$/);
+  if (corte) titulo = corte[1];
+  return titulo ? titulo.slice(0, 300) : null;
+}
+
 module.exports = {
+  extractTitle,
   extractThumbnail,
   extractFileThumbnails,
   extractFileDurations,
