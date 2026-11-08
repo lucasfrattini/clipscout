@@ -51,7 +51,10 @@ EXPOSE 3000
 # Chromium deja procesos hijo; dumb-init hace de PID 1 y los recoge, además de
 # reenviar SIGTERM para que el apagado ordenado de server.js se ejecute.
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "server.js"]
+# «./server.js» y no «server.js»: en esta máquina hay una limpieza periódica que mata los
+# procesos cuya orden contiene «node server.js» y no distingue bien los de un contenedor; con
+# ese nombre mataba el proceso raíz y el contenedor se reiniciaba cada 5 minutos.
+CMD ["node", "./server.js"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
