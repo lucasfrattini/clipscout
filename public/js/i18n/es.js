@@ -651,6 +651,13 @@ export const es = {
   'buscar.descartar': 'Descartar este resultado',
   'buscar.descartados.uno': '1 descartado · recuperar',
   'buscar.descartados.varios': '{n} descartados · recuperar',
+  'buscar.webPregunta': '¿Buscar también en la web?',
+  'buscar.webPregunta.texto':
+    'La búsqueda web encuentra vídeos cuyo título no dice el nombre, pero también trae bastante que no tiene nada que ver.',
+  'buscar.webNo': 'Solo en mis sitios',
+  'buscar.webNo.detalle': 'Más rápido y más limpio',
+  'buscar.webSi': 'En mis sitios y en la web',
+  'buscar.webSi.detalle': 'Más resultados (marcados con 🌐), con más ruido',
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':

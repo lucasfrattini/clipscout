@@ -2,6 +2,7 @@ import { ajustes } from '../api.js';
 import { el, clear, toast, enfocarAlAbrir } from '../dom.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
+import { chooseDialog } from '../components/dialog.js';
 
 /**
  * Buscar: la pantalla de inicio. Se escribe un nombre y se busca en TODOS los sitios guardados a la
@@ -113,7 +114,7 @@ export function createBuscarView(root) {
     children: [
       el('div', { className: 'buscar__fila', children: [entrada, boton, parar] }),
       chipsSitios,
-      el('div', { className: 'buscar__pie', children: [ayuda, etiquetaWeb, etiquetaPaginas] }),
+      el('div', { className: 'buscar__pie', children: [ayuda, etiquetaPaginas] }),
     ],
     on: {
       submit: e => {
@@ -148,6 +149,7 @@ export function createBuscarView(root) {
   let ocultarRepetidos = true;
   let minDuracion = 0; // minutos; 0 = cualquiera
   const descartados = new Set(); // páginas quitadas a mano de esta búsqueda
+  let hayWeb = false; // ¿hay SearXNG configurado? (entonces se pregunta al buscar)
   let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
   let reglaFija = null; // si la carpeta fija es nueva: qué persona/categoría/etiqueta lleva
 
@@ -155,10 +157,9 @@ export function createBuscarView(root) {
     const c = copias.get(r.url);
     return Boolean(c && c.representante !== r.url);
   };
-  // Una tarjeta por página: un álbum con varios vídeos llegaba como N resultados iguales (y al
-  // descargar se mandaba la misma página N veces). Con «Ocultar repetidos», solo el primero, con
-  // cuántos más tiene; también se pliegan las copias que detecta el servidor.
-  const clavePagina = r => r.sourceUrl || r.url;
+  // Repetido = el MISMO vídeo (mismo fichero, p. ej. hallado por la búsqueda propia y por la web)
+  // o una copia que detecta el servidor. Los vídeos distintos de un mismo álbum NO lo son.
+  const clavePagina = r => r.url;
   const porPagina = () => {
     const n = new Map();
     for (const r of resultados) n.set(clavePagina(r), (n.get(clavePagina(r)) || 0) + 1);
@@ -169,7 +170,7 @@ export function createBuscarView(root) {
     const vistas = new Set();
     return resultados.filter(r => {
       if (pestana !== 'todos' && r.sitio !== pestana) return false;
-      if (descartados.has(clavePagina(r))) return false;
+      if (descartados.has(r.sourceUrl || r.url)) return false;
       if (
         minDuracion &&
         !(Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60)
@@ -183,8 +184,12 @@ export function createBuscarView(root) {
     });
   };
   const jd = createJdEnvio({ visibles: () => visibles().map(r => r.sourceUrl || r.url) });
+  // La misma página (un álbum con varios vídeos) se manda una sola vez: JDownloader ya la abre entera.
   const descargar = links =>
-    jd.enviar(links, destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija });
+    jd.enviar(
+      [...new Set(links)],
+      destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija }
+    );
 
   const filtroRepetidos = el('input', { attrs: { type: 'checkbox', checked: true } });
   filtroRepetidos.addEventListener('change', () => {
@@ -323,7 +328,7 @@ export function createBuscarView(root) {
     try {
       const r = await fetch('/api/buscar/sitios').then(x => x.json());
       sitios = r.sitios || [];
-      etiquetaWeb.hidden = !r.web;
+      hayWeb = Boolean(r.web);
     } catch {
       sitios = [];
     }
@@ -345,11 +350,25 @@ export function createBuscarView(root) {
     comprobarBiblioteca(false);
   }
 
-  function empezar() {
+  async function empezar() {
     const q = entrada.value.trim();
     if (!q) {
       entrada.focus();
       return;
+    }
+    // La búsqueda web trae más, pero también mucho que no es: se pregunta cada vez.
+    let conWeb = false;
+    if (hayWeb) {
+      const r = await chooseDialog({
+        titleKey: 'buscar.webPregunta',
+        labelKey: 'buscar.webPregunta.texto',
+        opciones: [
+          { valor: 'no', titulo: t('buscar.webNo'), detalle: t('buscar.webNo.detalle') },
+          { valor: 'si', titulo: t('buscar.webSi'), detalle: t('buscar.webSi.detalle') },
+        ],
+      });
+      if (r === null) return;
+      conWeb = r === 'si';
     }
     const elegidos = sitios.filter(s => !apagados.has(s.nombre));
     if (elegidos.length === 0) return;
@@ -365,7 +384,7 @@ export function createBuscarView(root) {
     parar.hidden = false;
 
     const query = new URLSearchParams({ q, paginas: paginas.value });
-    if (!etiquetaWeb.hidden && web.checked) query.set('web', '1');
+    if (conWeb) query.set('web', '1');
     if (elegidos.length < sitios.length) query.set('sitios', elegidos.map(s => s.id).join(','));
     try {
       // Fuera ?q= / ?searchTerm=: si quedara, recargar la página volvería a lanzar la búsqueda.

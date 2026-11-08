@@ -650,6 +650,13 @@ export const en = {
   'buscar.descartar': 'Dismiss this result',
   'buscar.descartados.uno': '1 dismissed · restore',
   'buscar.descartados.varios': '{n} dismissed · restore',
+  'buscar.webPregunta': 'Also search the web?',
+  'buscar.webPregunta.texto':
+    'The web search finds videos whose title does not say the name, but it also brings plenty that is unrelated.',
+  'buscar.webNo': 'Only my sites',
+  'buscar.webNo.detalle': 'Faster and cleaner',
+  'buscar.webSi': 'My sites and the web',
+  'buscar.webSi.detalle': 'More results (marked 🌐), with more noise',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
   'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',
