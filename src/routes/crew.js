@@ -187,13 +187,14 @@ router.post(
 router.post(
   '/ajustes/ya-lo-tengo',
   manejar(req => {
-    const { titulos = [], duraciones = [] } = req.body || {};
+    const { titulos = [], duraciones = [], persona = '' } = req.body || {};
     if (!Array.isArray(titulos) || titulos.length > 200) {
       throw new crew.ErrorCrew('Se esperaba una lista de hasta 200 títulos.');
     }
     return crew.buscarEnClipkeeper(
       titulos.map(x => String(x).slice(0, 300)),
-      Array.isArray(duraciones) ? duraciones.slice(0, 200) : []
+      Array.isArray(duraciones) ? duraciones.slice(0, 200) : [],
+      String(persona || '').slice(0, 200)
     );
   })
 );

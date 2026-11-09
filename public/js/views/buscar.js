@@ -545,15 +545,32 @@ export function createBuscarView(root) {
     };
   }
 
-  /** Pregunta a clipkeeper cuáles ya están en la biblioteca (por título y duración). */
+  /**
+   * Pregunta a clipkeeper cuáles ya están en la biblioteca: por título, o por duración + la persona
+   * buscada (los ficheros renombrados ya no llevan el título del sitio). En tandas de 200, el tope
+   * de clipkeeper por petición: antes, de una búsqueda grande solo se miraban los 200 primeros.
+   */
   async function comprobarBiblioteca(avisar) {
-    const lista = resultados.filter(r => r.title || nombreDeUrl(r.url));
+    const lista = resultados.filter(
+      r => r.title || nombreDeUrl(r.url) || Number.isFinite(r.durationSeconds)
+    );
     if (lista.length === 0) return;
     try {
-      const r = await ajustes.yaLoTengo(
-        lista.map(x => x.title || nombreDeUrl(x.url)),
-        lista.map(x => (Number.isFinite(x.durationSeconds) ? x.durationSeconds : null))
-      );
+      const persona = ultimaBusqueda || entrada.value.trim();
+      const r = { conectado: true, error: null, resultados: [] };
+      for (let i = 0; i < lista.length; i += 200) {
+        const tanda = lista.slice(i, i + 200);
+        const parte = await ajustes.yaLoTengo(
+          tanda.map(x => x.title || nombreDeUrl(x.url) || ''),
+          tanda.map(x => (Number.isFinite(x.durationSeconds) ? x.durationSeconds : null)),
+          persona
+        );
+        if (!parte.conectado || parte.error) {
+          Object.assign(r, { conectado: parte.conectado, error: parte.error });
+          break;
+        }
+        r.resultados.push(...parte.resultados);
+      }
       if (!r.conectado || r.error) {
         if (avisar) toast(r.error || t('video.yaLoTengo.sinConexion'), 'error', 6000);
         return;
