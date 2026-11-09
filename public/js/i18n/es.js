@@ -662,12 +662,12 @@ export const es = {
   'buscar.parar': 'Parar',
   'buscar.todos': 'Todos',
   'buscar.ayuda.todos':
-    'Busca en tus {n} sitios guardados a la vez. Toca uno para buscar solo en ese.',
+    'Busca en tus {n} sitios guardados a la vez (toca uno para buscar solo en ese). O pega uno o varios enlaces para sacar sus vídeos.',
   'buscar.ayuda.algunos.uno': 'Busca solo en el sitio marcado. «Todos» vuelve a buscar en todos.',
   'buscar.ayuda.algunos.varios':
     'Busca en los {n} sitios marcados. «Todos» vuelve a buscar en todos.',
   'buscar.sinSitios':
-    'Todavía no hay sitios donde buscar: pulsa «+ Agregar sitios» y pega sus direcciones.',
+    'Todavía no hay sitios donde buscar: pulsa «+ Agregar sitios» y pega sus direcciones. O pega uno o varios enlaces para sacar sus vídeos.',
   'buscar.resultados.uno': '1 resultado',
   'buscar.resultados.varios': '{n} resultados',
   'buscar.buscando': 'Buscando…',
@@ -714,4 +714,6 @@ export const es = {
   'buscar.ayuda.enlace':
     'Pega un enlace y saca sus vídeos: si es un listado (una categoría, un perfil) recorre sus páginas; si es la página de un vídeo, saca ese vídeo.',
   'buscar.boton.enlace': 'Sacar vídeos',
+  'buscar.listado': '{sitio} también es un listado de vídeos:',
+  'buscar.listado.recorrer': 'Recorrer sus fichas',
 };

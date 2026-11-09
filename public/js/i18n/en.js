@@ -660,11 +660,13 @@ export const en = {
   'buscar.webSi.detalle': 'More results (marked 🌐), with more noise',
   'buscar.parar': 'Stop',
   'buscar.todos': 'All',
-  'buscar.ayuda.todos': 'Searches your {n} saved sites at once. Tap one to search only there.',
+  'buscar.ayuda.todos':
+    'Searches your {n} saved sites at once (tap one to search only there). Or paste one or more links to get their videos.',
   'buscar.ayuda.algunos.uno': 'Searches only the selected site. “All” searches every site again.',
   'buscar.ayuda.algunos.varios':
     'Searches the {n} selected sites. “All” searches every site again.',
-  'buscar.sinSitios': 'No sites to search yet: press «+ Add sites» and paste their addresses.',
+  'buscar.sinSitios':
+    'No sites to search yet: press «+ Add sites» and paste their addresses. Or paste one or more links to get their videos.',
   'buscar.resultados.uno': '1 result',
   'buscar.resultados.varios': '{n} results',
   'buscar.buscando': 'Searching…',
@@ -710,4 +712,6 @@ export const en = {
   'buscar.ayuda.enlace':
     'Paste a link to get its videos: if it is a listing (a category, a profile) it walks its pages; if it is a video page, it gets that video.',
   'buscar.boton.enlace': 'Get videos',
+  'buscar.listado': '{sitio} is also a listing of videos:',
+  'buscar.listado.recorrer': 'Walk its entries',
 };

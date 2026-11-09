@@ -12,12 +12,15 @@ const ID_WEB = -1;
  * Qué escribió la persona en la caja única: un enlace (se sacan sus vídeos), un dominio suelto
  * («ejemplo.com»: se ofrece agregarlo como sitio) o un nombre / una palabra (se busca en todos).
  */
+const ES_ENLACE = /^(?:https?:\/\/\S+|(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/\S+)$/i;
+const ES_DOMINIO = /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/?$/i;
+
 function tipoDeEntrada(texto) {
-  const t = texto.trim();
-  if (/^https?:\/\/\S+$/i.test(t)) return 'enlace';
-  if (/\s/.test(t)) return 'palabra';
-  if (/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/\S+$/i.test(t)) return 'enlace';
-  if (/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/?$/i.test(t)) return 'dominio';
+  const partes = texto.trim().split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return 'palabra';
+  // Uno o varios enlaces (como en la antigua pestaña Vídeos): se sacan sus vídeos.
+  if (partes.every(p => ES_ENLACE.test(p))) return 'enlace';
+  if (partes.length === 1 && ES_DOMINIO.test(partes[0])) return 'dominio';
   return 'palabra';
 }
 
@@ -70,6 +73,8 @@ export function createBuscarView(root) {
   let reintento = null;
   let enBiblioteca = new Map(); // sourceUrl → coincidencia de clipkeeper
   const nombresDelServidor = new Map(); // id → nombre, para los «sitios» que no son guardados
+  // Enlaces pegados que, además de sus vídeos, son un listado: se ofrece recorrer sus fichas.
+  let listados = new Map(); // id → url
   let sugeridos = []; // { dominio, videos }: sitios sin configurar que dieron vídeos en la web
   let ultimaBusqueda = '';
 
@@ -422,8 +427,9 @@ export function createBuscarView(root) {
     comprobarBiblioteca(false);
   }
 
-  async function empezar() {
-    const q = entrada.value.trim();
+  async function empezar(opciones = {}) {
+    const q = (opciones.url || entrada.value).trim();
+    if (opciones.url) entrada.value = opciones.url;
     if (!q) {
       entrada.focus();
       return;
@@ -460,6 +466,7 @@ export function createBuscarView(root) {
     estado = new Map(elegidos.map(s => [s.id, { fase: 'espera', total: 0 }]));
     if (conAbierta) estado.set(ID_WEB, { fase: 'espera', total: 0 });
     sugeridos = [];
+    if (!opciones.listado) listados = new Map();
     ultimaBusqueda = q;
     zonaResultados.hidden = false;
     boton.hidden = true;
@@ -468,6 +475,7 @@ export function createBuscarView(root) {
     const query = new URLSearchParams(
       esEnlace ? { url: q, paginas: paginas.value } : { q, paginas: paginas.value }
     );
+    if (opciones.listado) query.set('listado', '1');
     if (conWeb) query.set('web', '1');
     if (conAbierta) query.set('abierta', '1');
     if (!esEnlace && elegidos.length < sitios.length) {
@@ -557,6 +565,8 @@ export function createBuscarView(root) {
           bloqueo: m.bloqueo,
           recortado: m.recortado,
         });
+      } else if (m.type === 'listado_disponible') {
+        listados.set(m.sitio, m.url);
       } else if (m.type === 'sitios_sugeridos') {
         sugeridos = m.sugeridos || [];
       } else if (m.type === 'duplicados') {
@@ -900,7 +910,23 @@ export function createBuscarView(root) {
 
   function pintarSugeridos() {
     clear(zonaSugeridos);
-    zonaSugeridos.hidden = sugeridos.length === 0;
+    zonaSugeridos.hidden = sugeridos.length === 0 && listados.size === 0;
+    for (const [id, url] of listados) {
+      zonaSugeridos.append(
+        el('span', { text: t('buscar.listado', { sitio: nombreSitio(id) }) }),
+        el('button', {
+          className: 'button button--secondary button--small',
+          attrs: { type: 'button' },
+          text: t('buscar.listado.recorrer'),
+          on: {
+            click: () => {
+              listados.delete(id);
+              empezar({ url, listado: true });
+            },
+          },
+        })
+      );
+    }
     if (sugeridos.length === 0) return;
     zonaSugeridos.append(el('span', { text: t('buscar.sugeridos') }));
     for (const s of sugeridos) {

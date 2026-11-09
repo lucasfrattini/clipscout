@@ -80,21 +80,28 @@ router.get('/buscar/stream', async (req, res) => {
 
 /** Lo que llega para buscar, igual en el stream clásico y en la búsqueda en segundo plano. */
 function entradaDe(fuente) {
-  // Un enlace (lo que antes iba al Explorador o a Vídeos): se analiza él solo.
-  const url = typeof fuente.url === 'string' ? fuente.url.trim() : '';
-  if (url) {
-    let u;
-    try {
-      u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
-    } catch {
-      u = null;
-    }
-    if (!u || !/^https?:$/.test(u.protocol)) {
-      const error = new Error('Ese enlace no es válido.');
+  // Uno o varios enlaces (lo que antes iba a Vídeos o al Explorador), separados por espacios.
+  const texto = typeof fuente.url === 'string' ? fuente.url.trim() : '';
+  if (texto) {
+    const urls = texto.split(/\s+/).map(x => {
+      try {
+        const u = new URL(/^https?:\/\//i.test(x) ? x : `https://${x}`);
+        return /^https?:$/.test(u.protocol) ? u.href : null;
+      } catch {
+        return null;
+      }
+    });
+    if (urls.some(u => u === null)) {
+      const error = new Error('Algún enlace no es válido.');
       error.status = 400;
       throw error;
     }
-    return { url: u.href, paginas: fuente.paginas };
+    return {
+      url: urls[0],
+      urls,
+      paginas: fuente.paginas,
+      listado: fuente.listado === true || fuente.listado === '1',
+    };
   }
   const q = typeof fuente.q === 'string' ? fuente.q.trim() : '';
   if (!q) {

@@ -63,7 +63,7 @@ function iniciar(entrada) {
   ]);
   const b = {
     id,
-    q: entrada.url || entrada.q,
+    q: entrada.urls ? entrada.urls.join(' ') : entrada.url || entrada.q,
     creadaEn: Date.now(),
     terminadaEn: null,
     eventos: [],

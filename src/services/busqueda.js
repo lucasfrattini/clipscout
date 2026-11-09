@@ -249,109 +249,129 @@ async function buscarEnTodos(
   return { sitios: resumen, total: resumen.reduce((n, r) => n + (r?.total || 0), 0) };
 }
 
-/** Id del «sitio» de una búsqueda a partir de un enlace pegado. */
+/** Ids de los «sitios» de una búsqueda por enlaces: -2, -3… (uno por enlace pegado). */
 const ID_ENLACE = -2;
 
+/** Los vídeos de la página misma (lo que hacía la pestaña Vídeos). */
+async function videosDeLaPagina(url, { signal }) {
+  const r = await extractVideos(url, { useJavaScript: true, getThumbnails: true, signal });
+  return (r.videos || []).map(v => {
+    const segundos = parseClockDuration(v.duration);
+    return {
+      url: v.url,
+      sourceUrl: url,
+      title: v.title || null,
+      duration: v.duration || null,
+      durationSeconds: Number.isFinite(segundos) ? segundos : null,
+      thumbnail: v.thumbnailUrl || null,
+    };
+  });
+}
+
+/** Recorre el listado que propone el detector y busca el vídeo de cada ficha. */
+async function recorrerListado(url, det, porPaginas, { signal, publicar, progreso }) {
+  const s = det.sugerencia;
+  const params = normalizeCrawlParams({
+    searchUrl: s.searchUrl || url,
+    searchTerm: '',
+    pageParam: s.pageParam || '',
+    paginationMode: s.paginationMode === 'scroll' && config.browser.enabled ? 'scroll' : 'auto',
+    linkPattern: s.linkPattern,
+    useJavaScript: Boolean(s.useJavaScript),
+    startPage: 1,
+    endPage: porPaginas,
+    withThumbnails: true,
+  });
+  await crawl(
+    {
+      ...params,
+      extensions: parseExtensionList(EXTENSIONES_ABIERTA),
+      maxLinks: config.busqueda.maxEnlaces * porPaginas,
+    },
+    {
+      signal,
+      emit: evento => {
+        if (evento.type === 'files_found') publicar((evento.details || []).filter(Boolean));
+        else if (evento.type === 'phase2_progress') progreso(evento.current, evento.total);
+      },
+    }
+  );
+}
+
 /**
- * Lo que hay detrás de un enlace pegado en la caja de Buscar (lo que antes eran las pestañas
- * Explorador y Vídeos, con sus formularios):
+ * Lo que hay detrás de uno o varios enlaces pegados en la caja de Buscar (lo que antes eran las
+ * pestañas Vídeos y Explorador). Por cada enlace:
  *
- * - Si es un LISTADO (muchos enlaces que siguen el mismo patrón: una categoría, un perfil, unos
- *   resultados), se recorren sus páginas y se busca el vídeo de cada ficha.
- * - Si no, o si el listado no dio nada, es la página de UN vídeo (o de pocos): se analiza a fondo.
+ * 1. Primero, SIEMPRE, los vídeos de la página misma: la página de un vídeo o de un álbum da sus
+ *    vídeos, y no los de los enlaces de al lado (eso pasaba al tomarla por un listado).
+ * 2. Si además parece un listado (muchas fichas con el mismo patrón):
+ *    - sin vídeos propios, se recorren sus fichas directamente (una categoría, un perfil);
+ *    - con vídeos propios, solo se avisa (`listado_disponible`) y la persona decide si recorrerlo.
+ *    Con `listado: true` (ese botón) se recorre siempre.
  *
  * Emite los mismos eventos que la búsqueda por nombre, así que la pantalla es la misma.
  */
-async function buscarEnlace({ url, paginas = null }, { signal, emit = () => {} } = {}) {
-  const id = ID_ENLACE;
+async function buscarEnlace(
+  { url, urls = null, paginas = null, listado = false },
+  { signal, emit = () => {} } = {}
+) {
+  const lista = (urls && urls.length ? urls : [url]).slice(0, config.busqueda.maxEnlacesPegados);
   const porPaginas = Math.min(
     config.busqueda.maxPaginas,
     Math.max(1, Number.parseInt(paginas, 10) || config.busqueda.paginas)
   );
-  emit({ type: 'sitios', sitios: [{ id, nombre: hostDe(url) || url }] });
-  emit({ type: 'sitio_inicio', sitio: id });
-  let total = 0;
+  const nombres = lista.map((u, i) => ({ id: ID_ENLACE - i, nombre: hostDe(u) || u }));
+  emit({ type: 'sitios', sitios: nombres });
   const todosLosItems = [];
-  const publicar = items => {
-    if (items.length === 0) return;
-    total += items.length;
-    todosLosItems.push(...items);
-    emit({ type: 'resultados', sitio: id, items });
-  };
-  try {
-    let det = null;
+  const resumen = [];
+  for (const [i, u] of lista.entries()) {
+    if (signal?.aborted) break;
+    const id = ID_ENLACE - i;
+    emit({ type: 'sitio_inicio', sitio: id });
+    let total = 0;
+    const publicar = items => {
+      if (items.length === 0) return;
+      total += items.length;
+      todosLosItems.push(...items);
+      emit({ type: 'resultados', sitio: id, items });
+    };
+    const progreso = (hechos, enlaces) =>
+      emit({ type: 'sitio_progreso', sitio: id, modo: 'listado', hechos, enlaces });
     try {
-      det = await detectConfig(url, { signal });
-    } catch {
-      // no se pudo leer como listado: se intenta como página de vídeo
-    }
-    const s = det?.sugerencia;
-    const esListado = Boolean(s?.linkPattern) && det.confianza.patron !== 'baja';
-    if (esListado && !signal?.aborted) {
-      emit({ type: 'sitio_progreso', sitio: id, modo: 'listado' });
-      const params = normalizeCrawlParams({
-        searchUrl: s.searchUrl || url,
-        searchTerm: '',
-        pageParam: s.pageParam || '',
-        paginationMode: s.paginationMode === 'scroll' && config.browser.enabled ? 'scroll' : 'auto',
-        linkPattern: s.linkPattern,
-        useJavaScript: Boolean(s.useJavaScript),
-        startPage: 1,
-        endPage: porPaginas,
-        withThumbnails: true,
-      });
-      await crawl(
-        {
-          ...params,
-          extensions: parseExtensionList(EXTENSIONES_ABIERTA),
-          maxLinks: config.busqueda.maxEnlaces * porPaginas,
-        },
-        {
-          signal,
-          emit: evento => {
-            if (evento.type === 'files_found') publicar((evento.details || []).filter(Boolean));
-            else if (evento.type === 'phase2_progress') {
-              emit({
-                type: 'sitio_progreso',
-                sitio: id,
-                hechos: evento.current,
-                enlaces: evento.total,
-              });
-            }
-          },
+      let det = null;
+      try {
+        det = await detectConfig(u, { signal });
+      } catch {
+        // no se pudo leer como listado: queda como página
+      }
+      const esListado = Boolean(det?.sugerencia?.linkPattern) && det.confianza.patron !== 'baja';
+      if (!listado) {
+        emit({ type: 'sitio_progreso', sitio: id, modo: 'pagina' });
+        publicar(await videosDeLaPagina(u, { signal }));
+      }
+      if (esListado && !signal?.aborted) {
+        if (listado || total === 0) {
+          emit({ type: 'sitio_progreso', sitio: id, modo: 'listado' });
+          await recorrerListado(u, det, porPaginas, { signal, publicar, progreso });
+        } else {
+          emit({ type: 'listado_disponible', sitio: id, url: u });
         }
-      );
+      }
+      emit({ type: 'sitio_fin', sitio: id, total });
+      resumen.push({ id, total });
+    } catch (error) {
+      emit({ type: 'sitio_fin', sitio: id, total, error: error.message });
+      resumen.push({ id, total, error: error.message });
     }
-    if (total === 0 && !signal?.aborted) {
-      emit({ type: 'sitio_progreso', sitio: id, modo: 'pagina' });
-      const r = await extractVideos(url, { useJavaScript: true, getThumbnails: true, signal });
-      publicar(
-        (r.videos || []).map(v => {
-          const segundos = parseClockDuration(v.duration);
-          return {
-            url: v.url,
-            sourceUrl: url,
-            title: v.title || null,
-            duration: v.duration || null,
-            durationSeconds: Number.isFinite(segundos) ? segundos : null,
-            thumbnail: v.thumbnailUrl || null,
-          };
-        })
-      );
-    }
-    const { grupos } = groupDuplicates(todosLosItems);
-    emit({
-      type: 'duplicados',
-      grupos: grupos
-        .filter(g => g.miembros.length > 1)
-        .map(g => ({ representante: g.representante.url, miembros: g.miembros.map(m => m.url) })),
-    });
-    emit({ type: 'sitio_fin', sitio: id, total });
-    return { sitios: [{ id, total }], total };
-  } catch (error) {
-    emit({ type: 'sitio_fin', sitio: id, total, error: error.message });
-    return { sitios: [{ id, total, error: error.message }], total };
   }
+  const { grupos } = groupDuplicates(todosLosItems);
+  emit({
+    type: 'duplicados',
+    grupos: grupos
+      .filter(g => g.miembros.length > 1)
+      .map(g => ({ representante: g.representante.url, miembros: g.miembros.map(m => m.url) })),
+  });
+  return { sitios: resumen, total: resumen.reduce((n, r) => n + r.total, 0) };
 }
 
 module.exports = {
