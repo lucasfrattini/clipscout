@@ -9,6 +9,19 @@ import { altaSitiosDialog } from '../components/altaSitios.js';
 const ID_WEB = -1;
 
 /**
+ * Qué escribió la persona en la caja única: un enlace (se sacan sus vídeos), un dominio suelto
+ * («ejemplo.com»: se ofrece agregarlo como sitio) o un nombre / una palabra (se busca en todos).
+ */
+function tipoDeEntrada(texto) {
+  const t = texto.trim();
+  if (/^https?:\/\/\S+$/i.test(t)) return 'enlace';
+  if (/\s/.test(t)) return 'palabra';
+  if (/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/\S+$/i.test(t)) return 'enlace';
+  if (/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/?$/i.test(t)) return 'dominio';
+  return 'palabra';
+}
+
+/**
  * Buscar: la pantalla de inicio. Se escribe un nombre y se busca en TODOS los sitios guardados a la
  * vez (las configuraciones cuya dirección lleva {q}); los resultados llegan mezclados y arriba hay
  * una pestaña por sitio para ver solo los de uno. Para ir a fondo en un sitio está el Explorador.
@@ -56,6 +69,7 @@ export function createBuscarView(root) {
   let recibidos = 0; // eventos ya procesados
   let reintento = null;
   let enBiblioteca = new Map(); // sourceUrl → coincidencia de clipkeeper
+  const nombresDelServidor = new Map(); // id → nombre, para los «sitios» que no son guardados
   let sugeridos = []; // { dominio, videos }: sitios sin configurar que dieron vídeos en la web
   let ultimaBusqueda = '';
 
@@ -331,7 +345,7 @@ export function createBuscarView(root) {
         : activos.length === sitios.length
           ? t('buscar.ayuda.todos', { n: sitios.length })
           : tp('buscar.ayuda.algunos', activos.length);
-    boton.textContent = t('buscar.boton');
+    pintarModoEntrada();
     textoPaginas.textContent = t('buscar.paginas');
     textoRepetidos.textContent = t('buscar.ocultarRepetidos');
     textoDuracion.textContent = t('buscar.duracion');
@@ -352,6 +366,19 @@ export function createBuscarView(root) {
     textoWeb.textContent = t('buscar.web');
     etiquetaWeb.title = t('buscar.web.titulo');
   }
+
+  /** La ayuda y el botón dicen qué va a pasar con lo escrito (palabra o enlace). */
+  function pintarModoEntrada() {
+    const enlace = tipoDeEntrada(entrada.value) === 'enlace';
+    boton.textContent = t(enlace ? 'buscar.boton.enlace' : 'buscar.boton');
+    chipsSitios.hidden = enlace;
+    if (enlace) ayuda.textContent = t('buscar.ayuda.enlace');
+  }
+  entrada.addEventListener('input', () => {
+    const antes = chipsSitios.hidden;
+    pintarModoEntrada();
+    if (antes && !chipsSitios.hidden) pintarSitios();
+  });
 
   async function cargarSitios() {
     try {
@@ -401,10 +428,14 @@ export function createBuscarView(root) {
       entrada.focus();
       return;
     }
+    const tipo = tipoDeEntrada(q);
+    // «ejemplo.com» a secas: no hay nada que buscar en él todavía; se ofrece agregarlo.
+    if (tipo === 'dominio') return abrirAlta({ dominios: [q] });
+    const esEnlace = tipo === 'enlace';
     // La búsqueda web trae más, pero también mucho que no es: se pregunta cada vez.
     let conWeb = false;
     let conAbierta = false;
-    if (hayWeb) {
+    if (hayWeb && !esEnlace) {
       const r = await chooseDialog({
         titleKey: 'buscar.webPregunta',
         labelKey: 'buscar.webPregunta.texto',
@@ -418,8 +449,8 @@ export function createBuscarView(root) {
       conWeb = r === 'si' || r === 'todo';
       conAbierta = r === 'todo';
     }
-    const elegidos = sitios.filter(s => !apagados.has(s.nombre));
-    if (elegidos.length === 0 && !conAbierta) return;
+    const elegidos = esEnlace ? [] : sitios.filter(s => !apagados.has(s.nombre));
+    if (!esEnlace && elegidos.length === 0 && !conAbierta) return;
     fuente?.close();
     resultados = [];
     descartados.clear();
@@ -434,10 +465,14 @@ export function createBuscarView(root) {
     boton.hidden = true;
     parar.hidden = false;
 
-    const query = new URLSearchParams({ q, paginas: paginas.value });
+    const query = new URLSearchParams(
+      esEnlace ? { url: q, paginas: paginas.value } : { q, paginas: paginas.value }
+    );
     if (conWeb) query.set('web', '1');
     if (conAbierta) query.set('abierta', '1');
-    if (elegidos.length < sitios.length) query.set('sitios', elegidos.map(s => s.id).join(','));
+    if (!esEnlace && elegidos.length < sitios.length) {
+      query.set('sitios', elegidos.map(s => s.id).join(','));
+    }
     try {
       // Fuera ?q= / ?searchTerm=: si quedara, recargar la página volvería a lanzar la búsqueda.
       const url = new URL(window.location.href);
@@ -490,6 +525,7 @@ export function createBuscarView(root) {
       }
       if (m.type === 'sitios') {
         for (const x of m.sitios || []) {
+          nombresDelServidor.set(x.id, x.nombre);
           if (!estado.has(x.id)) estado.set(x.id, { fase: 'espera', total: 0 });
         }
       } else if (m.type === 'sitio_inicio') {
@@ -500,7 +536,12 @@ export function createBuscarView(root) {
           m.sitio,
           m.web
             ? { ...previo, web: true, hechos: 0, enlaces: 0 }
-            : { ...previo, hechos: m.hechos ?? 0, enlaces: m.enlaces ?? previo.enlaces }
+            : {
+                ...previo,
+                modo: m.modo ?? previo.modo,
+                hechos: m.hechos ?? previo.hechos ?? 0,
+                enlaces: m.enlaces ?? previo.enlaces,
+              }
         );
       } else if (m.type === 'resultados') {
         for (const it of m.items) resultados.push({ ...it, sitio: m.sitio });
@@ -598,7 +639,9 @@ export function createBuscarView(root) {
 
   /* ── Pintar ─────────────────────────────────────────────────────── */
   const nombreSitio = id =>
-    id === ID_WEB ? t('buscar.webAbierta') : sitios.find(s => s.id === id)?.nombre || '';
+    id === ID_WEB
+      ? t('buscar.webAbierta')
+      : sitios.find(s => s.id === id)?.nombre || nombresDelServidor.get(id) || '';
   const dominioDe = url => {
     try {
       return new URL(url).hostname.replace(/^www\./, '');
@@ -740,7 +783,10 @@ export function createBuscarView(root) {
     let texto;
     if (e.fase === 'espera') texto = t('buscar.estado.cola');
     else if (e.fase === 'busca' && e.web) texto = t('buscar.estado.web');
-    else if (e.fase === 'busca' && e.enlaces) {
+    else if (e.fase === 'busca' && e.modo === 'pagina') texto = t('buscar.estado.pagina');
+    else if (e.fase === 'busca' && e.modo === 'listado' && !e.enlaces) {
+      texto = t('buscar.estado.listado');
+    } else if (e.fase === 'busca' && e.enlaces) {
       texto = t('buscar.estado.revisando', { hechos: e.hechos || 0, total: e.enlaces });
     } else if (e.fase === 'busca') texto = t('buscar.estado.buscando');
     else if (e.fase === 'error') texto = t('buscar.estado.error', { error: e.error });

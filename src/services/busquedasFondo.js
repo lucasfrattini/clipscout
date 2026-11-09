@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 
 const config = require('../config');
 const logger = require('../lib/logger');
-const { buscarEnTodos } = require('./busqueda');
+const { buscarEnTodos, buscarEnlace } = require('./busqueda');
 
 /**
  * Búsquedas que siguen aunque nadie mire.
@@ -63,7 +63,7 @@ function iniciar(entrada) {
   ]);
   const b = {
     id,
-    q: entrada.q,
+    q: entrada.url || entrada.q,
     creadaEn: Date.now(),
     terminadaEn: null,
     eventos: [],
@@ -73,7 +73,9 @@ function iniciar(entrada) {
   busquedas.set(id, b);
   ultima = id;
 
-  buscarEnTodos(entrada, { signal, emit: evento => publicar(b, evento) })
+  // Un enlace pegado se analiza él solo; un nombre o una palabra, en todos los sitios.
+  const buscar = entrada.url ? buscarEnlace : buscarEnTodos;
+  buscar(entrada, { signal, emit: evento => publicar(b, evento) })
     .then(r => publicar(b, { type: 'fin', ...r, cancelada: signal.aborted }))
     .catch(error => {
       logger.warn(`Error en la búsqueda: ${error.message}`);

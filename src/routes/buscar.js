@@ -80,6 +80,22 @@ router.get('/buscar/stream', async (req, res) => {
 
 /** Lo que llega para buscar, igual en el stream clásico y en la búsqueda en segundo plano. */
 function entradaDe(fuente) {
+  // Un enlace (lo que antes iba al Explorador o a Vídeos): se analiza él solo.
+  const url = typeof fuente.url === 'string' ? fuente.url.trim() : '';
+  if (url) {
+    let u;
+    try {
+      u = new URL(/^https?:\/\//i.test(url) ? url : `https://${url}`);
+    } catch {
+      u = null;
+    }
+    if (!u || !/^https?:$/.test(u.protocol)) {
+      const error = new Error('Ese enlace no es válido.');
+      error.status = 400;
+      throw error;
+    }
+    return { url: u.href, paginas: fuente.paginas };
+  }
   const q = typeof fuente.q === 'string' ? fuente.q.trim() : '';
   if (!q) {
     const error = new Error('Escribe qué buscar');

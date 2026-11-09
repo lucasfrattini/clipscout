@@ -307,11 +307,17 @@ running after you log out, use a process manager such as systemd or pm2.
 
 ## How to use it
 
-**Search** is the start page: type a name and it searches every saved site.
+**Search** is the start page, with a single box:
+
+- **A name or a word** searches every saved site at once.
+- **A link** gets its videos: if it is a listing (a category, a profile) it
+  walks its pages; if it is a video page, it gets that video.
+- **A bare domain** (`example.com`) offers to add it as a site.
+
 To add sites, press **+ Add sites**, paste their addresses (one per line) and
 a term those sites have; the test result tells you which ones work.
 
-The **Explorer** is for going deep on one site by hand:
+**Advanced** is the full explorer, for going deep on one site by hand:
 
 1. **Addresses to explore** — the page where the walk starts. You can use
    `{q}` where the search term goes and `{page}` where the page number goes.
