@@ -8,6 +8,7 @@ const videoRoutes = require('./video');
 const profileRoutes = require('./profiles');
 const crewRoutes = require('./crew');
 const buscarRoutes = require('./buscar');
+const sitiosRoutes = require('./sitios');
 
 const router = express.Router();
 
@@ -33,5 +34,6 @@ router.use(videoRoutes);
 router.use(profileRoutes);
 router.use(crewRoutes);
 router.use(buscarRoutes);
+router.use(sitiosRoutes);
 
 module.exports = router;

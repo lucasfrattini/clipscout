@@ -428,10 +428,77 @@ async function renderPageWithMedia(url, { isMediaUrl } = {}) {
   });
 }
 
+/**
+ * Usa el buscador del propio sitio como lo haría una persona: abre la portada, escribe `termino`
+ * en la caja de búsqueda y pulsa Intro. Devuelve la dirección a la que llevó (o null si no hay
+ * caja o no navegó). Es lo único que funciona con los buscadores montados con JavaScript, que
+ * convierten `?q=` en `/search/<término>/` o similares.
+ */
+async function enviarBusqueda(url, termino) {
+  await assertUrlIsSafe(url);
+
+  return pool.withPage(async page => {
+    await page.goto(url, {
+      waitUntil: config.browser.waitUntil,
+      timeout: config.browser.navigationTimeoutMs,
+    });
+    const selector = await page.evaluate(() => {
+      const visible = el => {
+        const r = el.getBoundingClientRect();
+        const s = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+      };
+      const candidatos = [
+        ...document.querySelectorAll('input[type="search"], input[type="text"], input:not([type])'),
+      ];
+      const pista = el =>
+        /search|busca|query|keyword|^q$|^s$|^k$/i.test(
+          [el.name, el.id, el.placeholder, el.className, el.getAttribute('aria-label')].join(' ')
+        );
+      const elegido =
+        candidatos.find(el => el.type === 'search' && pista(el)) ||
+        candidatos.find(el => pista(el) && visible(el)) ||
+        candidatos.find(pista);
+      if (!elegido) return null;
+      elegido.setAttribute('data-clipscout-busqueda', '1');
+      return '[data-clipscout-busqueda="1"]';
+    });
+    if (!selector) return null;
+    const antes = page.url();
+    // Las cajas ocultas (detrás de un icono de lupa) no aceptan teclas: se les da el valor directo.
+    await page.$eval(
+      selector,
+      (el, valor) => {
+        el.focus();
+        el.value = valor;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      },
+      termino
+    );
+    await Promise.all([
+      page
+        .waitForNavigation({
+          waitUntil: 'domcontentloaded',
+          timeout: config.browser.navigationTimeoutMs,
+        })
+        .catch(() => null),
+      page.$eval(selector, el => {
+        const form = el.form;
+        if (form?.requestSubmit) form.requestSubmit();
+        else if (form) form.submit();
+        else el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      }),
+    ]);
+    const despues = page.url();
+    return despues !== antes ? despues : null;
+  });
+}
+
 module.exports = {
   pool,
   renderPage,
   renderPageWithMedia,
+  enviarBusqueda,
   renderPageWithInfiniteScroll,
   BrowserPool,
 };

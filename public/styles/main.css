@@ -3295,3 +3295,67 @@ a {
     overflow-x: visible;
   }
 }
+
+/* ── Agregar sitios (components/altaSitios.js) ─────────────────────── */
+.dialog:has(.alta) {
+  max-width: 560px;
+}
+.alta__sitios {
+  resize: vertical;
+  font-family: inherit;
+}
+.alta__lista {
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 13.5px;
+}
+.alta__fila {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: var(--c-text-muted);
+  min-width: 0;
+}
+.alta__fila strong {
+  color: var(--c-text);
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.alta__estado {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.alta__icono {
+  width: 14px;
+  flex: none;
+  text-align: center;
+}
+.alta__fila--ok .alta__icono {
+  color: var(--c-success);
+}
+.alta__fila--mal {
+  color: var(--c-danger);
+}
+.alta__fila .buscar__girando {
+  align-self: center;
+}
+
+/* Sitios sin configurar que dieron vídeos en «toda la web» */
+.buscar__sugeridos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: var(--space-2) 0;
+  font-size: 13.5px;
+  color: var(--c-text-muted);
+}
+.buscar__sugeridos[hidden] {
+  display: none;
+}

@@ -76,6 +76,20 @@ export function extractVideos(params, { signal } = {}) {
 
 /* ── Configuraciones guardadas ───────────────────────────────────── */
 
+/** Configura y prueba un sitio con solo su dirección (no guarda nada). */
+export function autoSitio(url, termino, { signal } = {}) {
+  return request('/sitios/auto', {
+    method: 'POST',
+    body: JSON.stringify({ url, termino }),
+    signal,
+  });
+}
+
+/** Suma configuraciones a las guardadas (las de un dominio que ya estaba se saltan). */
+export function guardarSitios(sitios) {
+  return request('/sitios', { method: 'POST', body: JSON.stringify({ sitios }) });
+}
+
 export function getProfiles() {
   return request('/profiles');
 }

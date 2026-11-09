@@ -41,6 +41,28 @@ function plano(texto) {
     .replace(/[^a-z0-9]/g, '');
 }
 
+/** Una página de resultados de SearXNG en JSON, o null si no responde. */
+async function consultar(consulta, pagina, { signal } = {}) {
+  const base = config.busqueda.searxngUrl;
+  if (!base) return null;
+  const params = new URLSearchParams({ q: consulta, format: 'json', pageno: String(pagina) });
+  if (config.busqueda.webMotores) params.set('engines', config.busqueda.webMotores);
+  const url = `${base.replace(/\/+$/, '')}/search?${params}`;
+  try {
+    const r = await fetch(url, {
+      signal: AbortSignal.any([
+        AbortSignal.timeout(config.busqueda.webTimeoutMs),
+        ...(signal ? [signal] : []),
+      ]),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (error) {
+    logger.warn(`Búsqueda web: SearXNG no respondió (${error.message})`);
+    return null;
+  }
+}
+
 /**
  * Devuelve `{ fichas, listados }`:
  * - fichas: páginas de vídeo del sitio (coinciden con su patrón de enlace);
@@ -66,23 +88,8 @@ async function buscarEnWeb(q, perfilConfig, { signal } = {}) {
   const vistas = new Set();
   for (let pagina = 1; pagina <= config.busqueda.webPaginas; pagina++) {
     if (signal?.aborted) break;
-    const params = new URLSearchParams({ q: consulta, format: 'json', pageno: String(pagina) });
-    if (config.busqueda.webMotores) params.set('engines', config.busqueda.webMotores);
-    const url = `${base.replace(/\/+$/, '')}/search?${params}`;
-    let datos;
-    try {
-      const r = await fetch(url, {
-        signal: AbortSignal.any([
-          AbortSignal.timeout(config.busqueda.webTimeoutMs),
-          ...(signal ? [signal] : []),
-        ]),
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      datos = await r.json();
-    } catch (error) {
-      logger.warn(`Búsqueda web: SearXNG no respondió (${error.message})`);
-      break;
-    }
+    const datos = await consultar(consulta, pagina, { signal });
+    if (!datos) break;
     const antes = vistas.size;
     for (const res of datos.results || []) {
       let u;
@@ -106,4 +113,46 @@ async function buscarEnWeb(q, perfilConfig, { signal } = {}) {
   return { fichas: [...vistas], listados: [...listados].slice(0, config.busqueda.webListados) };
 }
 
-module.exports = { buscarEnWeb, consultaSite, hostDe };
+/** Rutas que nunca son la página de un vídeo (portadas, buscadores, perfiles de redes…). */
+const NO_ES_FICHA = /^\/?$|^\/(?:search|tag|tags|category|categories|login|signup)(?:\/|$)/i;
+
+/**
+ * «En toda la web»: lo que el buscador encuentra con ese nombre en CUALQUIER sitio, quitando los
+ * que ya están configurados (esos ya se buscan por su cuenta). Devuelve las páginas a abrir,
+ * limitadas por dominio para que un solo sitio no se lleve toda la búsqueda, y en el orden del
+ * buscador (lo más relevante primero).
+ */
+async function buscarEnLaWebAbierta(q, { excluir = new Set(), signal } = {}) {
+  if (!config.busqueda.searxngUrl) return [];
+  const porDominio = new Map();
+  const elegidas = [];
+  const vistas = new Set();
+  for (let pagina = 1; pagina <= config.busqueda.webPaginas; pagina++) {
+    if (signal?.aborted || elegidas.length >= config.busqueda.webAbiertoFichas) break;
+    const datos = await consultar(`${q} video`, pagina, { signal });
+    if (!datos) break;
+    const antes = vistas.size;
+    for (const res of datos.results || []) {
+      let u;
+      try {
+        u = new URL(res.url);
+      } catch {
+        continue;
+      }
+      if (!/^https?:$/.test(u.protocol) || vistas.has(u.href)) continue;
+      vistas.add(u.href);
+      const host = u.hostname.replace(/^www\./, '');
+      if ([...excluir].some(h => host === h || host.endsWith(`.${h}`))) continue;
+      if (NO_ES_FICHA.test(u.pathname)) continue;
+      const n = porDominio.get(host) || 0;
+      if (n >= config.busqueda.webAbiertoPorDominio) continue;
+      porDominio.set(host, n + 1);
+      elegidas.push(u.href);
+      if (elegidas.length >= config.busqueda.webAbiertoFichas) break;
+    }
+    if (vistas.size === antes) break;
+  }
+  return elegidas;
+}
+
+module.exports = { buscarEnWeb, buscarEnLaWebAbierta, consultaSite, hostDe };

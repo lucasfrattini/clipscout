@@ -47,6 +47,16 @@ progress, real cancellation and export.
   `{page:02}`) and **infinite scroll**.
 - **Auto-detection**: paste a results URL and it proposes the pattern,
   pagination and extensions, explaining each guess.
+- **Add sites by address**: paste one or more site addresses and a test term.
+  clipscout finds each site's search box, its pagination and which links are
+  videos, then runs a real test search. Only sites that return videos are
+  saved.
+- **Search all your sites at once**, and optionally **the whole web** (with a
+  SearXNG instance): sites you have not set up but that returned videos are
+  offered for one-click adding.
+- **Searches keep running on the server**: switching apps, locking the phone
+  or closing the tab does not stop them. Come back and the page picks up
+  where it left off.
 - **Saved configurations**: name a setup, load it later from any device, or
   copy a link that opens the app with everything filled in.
 - **Optional browser rendering** (bundled Chromium) for sites built with
@@ -296,6 +306,12 @@ running after you log out, use a process manager such as systemd or pm2.
 ---
 
 ## How to use it
+
+**Search** is the start page: type a name and it searches every saved site.
+To add sites, press **+ Add sites**, paste their addresses (one per line) and
+a term those sites have; the test result tells you which ones work.
+
+The **Explorer** is for going deep on one site by hand:
 
 1. **Addresses to explore** — the page where the walk starts. You can use
    `{q}` where the search term goes and `{page}` where the page number goes.

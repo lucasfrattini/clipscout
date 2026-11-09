@@ -3,6 +3,10 @@ import { el, clear, toast, enfocarAlAbrir } from '../dom.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
 import { chooseDialog } from '../components/dialog.js';
+import { altaSitiosDialog } from '../components/altaSitios.js';
+
+/** El «sitio» de lo encontrado en toda la web (no es una configuración guardada). */
+const ID_WEB = -1;
 
 /**
  * Buscar: la pantalla de inicio. Se escribe un nombre y se busca en TODOS los sitios guardados a la
@@ -46,7 +50,14 @@ export function createBuscarView(root) {
   let resultados = []; // { sitio, url, sourceUrl, title, thumbnail, duration, durationSeconds }
   let pestana = 'todos';
   let fuente = null;
+  // La búsqueda corre en el servidor: la página solo la mira. Se guarda por dónde iba para
+  // reengancharse si la conexión se corta (otra app, pantalla apagada…).
+  let trabajo = null; // id de la búsqueda en el servidor
+  let recibidos = 0; // eventos ya procesados
+  let reintento = null;
   let enBiblioteca = new Map(); // sourceUrl → coincidencia de clipkeeper
+  let sugeridos = []; // { dominio, videos }: sitios sin configurar que dieron vídeos en la web
+  let ultimaBusqueda = '';
 
   /* ── Formulario ─────────────────────────────────────────────────── */
   const entrada = el('input', {
@@ -60,7 +71,7 @@ export function createBuscarView(root) {
   const parar = el('button', {
     className: 'button button--secondary buscar__boton',
     attrs: { type: 'button', hidden: '' },
-    on: { click: () => terminar(true) },
+    on: { click: () => pararBusqueda() },
   });
   texto(parar, 'buscar.parar');
 
@@ -84,6 +95,22 @@ export function createBuscarView(root) {
     }
   });
   const etiquetaPaginas = el('label', { className: 'buscar__opcion', children: [paginas] });
+
+  // Alta de sitios con solo su dirección: clipscout la configura y la prueba.
+  const agregar = el('button', {
+    className: 'button button--secondary button--small',
+    attrs: { type: 'button' },
+    on: { click: () => abrirAlta({ termino: entrada.value.trim() }) },
+  });
+  async function abrirAlta({ dominios = [], termino = '' } = {}) {
+    const n = await altaSitiosDialog({ dominios, termino });
+    if (n > 0) {
+      toast(tp('alta.guardados', n), 'success', 4000);
+      sugeridos = sugeridos.filter(s => !dominios.includes(s.dominio));
+      await cargarSitios();
+      pintarResultados();
+    }
+  }
 
   // «Tipo Google» (site:sitio nombre) con el SearXNG del servidor, si lo hay.
   const CLAVE_WEB = 'clipscout:buscar-web';
@@ -114,7 +141,7 @@ export function createBuscarView(root) {
     children: [
       el('div', { className: 'buscar__fila', children: [entrada, boton, parar] }),
       chipsSitios,
-      el('div', { className: 'buscar__pie', children: [ayuda, etiquetaPaginas] }),
+      el('div', { className: 'buscar__pie', children: [ayuda, agregar, etiquetaPaginas] }),
     ],
     on: {
       submit: e => {
@@ -128,13 +155,14 @@ export function createBuscarView(root) {
   const pestanas = el('div', { className: 'buscar__pestanas', attrs: { role: 'tablist' } });
   // Estado de cada sitio mientras busca: así se ve que sigue trabajando y por dónde va.
   const progreso = el('ul', { className: 'buscar__progreso', attrs: { 'aria-live': 'polite' } });
+  const zonaSugeridos = el('div', { className: 'buscar__sugeridos', attrs: { hidden: '' } });
   const barra = el('div', { className: 'buscar__barra' });
   const rejilla = el('div', { className: 'buscar__rejilla' });
   const vacio = el('p', { className: 'buscar__vacio' });
   const zonaResultados = el('section', {
     className: 'buscar__resultados',
     attrs: { hidden: '' },
-    children: [progreso, pestanas, barra, vacio, rejilla],
+    children: [progreso, zonaSugeridos, pestanas, barra, vacio, rejilla],
   });
 
   const titulo = el('h2', { className: 'buscar__titulo', attrs: { id: 'buscar-heading' } });
@@ -320,6 +348,7 @@ export function createBuscarView(root) {
     }
     duracion.value = minActual;
     pintarDestinos();
+    agregar.textContent = t('buscar.agregarSitios');
     textoWeb.textContent = t('buscar.web');
     etiquetaWeb.title = t('buscar.web.titulo');
   }
@@ -336,9 +365,25 @@ export function createBuscarView(root) {
   }
 
   /* ── Búsqueda ───────────────────────────────────────────────────── */
-  function terminar(cancelado = false) {
+  /** Para la búsqueda EN EL SERVIDOR (cerrar la página ya no la para). */
+  async function pararBusqueda() {
+    const id = trabajo;
+    terminar(true);
+    if (id) {
+      await fetch(`/api/buscar/trabajos/${id}/parar`, { method: 'POST' }).catch(() => {});
+    }
+  }
+
+  function soltar() {
+    clearTimeout(reintento);
+    reintento = null;
     fuente?.close();
     fuente = null;
+  }
+
+  function terminar(cancelado = false) {
+    soltar();
+    trabajo = null;
     boton.hidden = false;
     parar.hidden = true;
     if (cancelado) {
@@ -358,6 +403,7 @@ export function createBuscarView(root) {
     }
     // La búsqueda web trae más, pero también mucho que no es: se pregunta cada vez.
     let conWeb = false;
+    let conAbierta = false;
     if (hayWeb) {
       const r = await chooseDialog({
         titleKey: 'buscar.webPregunta',
@@ -365,13 +411,15 @@ export function createBuscarView(root) {
         opciones: [
           { valor: 'no', titulo: t('buscar.webNo'), detalle: t('buscar.webNo.detalle') },
           { valor: 'si', titulo: t('buscar.webSi'), detalle: t('buscar.webSi.detalle') },
+          { valor: 'todo', titulo: t('buscar.webTodo'), detalle: t('buscar.webTodo.detalle') },
         ],
       });
       if (r === null) return;
-      conWeb = r === 'si';
+      conWeb = r === 'si' || r === 'todo';
+      conAbierta = r === 'todo';
     }
     const elegidos = sitios.filter(s => !apagados.has(s.nombre));
-    if (elegidos.length === 0) return;
+    if (elegidos.length === 0 && !conAbierta) return;
     fuente?.close();
     resultados = [];
     descartados.clear();
@@ -379,12 +427,16 @@ export function createBuscarView(root) {
     enBiblioteca = new Map();
     pestana = 'todos';
     estado = new Map(elegidos.map(s => [s.id, { fase: 'espera', total: 0 }]));
+    if (conAbierta) estado.set(ID_WEB, { fase: 'espera', total: 0 });
+    sugeridos = [];
+    ultimaBusqueda = q;
     zonaResultados.hidden = false;
     boton.hidden = true;
     parar.hidden = false;
 
     const query = new URLSearchParams({ q, paginas: paginas.value });
     if (conWeb) query.set('web', '1');
+    if (conAbierta) query.set('abierta', '1');
     if (elegidos.length < sitios.length) query.set('sitios', elegidos.map(s => s.id).join(','));
     try {
       // Fuera ?q= / ?searchTerm=: si quedara, recargar la página volvería a lanzar la búsqueda.
@@ -397,7 +449,33 @@ export function createBuscarView(root) {
       // sin URL: no pasa nada
     }
 
-    fuente = new EventSource(`/api/buscar/stream?${query}`);
+    let r;
+    try {
+      const resp = await fetch('/api/buscar/iniciar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(query)),
+      });
+      r = await resp.json();
+      if (!resp.ok) throw new Error(r.error || `HTTP ${resp.status}`);
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+      terminar();
+      return;
+    }
+    conectar(r.id, 0);
+    pintarResultados();
+  }
+
+  /** Se suscribe a la búsqueda `id` del servidor desde el evento `desde`. */
+  function conectar(id, desde) {
+    soltar();
+    trabajo = id;
+    recibidos = desde;
+    zonaResultados.hidden = false;
+    boton.hidden = true;
+    parar.hidden = false;
+    fuente = new EventSource(`/api/buscar/trabajos/${id}/stream?desde=${desde}`);
     fuente.onmessage = ev => {
       let m;
       try {
@@ -405,8 +483,18 @@ export function createBuscarView(root) {
       } catch {
         return;
       }
-      if (m.type === 'sitio_inicio') estado.set(m.sitio, { ...estado.get(m.sitio), fase: 'busca' });
-      else if (m.type === 'sitio_progreso') {
+      if (m.type === 'no_existe') return terminar();
+      if (Number.isInteger(m.seq)) {
+        if (m.seq < recibidos) return; // ya visto (al reengancharse)
+        recibidos = m.seq + 1;
+      }
+      if (m.type === 'sitios') {
+        for (const x of m.sitios || []) {
+          if (!estado.has(x.id)) estado.set(x.id, { fase: 'espera', total: 0 });
+        }
+      } else if (m.type === 'sitio_inicio') {
+        estado.set(m.sitio, { ...estado.get(m.sitio), fase: 'busca' });
+      } else if (m.type === 'sitio_progreso') {
         const previo = estado.get(m.sitio) || {};
         estado.set(
           m.sitio,
@@ -428,6 +516,8 @@ export function createBuscarView(root) {
           bloqueo: m.bloqueo,
           recortado: m.recortado,
         });
+      } else if (m.type === 'sitios_sugeridos') {
+        sugeridos = m.sugeridos || [];
       } else if (m.type === 'duplicados') {
         copias = new Map();
         for (const g of m.grupos) {
@@ -442,13 +532,17 @@ export function createBuscarView(root) {
       }
       pintarResultados();
     };
+    // La conexión se cortó (otra app, la pantalla se apagó, la red): la búsqueda sigue en el
+    // servidor, así que se vuelve a mirar desde el último evento visto.
     fuente.onerror = () => {
-      if (fuente) {
-        toast(t('api.sseCaida'), 'error', 6000);
-        terminar();
-      }
+      if (!fuente || trabajo !== id) return;
+      fuente.close();
+      fuente = null;
+      clearTimeout(reintento);
+      reintento = setTimeout(() => {
+        if (trabajo === id) conectar(id, recibidos);
+      }, 3000);
     };
-    pintarResultados();
   }
 
   /** Pregunta a clipkeeper cuáles ya están en la biblioteca (por título y duración). */
@@ -486,6 +580,15 @@ export function createBuscarView(root) {
   }
 
   /* ── Pintar ─────────────────────────────────────────────────────── */
+  const nombreSitio = id =>
+    id === ID_WEB ? t('buscar.webAbierta') : sitios.find(s => s.id === id)?.nombre || '';
+  const dominioDe = url => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return '';
+    }
+  };
   function pestanaBoton(id, etiqueta, n, e) {
     const activa = pestana === id;
     const marca = !e
@@ -521,8 +624,8 @@ export function createBuscarView(root) {
   }
 
   function tarjeta(r) {
-    const sitio = sitios.find(s => s.id === r.sitio);
     const enlace = r.sourceUrl || r.url;
+    const nombreDelSitio = r.sitio === ID_WEB ? dominioDe(enlace) : nombreSitio(r.sitio);
     const tengo = enBiblioteca.get(enlace);
     const imagen = r.thumbnail
       ? el('img', {
@@ -593,7 +696,7 @@ export function createBuscarView(root) {
               text: r.title || nombreDeUrl(r.url) || enlace,
               attrs: { title: r.title || enlace },
             }),
-            el('span', { className: 'buscar__sitio', text: sitio?.nombre || '' }),
+            el('span', { className: 'buscar__sitio', text: nombreDelSitio }),
           ],
         }),
         el('div', { className: 'buscar__acciones', children: acciones }),
@@ -617,7 +720,6 @@ export function createBuscarView(root) {
   }
 
   function lineaSitio(id, e) {
-    const s = sitios.find(x => x.id === id);
     let texto;
     if (e.fase === 'espera') texto = t('buscar.estado.cola');
     else if (e.fase === 'busca' && e.web) texto = t('buscar.estado.web');
@@ -634,7 +736,7 @@ export function createBuscarView(root) {
           className: enCurso ? 'buscar__girando' : 'buscar__hecho',
           text: enCurso ? '' : e.fase === 'error' ? '⚠' : '✓',
         }),
-        el('strong', { text: s?.nombre || '' }),
+        el('strong', { text: nombreSitio(id) }),
         el('span', { text: texto }),
       ],
     });
@@ -660,7 +762,7 @@ export function createBuscarView(root) {
                 className: 'button button--secondary button--small',
                 attrs: { type: 'button' },
                 text: t('buscar.parar'),
-                on: { click: () => terminar(true) },
+                on: { click: () => pararBusqueda() },
               })
             : null,
         ],
@@ -678,9 +780,9 @@ export function createBuscarView(root) {
       )
     );
     for (const [id, e] of estado) {
-      const s = sitios.find(x => x.id === id);
-      if (s) pestanas.append(pestanaBoton(id, s.nombre, e.total || 0, e));
+      if (nombreSitio(id)) pestanas.append(pestanaBoton(id, nombreSitio(id), e.total || 0, e));
     }
+    pintarSugeridos();
 
     const lista = visibles();
     clear(barra);
@@ -733,6 +835,23 @@ export function createBuscarView(root) {
     for (const r of lista) rejilla.append(tarjeta(r));
   }
 
+  function pintarSugeridos() {
+    clear(zonaSugeridos);
+    zonaSugeridos.hidden = sugeridos.length === 0;
+    if (sugeridos.length === 0) return;
+    zonaSugeridos.append(el('span', { text: t('buscar.sugeridos') }));
+    for (const s of sugeridos) {
+      zonaSugeridos.append(
+        el('button', {
+          className: 'button button--secondary button--small',
+          attrs: { type: 'button', title: tp('buscar.resultados', s.videos) },
+          text: `+ ${s.dominio} (${s.videos})`,
+          on: { click: () => abrirAlta({ dominios: [s.dominio], termino: ultimaBusqueda }) },
+        })
+      );
+    }
+  }
+
   alCambiarIdioma(() => {
     pintarSitios();
     pintarResultados();
@@ -756,13 +875,30 @@ export function createBuscarView(root) {
     }
   })();
   if (inicial || prellenado) entrada.value = inicial || prellenado;
+  /** Al abrir la página: si hay una búsqueda (en marcha o reciente) en el servidor, se muestra. */
+  async function reengancharse() {
+    try {
+      const { busqueda } = await fetch('/api/buscar/actual').then(x => x.json());
+      if (!busqueda) return;
+      entrada.value = busqueda.q;
+      ultimaBusqueda = busqueda.q;
+      resultados = [];
+      estado = new Map();
+      conectar(busqueda.id, 0);
+    } catch {
+      // sin búsqueda previa: la pantalla queda vacía, como siempre
+    }
+  }
+
   cargarSitios().then(() => {
     const hash = window.location.hash;
     if (inicial && (hash === '' || hash.startsWith('#/buscar'))) empezar();
+    else if (!prellenado) reengancharse();
   });
 
   return {
     focus: () => enfocarAlAbrir(entrada),
-    teardown: () => fuente?.close(),
+    // Solo deja de mirar: la búsqueda sigue en el servidor.
+    teardown: () => soltar(),
   };
 }

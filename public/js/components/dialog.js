@@ -36,7 +36,7 @@ const SELECTOR_FOCUSABLE =
  * función de baja, así que usarlos aquí dejaría un repintador colgado por
  * cada diálogo abierto y cerrado en la sesión.
  */
-function abrirDialogo({ role, titleKey, valorCancelar, render }) {
+export function abrirDialogo({ role, titleKey, valorCancelar, render }) {
   return new Promise(resolve => {
     const focoPrevio = document.activeElement;
     const tituloId = `dialog-title-${(contadorId += 1)}`;

@@ -124,6 +124,24 @@ const config = {
     // Imágenes para clipkeeper: fichas por sitio y tiempo máximo de la búsqueda
     imagenesPorSitio: intFromEnv('BUSQUEDA_IMAGENES_POR_SITIO', 8),
     imagenesMs: intFromEnv('BUSQUEDA_IMAGENES_MS', 60000),
+    // «En toda la web»: resultados del buscador que se abren buscando vídeo, y dominios distintos
+    webAbiertoFichas: intFromEnv('BUSQUEDA_WEB_ABIERTO_FICHAS', 24),
+    webAbiertoPorDominio: intFromEnv('BUSQUEDA_WEB_ABIERTO_POR_DOMINIO', 4),
+    // Búsquedas en segundo plano (siguen aunque se cierre la página): a la vez, tope de
+    // duración de cada una, y cuánto se conservan sus resultados tras terminar
+    fondoMaxActivas: intFromEnv('BUSQUEDA_FONDO_MAX_ACTIVAS', 2),
+    fondoMaxMs: intFromEnv('BUSQUEDA_FONDO_MAX_MS', 20 * 60 * 1000),
+    fondoConservarMs: intFromEnv('BUSQUEDA_FONDO_CONSERVAR_MS', 60 * 60 * 1000),
+  },
+
+  // Alta de un sitio con solo su dirección (services/autoSitio.js)
+  autoSitio: {
+    // Enlaces internos mínimos para dar una página por «listado de resultados»
+    minEnlaces: intFromEnv('AUTO_SITIO_MIN_ENLACES', 8),
+    // Fichas que abre la búsqueda de prueba
+    fichasDePrueba: intFromEnv('AUTO_SITIO_FICHAS_DE_PRUEBA', 4),
+    // Tiempo máximo por sitio; pasado, se da por fallido
+    maxMs: intFromEnv('AUTO_SITIO_MAX_MS', 180000),
   },
 
   throttle: {

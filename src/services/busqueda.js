@@ -5,7 +5,7 @@ const { readProfiles } = require('./profiles');
 const { crawl, normalizeCrawlParams } = require('./scraper');
 const { hasSearchTemplate, parseExtensionList } = require('../lib/url');
 const { mapLimit } = require('../lib/concurrency');
-const { buscarEnWeb } = require('./web');
+const { buscarEnWeb, buscarEnLaWebAbierta, hostDe } = require('./web');
 const { groupDuplicates } = require('../lib/dedupe');
 
 /**
@@ -35,12 +35,80 @@ async function listarSitios() {
     .filter(s => hasSearchTemplate(s.perfil.config.searchUrl || ''));
 }
 
+/** Id del «sitio» que agrupa lo encontrado en toda la web (no es una configuración guardada). */
+const ID_WEB_ABIERTA = -1;
+
+/** Lo que se busca en las páginas de sitios sin configurar. */
+const EXTENSIONES_ABIERTA = '.mp4, .webm, .m4v, .mov, .m3u8';
+
+/**
+ * «En toda la web»: el buscador da páginas de cualquier sitio que nombren lo buscado, y en cada
+ * una se busca el vídeo como en la fase 2. Al final se avisa de qué dominios dieron vídeos, para
+ * que se puedan dar de alta con un clic (services/autoSitio.js).
+ */
+async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems }) {
+  const id = ID_WEB_ABIERTA;
+  emit({ type: 'sitio_inicio', sitio: id });
+  let total = 0;
+  const conVideo = new Map(); // dominio → vídeos hallados
+  try {
+    const urls = await buscarEnLaWebAbierta(q, { excluir, signal });
+    emit({ type: 'sitio_progreso', sitio: id, enlaces: urls.length });
+    if (urls.length > 0 && !signal?.aborted) {
+      const params = normalizeCrawlParams({
+        searchUrl: urls[0],
+        searchTerm: '',
+        useJavaScript: true,
+        endPage: 1,
+        withThumbnails: true,
+      });
+      await crawl(
+        { ...params, extensions: parseExtensionList(EXTENSIONES_ABIERTA), maxLinks: urls.length },
+        {
+          signal,
+          linksPrevios: urls,
+          emit: evento => {
+            if (evento.type === 'files_found') {
+              const items = (evento.details || [])
+                .filter(Boolean)
+                .map(it => ({ ...it, web: true }));
+              total += items.length;
+              todosLosItems.push(...items);
+              for (const it of items) {
+                const h = hostDe(it.sourceUrl || it.pageUrl || it.url);
+                if (h) conVideo.set(h, (conVideo.get(h) || 0) + 1);
+              }
+              emit({ type: 'resultados', sitio: id, items });
+            } else if (evento.type === 'phase2_progress') {
+              emit({
+                type: 'sitio_progreso',
+                sitio: id,
+                hechos: evento.current,
+                enlaces: evento.total,
+              });
+            }
+          },
+        }
+      );
+    }
+    const sugeridos = [...conVideo.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([dominio, videos]) => ({ dominio, videos }));
+    if (sugeridos.length > 0) emit({ type: 'sitios_sugeridos', sugeridos });
+    emit({ type: 'sitio_fin', sitio: id, total });
+    return { id, total };
+  } catch (error) {
+    emit({ type: 'sitio_fin', sitio: id, total, error: error.message });
+    return { id, total, error: error.message };
+  }
+}
+
 /**
  * @param {object} entrada  { q, sitios: [ids] | null (todos) }
  * @param {object} opciones { signal, emit }
  */
 async function buscarEnTodos(
-  { q, sitios = null, paginas = null, web = false, enlaces = null },
+  { q, sitios = null, paginas = null, web = false, enlaces = null, abierta = false },
   { signal, emit = () => {} } = {}
 ) {
   const conWeb = web === true && Boolean(config.busqueda.searxngUrl);
@@ -54,7 +122,14 @@ async function buscarEnTodos(
   const todos = await listarSitios();
   const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : todos;
 
-  emit({ type: 'sitios', sitios: elegidos.map(s => ({ id: s.id, nombre: s.nombre })) });
+  const conAbierta = abierta === true && Boolean(config.busqueda.searxngUrl);
+  emit({
+    type: 'sitios',
+    sitios: [
+      ...elegidos.map(s => ({ id: s.id, nombre: s.nombre })),
+      ...(conAbierta ? [{ id: ID_WEB_ABIERTA, nombre: 'web', abierta: true }] : []),
+    ],
+  });
 
   const resumen = await mapLimit(elegidos, config.busqueda.sitiosALaVez, async sitio => {
     if (signal?.aborted) return { id: sitio.id, total: 0, cancelado: true };
@@ -149,6 +224,12 @@ async function buscarEnTodos(
     }
   });
 
+  if (conAbierta && !signal?.aborted) {
+    const excluir = new Set(todos.map(s => hostDe(s.perfil.config.searchUrl)).filter(Boolean));
+    const r = await buscarEnAbierta(q, { excluir, signal, emit, todosLosItems });
+    resumen.push(r);
+  }
+
   // Repetidos: el mismo vídeo en varios sitios (o en varias fichas). Como en el Explorador, no se
   // quita nada: se manda qué es copia de qué y la interfaz los pliega.
   const { grupos } = groupDuplicates(todosLosItems);
@@ -165,4 +246,4 @@ async function buscarEnTodos(
   return { sitios: resumen, total: resumen.reduce((n, r) => n + (r?.total || 0), 0) };
 }
 
-module.exports = { buscarEnTodos, listarSitios, nombreCorto };
+module.exports = { buscarEnTodos, listarSitios, nombreCorto, ID_WEB_ABIERTA };
