@@ -101,9 +101,20 @@ tag `vX.Y.Z` publishes `:X.Y.Z`. To use it instead of building, replace
 `build: .` with `image: ghcr.io/lucasfrattini/clipscout:latest` in
 `compose.yaml` and run `docker compose pull && docker compose up -d`.
 
-**The whole clip crew at once** (clipscout + clonbuster + clipkeeper), on any
-Debian/Ubuntu host or as a Proxmox VE container: see
+**The whole clip crew at once** (clipscout + clonbuster + clipkeeper) on any
+Debian/Ubuntu host; it installs Docker if it's missing:
+
+```bash
+git clone https://github.com/lucasfrattini/clipkeeper.git
+sudo MEDIA=/path/to/your/videos bash clipkeeper/deploy/instalar.sh
+```
+
+It ends up in `/opt/clipcrew`; running it again updates the images and keeps your data. For a
+Proxmox VE container, see
 [clipkeeper/deploy](https://github.com/lucasfrattini/clipkeeper/tree/main/deploy).
+
+**After installing:** open port `3001`. There is no login unless you set `ADMIN_PASSWORD` in `.env`.
+To link it with the other apps, see [Part of clip crew](#part-of-clip-crew).
 
 ---
 
