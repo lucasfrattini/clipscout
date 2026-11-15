@@ -168,6 +168,18 @@ const config = {
     maxEntradas: intFromEnv('CACHE_FICHAS_MAX', 3000),
   },
 
+  /**
+   * Duración que falta (services/duraciones.js): se pide la ficha por HTTP, sin navegador, a los
+   * resultados que llegaron sin duración. Pocas a la vez y con tope por búsqueda: es un extra.
+   */
+  duraciones: {
+    aLaVez: intFromEnv('DURACIONES_A_LA_VEZ', 2),
+    maxPorBusqueda: intFromEnv('DURACIONES_MAX_POR_BUSQUEDA', 60),
+    timeoutMs: intFromEnv('DURACIONES_TIMEOUT_MS', 8000),
+    // Lo que espera el final de la búsqueda a las que van en vuelo
+    esperaFinalMs: intFromEnv('DURACIONES_ESPERA_FINAL_MS', 30000),
+  },
+
   // Alta de un sitio con solo su dirección (services/autoSitio.js)
   autoSitio: {
     // Enlaces internos mínimos para dar una página por «listado de resultados»

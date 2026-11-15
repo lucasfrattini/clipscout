@@ -159,7 +159,17 @@ function buscar(termino, carpeta = '') {
     };
     baja = fondo.suscribir(id, 0, e => {
       if (e.type === 'resultados') items.push(...(e.items || []));
-      else if (e.type === 'error') error = e.message;
+      // La duración que llega después cuenta para la duración mínima.
+      else if (e.type === 'duracion') {
+        for (const d of e.items || []) {
+          for (const it of items) {
+            if (it.url === d.url && !Number.isFinite(it.durationSeconds)) {
+              it.durationSeconds = d.durationSeconds;
+              it.duration = d.duration;
+            }
+          }
+        }
+      } else if (e.type === 'error') error = e.message;
       if (e.type === 'fin' || e.type === 'error') acabar();
     });
     if (terminado) baja?.();

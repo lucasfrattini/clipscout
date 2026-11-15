@@ -989,6 +989,16 @@ export function createBuscarView(root) {
           bloqueo: m.bloqueo,
           recortado: m.recortado,
         });
+      } else if (m.type === 'duracion') {
+        // La duración que faltaba, pedida después a la ficha: solo rellena, nunca cambia una.
+        const nuevas = new Map((m.items || []).map(d => [d.url, d]));
+        for (const r of resultados) {
+          const d = nuevas.get(r.url);
+          if (d && !Number.isFinite(r.durationSeconds)) {
+            r.durationSeconds = d.durationSeconds;
+            r.duration = d.duration;
+          }
+        }
       } else if (m.type === 'listado_disponible') {
         listados.set(m.sitio, m.url);
       } else if (m.type === 'sitios_sugeridos') {

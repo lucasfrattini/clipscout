@@ -8,6 +8,7 @@ const config = require('../config');
 const logger = require('../lib/logger');
 const { buscarEnTodos, buscarEnlace } = require('./busqueda');
 const filtrosGlobales = require('./filtrosGlobales');
+const duraciones = require('./duraciones');
 const { idiomaProbable, bloqueadaPor, relevancia } = require('../lib/filtros');
 
 /**
@@ -271,6 +272,8 @@ function arrancar(b) {
   // Un sitio que se cortó a medias se recorre de nuevo desde el principio: lo que ya se había
   // encontrado en él no se vuelve a mandar (saldría repetido en la pantalla).
   const yaVistos = new Set(itemsPrevios.map(it => it.url));
+  // Lo que llega sin duración se completa después con una petición ligera (evento `duracion`).
+  const completador = duraciones.crear({ signal, publicar: evento => publicar(b, evento) });
   const emitir = evento => {
     if (evento.type === 'resultados' && yaVistos.size > 0) {
       const nuevos = (evento.items || []).filter(it => !yaVistos.has(it.url));
@@ -278,10 +281,15 @@ function arrancar(b) {
       evento = { ...evento, items: nuevos };
     }
     publicar(b, evento);
+    if (evento.type === 'resultados') completador.anotar(evento.items);
   };
   const buscar = entrada.url ? buscarEnlace : buscarEnTodos;
   buscar(entrada, { signal, emit: emitir, itemsPrevios })
-    .then(r => publicar(b, { type: 'fin', ...r, cancelada: signal.aborted }))
+    .then(async r => {
+      // Las duraciones en vuelo llegan ANTES del fin: quien mira cierra el stream con el `fin`.
+      if (!signal.aborted) await completador.esperar();
+      publicar(b, { type: 'fin', ...r, cancelada: signal.aborted });
+    })
     .catch(error => {
       logger.warn(`Error en la búsqueda: ${error.message}`);
       publicar(b, { type: 'error', message: error.message });
