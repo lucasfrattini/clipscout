@@ -68,6 +68,8 @@ progress, real cancellation and export.
 - **Send to JDownloader**: one click sends the results to JDownloader 2 as a
   single package, into the folder you choose — see
   [Sending to JDownloader](#sending-to-jdownloader).
+- **Play in place**: a ▶ button plays a result inside its card. The video is streamed through
+  your server (seeking works), so the browser never talks to the site.
 - **Scheduled searches** (_Settings_): a saved search repeats every few days and sends only
   what is new to JDownloader — with a minimum length, words it must or must not contain, and
   a person or category for clipkeeper. Starts empty.
