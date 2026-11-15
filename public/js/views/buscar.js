@@ -33,6 +33,12 @@ function tipoDeEntrada(texto) {
 
 const CLAVE_SITIOS = 'clipscout:buscar-apagados';
 
+/**
+ * Miniaturas que ya fallaron en esta página. La rejilla se rehace con cada tanda de resultados y
+ * cada <img> nuevo volvía a pedir la misma imagen rota: estas salen ya como hueco, sin petición.
+ */
+const miniaturasRotas = new Set();
+
 function leerApagados() {
   try {
     return new Set(JSON.parse(localStorage.getItem(CLAVE_SITIOS) || '[]'));
@@ -1116,20 +1122,23 @@ export function createBuscarView(root) {
     if (reproduciendo?.enlace === enlace) return reproduciendo.tarjeta;
     const nombreDelSitio = r.sitio === ID_WEB ? dominioDe(enlace) : nombreSitio(r.sitio);
     const tengo = enBiblioteca.get(enlace);
-    const imagen = r.thumbnail
-      ? el('img', {
-          attrs: {
-            src: `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}`,
-            alt: '',
-            loading: 'lazy',
-          },
-          // Si el sitio no la da, el hueco de siempre en vez de una imagen rota
-          on: {
-            error: e =>
-              e.currentTarget.replaceWith(el('span', { className: 'buscar__sin', text: '▶' })),
-          },
-        })
-      : el('span', { className: 'buscar__sin', text: '▶' });
+    const imagen =
+      r.thumbnail && !miniaturasRotas.has(r.thumbnail)
+        ? el('img', {
+            attrs: {
+              src: `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}`,
+              alt: '',
+              loading: 'lazy',
+            },
+            // Si el sitio no la da, el hueco de siempre en vez de una imagen rota
+            on: {
+              error: e => {
+                miniaturasRotas.add(r.thumbnail);
+                e.currentTarget.replaceWith(el('span', { className: 'buscar__sin', text: '▶' }));
+              },
+            },
+          })
+        : el('span', { className: 'buscar__sin', text: '▶' });
     const acciones = [
       el('a', {
         className: 'button button--secondary button--small',

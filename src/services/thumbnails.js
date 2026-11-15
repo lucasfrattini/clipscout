@@ -108,6 +108,32 @@ class CacheDeMiniaturas {
 const cache = new CacheDeMiniaturas();
 
 /**
+ * Caché NEGATIVA: miniaturas que ya fallaron (404, sitio caído, no era una imagen). Durante unos
+ * minutos se contesta el mismo error sin volver a pedirla: la rejilla de Buscar se repinta con
+ * cada tanda de resultados y cada repintado volvía a pedir al sitio la misma imagen rota.
+ */
+const fallidas = new Map(); // url → { hasta, error: AppError }
+
+function fallidaVigente(url) {
+  const f = fallidas.get(url);
+  if (!f) return null;
+  if (f.hasta <= Date.now()) {
+    fallidas.delete(url);
+    return null;
+  }
+  return f.error;
+}
+
+function apuntarFallo(url, error) {
+  if (config.thumbnails.negativeTtlMs <= 0) return;
+  fallidas.delete(url);
+  fallidas.set(url, { hasta: Date.now() + config.thumbnails.negativeTtlMs, error });
+  while (fallidas.size > config.thumbnails.cacheMaxEntries * 4) {
+    fallidas.delete(fallidas.keys().next().value);
+  }
+}
+
+/**
  * Descarga (o recupera de caché) una miniatura.
  *
  * Pasa por las mismas validaciones que cualquier otra petición saliente:
@@ -117,6 +143,8 @@ async function obtenerMiniatura(urlPedida, { signal } = {}) {
   const url = limpiarUrlImagen(urlPedida);
   const enCache = cache.get(url);
   if (enCache) return { ...enCache, deCache: true };
+  const yaFallo = fallidaVigente(url);
+  if (yaFallo) throw yaFallo;
 
   await assertUrlIsSafe(url);
 
@@ -135,11 +163,14 @@ async function obtenerMiniatura(urlPedida, { signal } = {}) {
   } catch (error) {
     // El sitio no la da (404, conexión cortada…): es un fallo del origen, no nuestro.
     const estado = error?.response?.status;
-    throw new AppError(
+    const fallo = new AppError(
       `No se pudo traer la miniatura${estado ? ` (HTTP ${estado})` : ''}`,
       estado === 404 ? 404 : 502,
       'THUMBNAIL_UNAVAILABLE'
     );
+    // Si la cancelamos nosotros (el navegador cerró la petición) no es un fallo del sitio.
+    if (!signal?.aborted) apuntarFallo(url, fallo);
+    throw fallo;
   }
 
   const buffer = Buffer.from(respuesta.data);
@@ -151,7 +182,13 @@ async function obtenerMiniatura(urlPedida, { signal } = {}) {
   // No se sirve lo que no sea una imagen: sin esto, este endpoint sería un
   // proxy genérico para cualquier contenido.
   if (!TIPOS_PERMITIDOS.test(contentType)) {
-    throw new AppError(`El destino no devolvió una imagen (${contentType})`, 415, 'NOT_AN_IMAGE');
+    const fallo = new AppError(
+      `El destino no devolvió una imagen (${contentType})`,
+      415,
+      'NOT_AN_IMAGE'
+    );
+    apuntarFallo(url, fallo);
+    throw fallo;
   }
 
   const entrada = { buffer, contentType };
@@ -164,6 +201,7 @@ async function obtenerMiniatura(urlPedida, { signal } = {}) {
 module.exports = {
   obtenerMiniatura,
   cache,
+  fallidas,
   CacheDeMiniaturas,
   TIPOS_PERMITIDOS,
   tipoPorFirma,

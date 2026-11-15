@@ -56,6 +56,14 @@ router.get('/thumbnail', async (req, res, next) => {
     res.set('X-Thumbnail-Cache', deCache ? 'hit' : 'miss');
     res.send(buffer);
   } catch (error) {
+    // Una miniatura que no se pudo traer tampoco debe pedirla otra vez el navegador en cada
+    // repintado: el mismo rato que la recuerda el servidor como fallida.
+    if (error?.code === 'THUMBNAIL_UNAVAILABLE' || error?.code === 'NOT_AN_IMAGE') {
+      res.set(
+        'Cache-Control',
+        `private, max-age=${Math.round(config.thumbnails.negativeTtlMs / 1000)}`
+      );
+    }
     next(error);
   }
 });
