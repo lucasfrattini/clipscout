@@ -426,6 +426,56 @@ function thumbnailFromJsonLd($) {
   return encontrada;
 }
 
+/** Una URL sin consulta ni fragmento: el token de acceso (`?secure=…`) cambia entre cargas. */
+function sinConsulta(url) {
+  try {
+    const u = new URL(url);
+    return `${u.origin}${u.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Los ficheros que la ficha DECLARA como su vídeo: `contentUrl` del JSON-LD y `og:video`.
+ *
+ * Hay sitios que sirven el fichero con un identificador propio (un uuid de su CDN) que no
+ * se parece en nada al de la ficha, y relevance.js lo marcaba como posible anuncio: se
+ * perdía la duración de un vídeo que era justo el bueno. Si la página dice cuál es su
+ * vídeo, es una señal más fuerte que comparar identificadores.
+ *
+ * Devuelve un Set de URLs sin consulta (ver sinConsulta).
+ */
+function extractDeclaredVideoUrls(html, baseUrl) {
+  const declaradas = new Set();
+  if (!esDocumento(html) && (typeof html !== 'string' || html.trim() === '')) return declaradas;
+  const $ = asDocument(html);
+  const anadir = valor => {
+    if (typeof valor !== 'string' || !valor.trim()) return;
+    const absoluta = toAbsoluteUrl(valor.trim(), baseUrl);
+    const limpia = absoluta && sinConsulta(absoluta);
+    if (limpia) declaradas.add(limpia);
+  };
+
+  $(
+    'meta[property="og:video"], meta[property="og:video:url"], meta[property="og:video:secure_url"]'
+  ).each((_, el) => anadir($(el).attr('content')));
+  $('script[type="application/ld+json"]').each((_, element) => {
+    try {
+      const buscar = valor => {
+        if (!valor || typeof valor !== 'object') return;
+        if (Array.isArray(valor)) return valor.forEach(buscar);
+        anadir(valor.contentUrl);
+        for (const anidado of Object.values(valor)) buscar(anidado);
+      };
+      buscar(JSON.parse($(element).text()));
+    } catch {
+      // JSON-LD roto: no es motivo para fallar
+    }
+  });
+  return declaradas;
+}
+
 /**
  * Título de la ficha: lo que el sitio declara para compartirla (og:title), o el <title>.
  * Del documento YA parseado en la fase 2, así que no cuesta nada. Se recorta el sufijo
@@ -446,6 +496,8 @@ function extractTitle(html) {
 }
 
 module.exports = {
+  extractDeclaredVideoUrls,
+  sinConsulta,
   extractTitle,
   extractThumbnail,
   extractFileThumbnails,

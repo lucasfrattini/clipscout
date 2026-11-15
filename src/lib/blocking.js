@@ -45,11 +45,16 @@ const MARCAS_HTML = [
   { patron: 'access denied', motivo: 'es una página de acceso denegado' },
   { patron: 'acceso denegado', motivo: 'es una página de acceso denegado' },
 
-  // Captcha
-  { patron: 'g-recaptcha', motivo: 'hay un captcha en la página' },
-  { patron: 'h-captcha', motivo: 'hay un captcha en la página' },
-  { patron: 'recaptcha/api.js', motivo: 'hay un captcha en la página' },
+  // Captcha. Solo en una página pequeña: muchos sitios llevan uno en el formulario de registro
+  // o de comentarios de TODAS sus páginas, y marcar por eso un listado completo y sano como
+  // bloqueado hizo que se descartara un sitio que funcionaba.
+  { patron: 'g-recaptcha', motivo: 'hay un captcha en la página', soloPaginaCorta: true },
+  { patron: 'h-captcha', motivo: 'hay un captcha en la página', soloPaginaCorta: true },
+  { patron: 'recaptcha/api.js', motivo: 'hay un captcha en la página', soloPaginaCorta: true },
 ];
+
+/** Una página de verificación ocupa unos KB; un listado o una ficha, cientos. */
+const PAGINA_CORTA = 64 * 1024;
 
 /**
  * Códigos de estado que, en un scraper, suelen significar bloqueo.
@@ -83,7 +88,8 @@ function analizarRespuesta({ status = null, html = null } = {}) {
 
   if (typeof html === 'string' && html !== '') {
     const texto = html.toLowerCase();
-    for (const { patron, motivo } of MARCAS_HTML) {
+    for (const { patron, motivo, soloPaginaCorta } of MARCAS_HTML) {
+      if (soloPaginaCorta && html.length >= PAGINA_CORTA) continue;
       if (texto.includes(patron)) motivos.add(motivo);
     }
 

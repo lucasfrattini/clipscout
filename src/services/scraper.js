@@ -15,6 +15,7 @@ const {
 } = require('../lib/url');
 const { detectLicense } = require('../lib/license');
 const {
+  extractDeclaredVideoUrls,
   extractDurationSeconds,
   extractSizeBytes,
   extractThumbnail,
@@ -422,7 +423,11 @@ async function findFiles(urls, options) {
         // Una ficha no contiene solo su vídeo: también los clips de vista
         // previa de los relacionados y los anuncios de terceros. Se separa
         // el grano de la paja ANTES de estampar nada.
-        const { files: clasificados, discarded } = selectRelevantFiles(candidatos, url);
+        const { files: clasificados, discarded } = selectRelevantFiles(
+          candidatos,
+          url,
+          extractDeclaredVideoUrls(doc, url)
+        );
         if (discarded.length > 0) {
           descartados += discarded.length;
           logger.debug(`Descartados ${discarded.length} ficheros ajenos en ${url}`);

@@ -131,6 +131,9 @@ test('analizarRespuesta: señales de cuerpo y de estado', () => {
   assert.ok(analizarRespuesta({ status: 429 }).sospechoso);
   assert.ok(analizarRespuesta({ html: '<div>Just a moment...</div>' }).sospechoso);
   assert.ok(analizarRespuesta({ html: '<div class="g-recaptcha"></div>' }).sospechoso);
+  // El mismo captcha en el formulario de registro de un listado completo no es un bloqueo
+  const listado = `<div class="g-recaptcha"></div>${'<a href="/video/1">v</a>'.repeat(4000)}`;
+  assert.strictEqual(analizarRespuesta({ html: listado }).sospechoso, false);
   assert.ok(analizarRespuesta({ html: 'Incapsula incident ID: 1234' }).sospechoso);
 
   // Entrada vacía no inventa señales

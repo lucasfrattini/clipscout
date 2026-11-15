@@ -1,6 +1,7 @@
 'use strict';
 
 const { alojamientoGratuito } = require('./alojamientos');
+const { sinConsulta } = require('./media');
 
 /**
  * ¿Qué fichero de una ficha es DE VERDAD el de esa ficha?
@@ -107,10 +108,12 @@ function sharesIdentity(fileUrl, tokens) {
 /**
  * Clasifica los ficheros encontrados en una ficha.
  *
+ * @param {Set<string>} [declaradas] ficheros que la ficha declara como su vídeo (JSON-LD
+ *   `contentUrl`, `og:video`), sin consulta: ver extractDeclaredVideoUrls en media.js.
  * @returns {{files: Array<{url:string, suspect:boolean, reason:string|null}>,
  *            discarded: Array<{url:string, reason:string}>}}
  */
-function selectRelevantFiles(candidates, pageUrl) {
+function selectRelevantFiles(candidates, pageUrl, declaradas = new Set()) {
   const tokens = extractPageTokens(pageUrl);
 
   const verificados = [];
@@ -138,7 +141,13 @@ function selectRelevantFiles(candidates, pageUrl) {
 
     // Un alojamiento de vídeo conocido (normalizado por lib/alojamientos.js) no lleva el nombre del
     // vídeo en la URL, solo un identificador: es el reproductor de la propia ficha, no un intruso.
-    if (sharesIdentity(url, tokens) || sinIdentificador || alojamientoGratuito(url)) {
+    // Y si la ficha declara ese fichero como su vídeo, lo es aunque el CDN le ponga otro id.
+    if (
+      sharesIdentity(url, tokens) ||
+      sinIdentificador ||
+      alojamientoGratuito(url) ||
+      declaradas.has(sinConsulta(url))
+    ) {
       verificados.push({ url, suspect: false, reason: null });
       continue;
     }

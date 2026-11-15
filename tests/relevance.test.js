@@ -193,3 +193,36 @@ test('sizeLooksInconsistent', async t => {
     assert.equal(sizeLooksInconsistent(600, null), false);
   });
 });
+
+test('selectRelevantFiles — caso E: el CDN pone su propio id, pero la ficha lo declara', async t => {
+  // La ficha /video.ab12cd34/… sirve un fichero bajo un uuid del CDN: no comparte id, y sin
+  // más señal salía como dudoso y SIN duración, aunque era el vídeo bueno.
+  const { extractDeclaredVideoUrls } = require('../src/lib/media');
+  const ficha = 'https://ejemplo.com/video.ab12cd34/titulo_del_video';
+  const fichero = 'https://cdn.ejemplo.net/65171b81-e6d0-43bb/4/mp4_sd.mp4?secure=tok1';
+  const html = `<html><head><script type="application/ld+json">
+    {"@type":"VideoObject","duration":"PT00H18M01S","contentUrl":"https://cdn.ejemplo.net/65171b81-e6d0-43bb/4/mp4_sd.mp4?secure=tok2"}
+  </script></head><body></body></html>`;
+  const declaradas = extractDeclaredVideoUrls(html, ficha);
+
+  await t.test('lo da por verificado aunque cambie el token de la consulta', () => {
+    const { files } = selectRelevantFiles([fichero], ficha, declaradas);
+    assert.equal(files.length, 1);
+    assert.equal(files[0].suspect, false);
+  });
+
+  await t.test('sin la declaración sigue siendo dudoso', () => {
+    const { files } = selectRelevantFiles([fichero], ficha);
+    assert.equal(files[0].suspect, true);
+  });
+
+  await t.test('una vista previa declarada sigue siendo vista previa', () => {
+    const muestra = 'https://cdn.ejemplo.net/x/preview.mp4';
+    const { files } = selectRelevantFiles(
+      [muestra],
+      ficha,
+      new Set(['https://cdn.ejemplo.net/x/preview.mp4'])
+    );
+    assert.equal(files[0].suspect, true);
+  });
+});
