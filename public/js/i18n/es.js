@@ -480,6 +480,25 @@ export const es = {
   'video.progreso.via.encontrados.uno': 'encontró 1 vídeo',
   'video.progreso.via.encontrados.varios': 'encontró {n} vídeos',
 
+  /* ── Uso responsable ───────────────────────────────────────────── */
+  'aviso.titulo': 'Antes de empezar',
+  'aviso.intro':
+    'clipscout es una herramienta: busca en las webs que tú añadas y lee solo lo que esas páginas ya muestran a cualquier visitante. No trae ningún sitio, no aloja contenido y no se salta protecciones (DRM, muros de pago, inicios de sesión ni captchas). Tú decides qué buscas y qué descargas, y eres responsable de ello:',
+  'aviso.p1':
+    'Descarga solo contenido que tengas derecho a descargar: tuyo, con licencia libre o con permiso de su autor.',
+  'aviso.p2':
+    'Respeta las condiciones de uso de cada sitio y las leyes de tu país, incluidos los derechos de autor.',
+  'aviso.p3': 'No descargues ni compartas contenido de otras personas sin su consentimiento.',
+  'aviso.p4': 'Nunca uses clipscout para buscar o guardar contenido ilegal.',
+  'aviso.acepto': 'He leído estas condiciones y las acepto.',
+  'aviso.boton': 'Aceptar y empezar',
+  'aviso.mas': 'Más información',
+  'aviso.buscar':
+    'Usa clipscout solo con contenido que tengas derecho a descargar y respeta las condiciones de cada sitio.',
+  'aviso.enlace': 'Uso responsable',
+  'aviso.alta':
+    'Añade solo sitios cuyas condiciones permitan descargar su contenido. clipscout lee lo que la página muestra a cualquier visitante; no se salta inicios de sesión, muros de pago ni protecciones.',
+
   /* ── Guía de bienvenida y ayudas del menú ─────────────────────── */
   'tip.buscar': 'Busca en todos tus sitios a la vez, o pega un enlace para sacar sus vídeos',
   'tip.explorador': 'Explorar páginas a mano, con filtros y opciones avanzadas',

@@ -621,3 +621,38 @@ a.cc-guia-app:hover {
   padding: 14px;
   font-size: 1rem;
 }
+
+/* Condiciones de uso de clipscout (primera vez) */
+.cc-aviso-lista {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  color: var(--cc-texto);
+  line-height: 1.5;
+}
+.cc-aviso-acepto {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid var(--cc-borde-fuerte);
+  border-radius: var(--cc-radio);
+  font-weight: 600;
+  cursor: pointer;
+}
+.cc-aviso-acepto input {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cc-acento);
+}
+.cc-guia-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+a.cc-guia-btn {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}

@@ -1,5 +1,5 @@
 import { el, clear } from '../dom.js';
-import { t, tp } from '../i18n/index.js';
+import { t, tp, texto } from '../i18n/index.js';
 import { autoSitio, guardarSitios } from '../api.js';
 import { abrirDialogo } from './dialog.js';
 
@@ -52,7 +52,9 @@ export function altaSitiosDialog({ dominios = [], termino = '' } = {}) {
       prueba.value = termino;
       const lista = el('ul', { className: 'alta__lista', attrs: { 'aria-live': 'polite' } });
       cuerpo.classList.add('alta');
-      cuerpo.append(ayuda, etiquetaSitios, sitios, etiquetaTermino, prueba, lista);
+      const aviso = el('p', { className: 'dialog__text alta__aviso', attrs: { role: 'note' } });
+      texto(aviso, 'aviso.alta');
+      cuerpo.append(ayuda, aviso, etiquetaSitios, sitios, etiquetaTermino, prueba, lista);
 
       /** dominio → { fase: 'cola'|'prueba'|'ok'|'mal'|'ya', r } */
       let filas = new Map();

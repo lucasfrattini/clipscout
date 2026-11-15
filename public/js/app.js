@@ -155,12 +155,104 @@ async function main() {
   initRouter(views);
   await initCrewCabecera(document.getElementById('crew-apps'));
   document.getElementById('guia').addEventListener('click', mostrarGuia);
+  await aceptarAviso();
   if (!window.guiaVista('clipscout')) mostrarGuia();
 
   // Abortar los streams en curso al cerrar la pestaña, para que el servidor
   // no siga scrapeando en vano.
   window.addEventListener('beforeunload', () => {
     for (const view of Object.values(views)) view.teardown?.();
+  });
+}
+
+/**
+ * Condiciones de uso: la primera vez hay que leerlas y aceptarlas antes de usar clipscout. Se
+ * recuerda en el navegador (cookie, que no depende del puerto, y localStorage) con la fecha.
+ */
+const CLAVE_AVISO = 'cs-aviso-uso';
+function avisoAceptado() {
+  if (document.cookie.split('; ').some(c => c.startsWith(`${CLAVE_AVISO}=`))) return true;
+  try {
+    return Boolean(localStorage.getItem(CLAVE_AVISO));
+  } catch {
+    return false;
+  }
+}
+function aceptarAviso() {
+  if (avisoAceptado()) return Promise.resolve();
+  return new Promise(resolver => {
+    const nodo = (tag, props = {}, ...hijos) => {
+      const n = Object.assign(document.createElement(tag), props);
+      n.append(...hijos);
+      return n;
+    };
+    const casilla = nodo('input', { type: 'checkbox', id: 'aviso-acepto' });
+    const boton = nodo('button', {
+      type: 'button',
+      className: 'cc-guia-btn prim',
+      disabled: true,
+      textContent: t('aviso.boton'),
+    });
+    casilla.addEventListener('change', () => (boton.disabled = !casilla.checked));
+    const fondo = nodo(
+      'div',
+      { className: 'cc-guia-fondo' },
+      nodo(
+        'div',
+        { className: 'cc-guia cc-aviso' },
+        nodo(
+          'div',
+          { className: 'cc-guia-cab' },
+          nodo('img', { src: '/img/crew/clipscout.png', alt: '' }),
+          nodo(
+            'div',
+            {},
+            nodo('span', { className: 'cc-guia-eyebrow', textContent: 'Clipgeist · clipscout' }),
+            nodo('h2', { textContent: t('aviso.titulo') })
+          )
+        ),
+        nodo('p', { className: 'cc-guia-lead', textContent: t('aviso.intro') }),
+        nodo(
+          'ul',
+          { className: 'cc-aviso-lista' },
+          ...['p1', 'p2', 'p3', 'p4'].map(k => nodo('li', { textContent: t(`aviso.${k}`) }))
+        ),
+        nodo(
+          'label',
+          { className: 'cc-aviso-acepto' },
+          casilla,
+          nodo('span', { textContent: t('aviso.acepto') })
+        ),
+        nodo(
+          'div',
+          { className: 'cc-guia-botones' },
+          nodo('a', {
+            className: 'cc-guia-btn',
+            href: 'https://clipgeist.com/#uso',
+            target: '_blank',
+            rel: 'noopener',
+            textContent: t('aviso.mas'),
+          }),
+          boton
+        )
+      )
+    );
+    fondo.setAttribute('role', 'dialog');
+    fondo.setAttribute('aria-modal', 'true');
+    fondo.setAttribute('aria-label', t('aviso.titulo'));
+    boton.addEventListener('click', () => {
+      const fecha = new Date().toISOString();
+      document.cookie = `${CLAVE_AVISO}=${fecha}; max-age=315360000; path=/; samesite=lax`;
+      try {
+        localStorage.setItem(CLAVE_AVISO, fecha);
+      } catch {
+        /* queda la cookie */
+      }
+      fondo.remove();
+      resolver();
+    });
+    document.body.append(fondo);
+    casilla.focus();
   });
 }
 

@@ -245,6 +245,19 @@ export function createBuscarView(root) {
     children: [tituloCola, listaCola],
   });
 
+  // Aviso fijo de uso responsable, siempre visible bajo la caja de búsqueda.
+  const avisoTexto = el('span');
+  texto(avisoTexto, 'aviso.buscar');
+  const avisoEnlace = el('a', {
+    attrs: { href: 'https://clipgeist.com/#uso', target: '_blank', rel: 'noopener' },
+  });
+  texto(avisoEnlace, 'aviso.enlace');
+  const avisoUso = el('p', {
+    className: 'buscar__aviso',
+    attrs: { role: 'note' },
+    children: [avisoTexto, ' ', avisoEnlace],
+  });
+
   const form = el('form', {
     className: 'buscar__form',
     children: [
@@ -261,6 +274,7 @@ export function createBuscarView(root) {
           }),
         ],
       }),
+      avisoUso,
     ],
     on: {
       submit: e => {

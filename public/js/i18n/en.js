@@ -479,6 +479,24 @@ export const en = {
   'video.progreso.via.encontrados.uno': 'found 1 video',
   'video.progreso.via.encontrados.varios': 'found {n} videos',
 
+  /* ── Uso responsable ───────────────────────────────────────────── */
+  'aviso.titulo': 'Before you start',
+  'aviso.intro':
+    'clipscout is a tool: it searches the sites you add and only reads what those pages already show to any visitor. It ships with no sites, hosts no content and does not get past protections (DRM, paywalls, logins or CAPTCHAs). You decide what you search for and download, and you are responsible for it:',
+  'aviso.p1':
+    "Only download content you have the right to download: your own, freely licensed, or with the author's permission.",
+  'aviso.p2': "Follow each site's terms of use and the laws of your country, including copyright.",
+  'aviso.p3': "Do not download or share other people's content without their consent.",
+  'aviso.p4': 'Never use clipscout to search for or keep illegal content.',
+  'aviso.acepto': 'I have read these terms and accept them.',
+  'aviso.boton': 'Accept and start',
+  'aviso.mas': 'Learn more',
+  'aviso.buscar':
+    "Only use clipscout with content you have the right to download, and follow each site's terms.",
+  'aviso.enlace': 'Responsible use',
+  'aviso.alta':
+    'Only add sites whose terms allow downloading their content. clipscout reads what the page shows to any visitor; it does not get past logins, paywalls or protections.',
+
   /* ── Guía de bienvenida y ayudas del menú ─────────────────────── */
   'tip.buscar': 'Search all your sites at once, or paste a link to pull its videos',
   'tip.explorador': 'Explore pages by hand, with filters and advanced options',

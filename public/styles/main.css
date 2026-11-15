@@ -3572,3 +3572,26 @@ a {
   font-size: 13.5px;
   line-height: 1.5;
 }
+
+/* Uso responsable: aviso fijo bajo el buscador y en el alta de sitios */
+.buscar__aviso {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--cc-radio-chico, 8px);
+  background: var(--cc-aviso-suave, #fff4e5);
+  color: var(--cc-aviso, #b54708);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.buscar__aviso a,
+.cc-aviso a {
+  color: inherit;
+  font-weight: 600;
+}
+.alta__aviso {
+  padding: 8px 12px;
+  border-radius: var(--cc-radio-chico, 8px);
+  background: var(--cc-aviso-suave, #fff4e5);
+  color: var(--cc-aviso, #b54708);
+  font-size: 0.85rem;
+}
