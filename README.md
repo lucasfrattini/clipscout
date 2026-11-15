@@ -56,7 +56,13 @@ progress, real cancellation and export.
   offered for one-click adding.
 - **Searches keep running on the server**: switching apps, locking the phone
   or closing the tab does not stop them. Come back and the page picks up
-  where it left off.
+  where it left off. Extra searches wait in a **queue** (paste several, one per
+  line, optionally `term → folder`), and running or queued searches **resume
+  after a restart**.
+- **Result filters and relevance**: must contain / hide if it contains, likely
+  language, exact phrase, sort by relevance, and global **always-blocked
+  words** that also apply to scheduled searches and to JDownloader. Hidden
+  results are counted and can be shown. Albums fold into one card.
 - **Saved configurations**: name a setup, load it later from any device, or
   copy a link that opens the app with everything filled in.
 - **Optional browser rendering** (bundled Chromium) for sites built with
@@ -67,7 +73,10 @@ progress, real cancellation and export.
   embedded players, scripts).
 - **Send to JDownloader**: one click sends the results to JDownloader 2 as a
   single package, into the folder you choose — see
-  [Sending to JDownloader](#sending-to-jdownloader).
+  [Sending to JDownloader](#sending-to-jdownloader). clipscout follows each
+  package (_Settings_): when JDownloader can't open a page it sends the direct
+  file instead, and when a package finishes it asks clipkeeper to scan that
+  folder.
 - **Play in place**: a ▶ button plays a result inside its card. The video is streamed through
   your server (seeking works), so the browser never talks to the site.
 - **Scheduled searches** (_Settings_): a saved search repeats every few days and sends only
@@ -75,6 +84,8 @@ progress, real cancellation and export.
   a person or category for clipkeeper. Starts empty.
 - **Works with clip crew**: lists your clipkeeper folders as download
   destinations and tells you which videos you already have.
+- **Per-site numbers** (_Settings → Sites_): searches, results, how many with
+  length, blocks, sent, already owned and failed downloads.
 - **Outbound proxy** (`OUTBOUND_PROXY`) for networks that block some sites.
 - **Safe to run**: SSRF protection, per-host throttling, rate limiting, memory
   and time caps. English and Spanish interface.
