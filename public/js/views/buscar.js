@@ -205,6 +205,8 @@ export function createBuscarView(root) {
   let excluir = []; // ninguna de estas
   let idiomaFiltro = ''; // '' = cualquiera; un resultado «dudoso» no se oculta nunca
   let verOcultos = false;
+  let soloFrase = false; // «frase exacta»: oculta (con contador) lo que no la lleva seguida
+  let orden = 'llegada'; // 'llegada' | 'relevancia' | 'duracion'
   const textos = new WeakMap(); // resultado → texto normalizado (se repinta con cada tanda)
   const textoNormal = r => {
     if (!textos.has(r)) textos.set(r, textoDe(r));
@@ -215,6 +217,8 @@ export function createBuscarView(root) {
     if (r.bloqueada) return 'bloqueada';
     if (excluir.length && contieneAlguna(textoNormal(r), excluir)) return 'excluir';
     if (contener.length && !contieneAlguna(textoNormal(r), contener)) return 'contener';
+    // Sin dato (un enlace pegado no tiene término) no se oculta: no se sabe.
+    if (soloFrase && r.frase === false) return 'frase';
     if (idiomaFiltro && r.idioma && r.idioma !== 'dudoso' && r.idioma !== idiomaFiltro) {
       return 'idioma';
     }
@@ -270,9 +274,31 @@ export function createBuscarView(root) {
   const enPestana = r =>
     (pestana === 'todos' || r.sitio === pestana) && !descartados.has(r.sourceUrl || r.url);
   /** Lo que se ve. `conOcultos`: también lo que esconden los filtros (marcado como tal). */
+  /**
+   * Orden elegido. Los que no tienen el dato van siempre al final (la misma regla que la lista del
+   * Explorador); el orden de llegada desempata, así la lista no baila con cada tanda.
+   */
+  const ordenar = lista => {
+    if (orden === 'llegada') return lista;
+    const valor = r =>
+      orden === 'relevancia'
+        ? r.relevancia
+        : Number.isFinite(r.durationSeconds)
+          ? r.durationSeconds
+          : null;
+    return lista
+      .map((r, i) => ({ r, i, v: valor(r) }))
+      .sort((a, b) => {
+        const sa = Number.isFinite(a.v);
+        const sb = Number.isFinite(b.v);
+        if (sa !== sb) return sa ? -1 : 1;
+        return (sa && b.v - a.v) || a.i - b.i;
+      })
+      .map(x => x.r);
+  };
   const visibles = ({ plegar = ocultarRepetidos, conOcultos = false } = {}) => {
     const vistas = new Set();
-    return resultados.filter(r => {
+    return ordenar(resultados).filter(r => {
       if (!enPestana(r)) return false;
       if (!conOcultos && motivoOculto(r)) return false;
       if (!plegar) return true;
@@ -355,6 +381,36 @@ export function createBuscarView(root) {
     idioma.value = actual;
     textoIdioma.textContent = t('buscar.idioma');
     etiquetaIdioma.title = t('buscar.idioma.titulo');
+  }
+  const frase = el('input', { attrs: { type: 'checkbox' } });
+  frase.addEventListener('change', () => {
+    soloFrase = frase.checked;
+    pintarResultados();
+  });
+  const textoFrase = el('span');
+  texto(textoFrase, 'buscar.frase');
+  const etiquetaFrase = el('label', {
+    className: 'buscar__opcion',
+    children: [frase, textoFrase],
+  });
+  atributo(etiquetaFrase, 'title', 'buscar.frase.titulo');
+  const selectOrden = el('select', { className: 'input buscar__paginas' });
+  selectOrden.addEventListener('change', () => {
+    orden = selectOrden.value;
+    pintarResultados();
+  });
+  const textoOrden = el('span');
+  texto(textoOrden, 'buscar.orden');
+  const etiquetaOrden = el('label', {
+    className: 'buscar__opcion',
+    children: [textoOrden, selectOrden],
+  });
+  function pintarOrden() {
+    clear(selectOrden);
+    for (const v of ['llegada', 'relevancia', 'duracion']) {
+      selectOrden.append(el('option', { attrs: { value: v }, text: t(`buscar.orden.${v}`) }));
+    }
+    selectOrden.value = orden;
   }
   // «Ver ocultos (N)»: lo que esconden los filtros se puede mirar sin quitar ninguno.
   const resumenOcultos = el('span', { className: 'buscar__ocultos' });
@@ -478,6 +534,7 @@ export function createBuscarView(root) {
     duracion.value = minActual;
     pintarDestinos();
     pintarIdiomas();
+    pintarOrden();
     agregar.textContent = t('buscar.agregarSitios');
     textoWeb.textContent = t('buscar.web');
     etiquetaWeb.title = t('buscar.web.titulo');
@@ -898,7 +955,15 @@ export function createBuscarView(root) {
               text: r.title || nombreDeUrl(r.url) || enlace,
               attrs: { title: r.title || enlace },
             }),
-            el('span', { className: 'buscar__sitio', text: nombreDelSitio }),
+            el('span', {
+              className: 'buscar__sitio',
+              text: Number.isFinite(r.relevancia)
+                ? `${nombreDelSitio} · ${r.relevancia} %`
+                : nombreDelSitio,
+              attrs: Number.isFinite(r.relevancia)
+                ? { title: t('buscar.relevancia', { n: r.relevancia }) }
+                : {},
+            }),
           ],
         }),
         el('div', { className: 'buscar__acciones', children: acciones }),
@@ -1099,6 +1164,8 @@ export function createBuscarView(root) {
         filtroContener,
         filtroExcluir,
         etiquetaIdioma,
+        etiquetaFrase,
+        etiquetaOrden,
         etiquetaDuracion,
         etiquetaRepetidos,
         el('span', { className: 'buscar__ocultos-fila', children: [resumenOcultos, botonOcultos] })

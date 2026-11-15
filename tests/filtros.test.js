@@ -156,3 +156,34 @@ test('Ajustes guarda las palabras y JDownloader no recibe lo bloqueado', async t
   assert.match(todo.body.detail, /bloqueadas/);
   await pedir('/api/ajustes/filtros', 'PUT', { bloqueadas: '' });
 });
+
+test('relevancia: todas seguidas > todas sueltas > algunas > ninguna', () => {
+  const r = (title, q = 'dia de playa') =>
+    servidor.relevancia({ title, url: 'https://ejemplo.com/v/1' }, q);
+  const seguidas = r('Un Día de Playa');
+  const sueltas = r('Playa: un día de sol');
+  const algunas = r('Playa del norte');
+  const ninguna = r('Montaña');
+  assert.equal(seguidas.relevancia, 100);
+  assert.equal(seguidas.frase, true);
+  assert.equal(sueltas.frase, false);
+  assert.ok(seguidas.relevancia > sueltas.relevancia);
+  assert.ok(sueltas.relevancia > algunas.relevancia);
+  assert.ok(algunas.relevancia > ninguna.relevancia);
+  assert.equal(ninguna.relevancia, 0);
+  // La ruta cuenta; el dominio no; y «playa» casa con «playas» pero no con «explaya»
+  assert.equal(
+    servidor.relevancia({ url: 'https://playa.ejemplo.com/v/dia-de-playas' }, 'dia de playa').frase,
+    true
+  );
+  assert.equal(servidor.relevancia({ title: 'Se explaya' }, 'playa').relevancia, 0);
+  assert.deepEqual(servidor.relevancia({ title: 'x' }, ''), { relevancia: null, frase: null });
+});
+
+test('las marcas llevan la relevancia solo si se buscó por palabras', () => {
+  const [conQ] = marcar([{ title: 'Día de playa', url: 'https://ejemplo.com/a.mp4' }], 'playa');
+  assert.equal(conQ.relevancia, 100);
+  assert.equal(conQ.frase, true);
+  const [sinQ] = marcar([{ title: 'Día de playa', url: 'https://ejemplo.com/a.mp4' }]);
+  assert.equal(sinQ.relevancia, undefined);
+});

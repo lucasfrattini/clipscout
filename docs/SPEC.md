@@ -21,6 +21,7 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | BUS-2  | Un mismo vídeo sale una vez; los vídeos distintos de un álbum se conservan.                          | `dedupe`                                     |
 | BUS-3  | `?prellenar=texto` DEBE dejar el texto escrito sin lanzar la búsqueda; `?q=` sí la lanza.            | manual                                       |
 | BUS-4  | Los filtros de Buscar (contener, descartar, idioma, bloqueadas) ocultan con contador y se ven.       | `filtros.test.js`, manual                    |
+| BUS-5  | Cada resultado lleva su relevancia; ordenar por ella y «frase exacta» (oculta con contador).         | `filtros.test.js`                            |
 | FIL-1  | Las palabras siempre bloqueadas se aplican a Buscar, a las programadas y a todo envío a JD.          | `filtros.test.js`                            |
 | JD-1   | Enviar a JDownloader pregunta tipo y nombre de la carpeta, salvo destino fijado.                     | manual                                       |
 | JD-2   | La ventana DEBE proponer carpetas existentes y personas o etiquetas del catálogo sin carpeta propia. | `carpetas.test.js`                           |

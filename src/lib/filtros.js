@@ -113,7 +113,59 @@ function idiomaProbable(item) {
   return primero[0];
 }
 
+/* ── Relevancia ────────────────────────────────────────────────────── */
+
+/** Palabras que no dicen nada del tema: artículos, preposiciones y conjunciones. */
+const HUECAS = new Set(
+  'a al an and at con da das de del der des di die do dos du e el em en et for il in la las le les lo los na no o of on os por para the to un una und with y'.split(
+    ' '
+  )
+);
+
+/** Palabras sueltas de lo buscado (normalizadas). Las de una letra no dicen nada. */
+function terminos(q) {
+  return normalizar(q)
+    .split(/[^a-z0-9]+/)
+    .filter(p => p.length > 1 || /\d/.test(p));
+}
+
+/**
+ * Cuánto casa un resultado con lo buscado: `{ relevancia: 0..100, frase }`.
+ *
+ * Se mira el título y la RUTA (muchas fichas llevan el título en la dirección y el título de la
+ * página viene vacío); el dominio no, porque casaría con todo lo de ese sitio. Escala:
+ * - cada palabra encontrada suma su parte de 70 (todas > algunas > ninguna);
+ * - todas y SEGUIDAS, en el orden escrito, suman 30 más («frase exacta»); todas pero sueltas, 10.
+ * Una palabra cuenta si empieza una palabra del texto: «playa» casa con «playas», no con «explaya».
+ */
+function relevancia(item, q) {
+  const buscadas = terminos(q);
+  if (buscadas.length === 0) return { relevancia: null, frase: null };
+  let ruta = '';
+  try {
+    ruta = decodeURIComponent(new URL(item?.sourceUrl || item?.url || '').pathname);
+  } catch {
+    ruta = '';
+  }
+  const palabrasTexto = normalizar(`${item?.title || ''} ${ruta}`)
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  const texto = ` ${palabrasTexto.join(' ')} `;
+  // Las palabras huecas («de», «la», «the») casan con casi todo: no cuentan para «todas/algunas»
+  // salvo que lo buscado sea solo eso. Para la frase seguida sí cuentan, que es lo que la fija.
+  const llenas = buscadas.filter(p => !HUECAS.has(p));
+  const cuentan = llenas.length ? llenas : buscadas;
+  const encontradas = cuentan.filter(p => palabrasTexto.some(w => w.startsWith(p))).length;
+  const frase = texto.includes(` ${buscadas.join(' ')}`);
+  let puntos = (70 * encontradas) / cuentan.length;
+  if (frase) puntos += 30;
+  else if (encontradas === cuentan.length) puntos += 10;
+  return { relevancia: Math.round(puntos), frase };
+}
+
 module.exports = {
+  relevancia,
+  terminos,
   normalizar,
   palabras,
   contieneAlguna,

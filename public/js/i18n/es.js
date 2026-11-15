@@ -798,4 +798,14 @@ export const es = {
   'aj.filtros.bloqueadas.hint':
     'Separadas por comas o una por línea. Sin tildes ni mayúsculas que importen. En Buscar se ocultan (con contador, se pueden ver); nunca se mandan a JDownloader.',
   'aj.filtros.guardado': 'Filtros guardados',
+  'buscar.frase': 'Frase exacta',
+  'buscar.frase.titulo':
+    'Oculta lo que no lleva las palabras buscadas seguidas, en ese orden (con contador).',
+  'buscar.orden': 'Ordenar',
+  'buscar.orden.llegada': 'por llegada',
+  'buscar.orden.relevancia': 'por relevancia',
+  'buscar.orden.duracion': 'por duración',
+  'buscar.oculto.frase': 'Sin la frase exacta',
+  'buscar.oculto.frase.n': '{n} por frase exacta',
+  'buscar.relevancia': 'Coincidencia con lo buscado: {n} %',
 };

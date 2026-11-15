@@ -6,7 +6,7 @@ const config = require('../config');
 const logger = require('../lib/logger');
 const { buscarEnTodos, buscarEnlace } = require('./busqueda');
 const filtrosGlobales = require('./filtrosGlobales');
-const { idiomaProbable, bloqueadaPor } = require('../lib/filtros');
+const { idiomaProbable, bloqueadaPor, relevancia } = require('../lib/filtros');
 
 /**
  * Búsquedas que siguen aunque nadie mire.
@@ -41,18 +41,25 @@ const activas = () => [...busquedas.values()].filter(b => !b.terminadaEn).length
  * Se calculan aquí, una vez, para que Buscar, las programadas y quien se reenganche vean lo mismo.
  * Nada se quita: un resultado bloqueado llega marcado y la pantalla lo cuenta.
  */
-function marcar(items) {
+function marcar(items, q = '') {
   const prohibidas = filtrosGlobales.bloqueadas();
   return (items || []).map(it => {
     const bloqueada = bloqueadaPor(it, prohibidas);
-    return { ...it, idioma: idiomaProbable(it), ...(bloqueada ? { bloqueada } : {}) };
+    // La relevancia solo tiene sentido buscando por palabras: con un enlace pegado no hay término.
+    const r = q ? relevancia(it, q) : null;
+    return {
+      ...it,
+      idioma: idiomaProbable(it),
+      ...(bloqueada ? { bloqueada } : {}),
+      ...(r && r.relevancia !== null ? r : {}),
+    };
   });
 }
 
 function publicar(b, eventoOriginal) {
   const evento =
     eventoOriginal.type === 'resultados'
-      ? { ...eventoOriginal, items: marcar(eventoOriginal.items) }
+      ? { ...eventoOriginal, items: marcar(eventoOriginal.items, b.terminoRelevancia) }
       : eventoOriginal;
   const conNumero = { ...evento, seq: b.eventos.length };
   b.eventos.push(conNumero);
@@ -83,6 +90,7 @@ function iniciar(entrada) {
   const b = {
     id,
     q: entrada.urls ? entrada.urls.join(' ') : entrada.url || entrada.q,
+    terminoRelevancia: entrada.url ? '' : entrada.q || '',
     creadaEn: Date.now(),
     terminadaEn: null,
     eventos: [],

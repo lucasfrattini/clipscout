@@ -795,4 +795,14 @@ export const en = {
   'aj.filtros.bloqueadas.hint':
     "Comma-separated or one per line; accents and case don't matter. Search hides them (counted, you can show them); they are never sent to JDownloader.",
   'aj.filtros.guardado': 'Filters saved',
+  'buscar.frase': 'Exact phrase',
+  'buscar.frase.titulo':
+    "Hides results that don't have the searched words together, in that order (counted).",
+  'buscar.orden': 'Sort',
+  'buscar.orden.llegada': 'as they arrive',
+  'buscar.orden.relevancia': 'by relevance',
+  'buscar.orden.duracion': 'by length',
+  'buscar.oculto.frase': 'Not the exact phrase',
+  'buscar.oculto.frase.n': '{n} by exact phrase',
+  'buscar.relevancia': 'Match with the search: {n}%',
 };
