@@ -246,6 +246,12 @@ export const ajustes = {
     request('/ajustes/jdownloader/probar', { method: 'POST', body: JSON.stringify({ url }) }),
   enviarJd: datos =>
     request('/ajustes/jdownloader/enviar', { method: 'POST', body: JSON.stringify(datos) }),
+  sitios: () => request('/ajustes/sitios'),
+  guardarSitio: (dominio, datos) =>
+    request(`/ajustes/sitios/${encodeURIComponent(dominio)}`, {
+      method: 'PUT',
+      body: JSON.stringify(datos),
+    }),
   filtros: () => request('/ajustes/filtros'),
   guardarFiltros: datos =>
     request('/ajustes/filtros', { method: 'PUT', body: JSON.stringify(datos) }),

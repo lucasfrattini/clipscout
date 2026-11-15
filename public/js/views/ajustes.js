@@ -61,6 +61,7 @@ export function createAjustesView(raiz) {
       tarjetaClave(),
       tarjetaConexiones(),
       tarjetaJd(),
+      tarjetaSitios(),
       tarjetaBusqueda(),
       tarjetaFiltros(),
       tarjetaProgramadas(),
@@ -681,6 +682,67 @@ export function createAjustesView(raiz) {
           ],
         }),
         form,
+      ],
+    });
+  }
+
+  /* ── Sitios: opciones por sitio ────────────────────────────────────── */
+
+  function tarjetaSitios() {
+    const lista = el('ul', { className: 'ajustes-sitios' });
+    async function cargarSitios() {
+      let datos;
+      try {
+        datos = await ajustes.sitios();
+      } catch (error) {
+        lista.replaceChildren(el('li', { className: 'ajustes-error', text: error.message }));
+        return;
+      }
+      if (!datos.sitios.length) {
+        lista.replaceChildren(el('li', { className: 'field__hint', text: t('aj.sitios.vacio') }));
+        return;
+      }
+      lista.replaceChildren(
+        ...datos.sitios.map(s => {
+          const directo = el('input', { attrs: { type: 'checkbox' } });
+          directo.checked = s.jdDirecto;
+          directo.addEventListener('change', async () => {
+            try {
+              await ajustes.guardarSitio(s.dominio, { jdDirecto: directo.checked });
+              toast(t('aj.guardado'));
+            } catch (error) {
+              directo.checked = !directo.checked;
+              toast(error.message, 'error', 6000);
+            }
+          });
+          return el('li', {
+            className: 'ajustes-sitios__fila',
+            children: [
+              el('strong', { text: s.nombre }),
+              el('span', { className: 'field__hint', text: s.dominio }),
+              el('label', {
+                className: 'ajustes-casilla',
+                attrs: { title: t('aj.sitios.directo.hint') },
+                children: [directo, t('aj.sitios.directo')],
+              }),
+            ],
+          });
+        })
+      );
+    }
+    cargarSitios();
+    return el('section', {
+      className: 'card',
+      attrs: { id: 'ajustes-sitios' },
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.sitios.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.sitios.hint') }),
+          ],
+        }),
+        el('div', { className: 'card__body', children: [lista] }),
       ],
     });
   }

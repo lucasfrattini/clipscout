@@ -180,6 +180,23 @@ const config = {
     esperaFinalMs: intFromEnv('DURACIONES_ESPERA_FINAL_MS', 30000),
   },
 
+  /**
+   * Seguimiento de lo mandado a JDownloader (services/paquetesJd.js): estado de cada paquete,
+   * fichero directo cuando JDownloader no puede con la ficha y aviso a clipkeeper al terminar.
+   */
+  jd: {
+    // Cada cuánto se mira el estado de los paquetes mientras queda alguno sin terminar
+    vigilarCadaMs: intFromEnv('JD_VIGILAR_CADA_MS', 20000),
+    // Hasta cuándo se vigila un paquete (desde que se mandó); pasado eso se deja como esté
+    vigilarMaxMs: intFromEnv('JD_VIGILAR_MAX_MS', 6 * 60 * 60 * 1000),
+    // Paquetes que se recuerdan (los más viejos se olvidan)
+    maxPaquetes: intFromEnv('JD_MAX_PAQUETES', 300),
+    // Un fichero de la caché de fichas vale para mandarlo directo si es así de reciente
+    directoFrescoMs: intFromEnv('JD_DIRECTO_FRESCO_MS', 10 * 60 * 1000),
+    // Intentos de avisar a clipkeeper de un paquete terminado (si no responde)
+    avisosClipkeeper: intFromEnv('JD_AVISOS_CLIPKEEPER', 10),
+  },
+
   // Alta de un sitio con solo su dirección (services/autoSitio.js)
   autoSitio: {
     // Enlaces internos mínimos para dar una página por «listado de resultados»

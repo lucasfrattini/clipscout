@@ -30,6 +30,9 @@ fondo
   .restaurar()
   .catch(error => logger.warn('No se pudieron retomar las búsquedas', error.message));
 
+// Paquetes mandados a JDownloader que seguían sin terminar: se siguen vigilando.
+require('./src/services/paquetesJd').arrancar();
+
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();
 

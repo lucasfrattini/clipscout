@@ -60,6 +60,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
         'success',
         5000
       );
+      if (r.directos) toast(t('jd.directos', { n: r.directos }), 'success', 6000);
       if (r.bloqueados) toast(t('jd.bloqueados', { n: r.bloqueados }), 'error', 6000);
       if (r.regla && !r.regla.ok) {
         toast(t('jd.reglaError', { error: r.regla.error }), 'error', 6000);

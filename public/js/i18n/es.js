@@ -829,4 +829,11 @@ export const es = {
   'buscar.album.varios': 'Álbum: {n} vídeos en la misma ficha',
   'buscar.album.ver': 'Ver los {n}',
   'buscar.album.plegar': 'Plegar álbum',
+  'aj.sitios.titulo': 'Sitios',
+  'aj.sitios.hint': 'Opciones de cada sitio guardado.',
+  'aj.sitios.vacio': 'Todavía no hay sitios guardados.',
+  'aj.sitios.directo': 'Mandar a JDownloader el fichero directo',
+  'aj.sitios.directo.hint':
+    'En vez de la ficha, el enlace al vídeo (resuelto en el momento, con la ficha como origen). Para los sitios que JDownloader no sabe abrir. Aunque no lo marques, si JDownloader falla con una ficha se intenta así solo.',
+  'jd.directos': '{n} se mandan como fichero directo (en segundo plano).',
 };

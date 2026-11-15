@@ -3513,3 +3513,18 @@ a {
 .buscar__tarjeta--miembro {
   border-style: dashed;
 }
+
+/* ── Ajustes: sitios ─────────────────────────────────────────────────── */
+.ajustes-sitios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ajustes-sitios__fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+}

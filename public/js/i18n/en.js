@@ -826,4 +826,11 @@ export const en = {
   'buscar.album.varios': 'Album: {n} videos on the same page',
   'buscar.album.ver': 'Show all {n}',
   'buscar.album.plegar': 'Fold album',
+  'aj.sitios.titulo': 'Sites',
+  'aj.sitios.hint': 'Options for each saved site.',
+  'aj.sitios.vacio': 'No saved sites yet.',
+  'aj.sitios.directo': 'Send the direct file to JDownloader',
+  'aj.sitios.directo.hint':
+    "Instead of the page, the link to the video (resolved right then, with the page as referrer). For sites JDownloader can't open. Even unchecked, it's tried automatically when JDownloader fails on a page.",
+  'jd.directos': '{n} are being sent as direct files (in the background).',
 };

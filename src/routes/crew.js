@@ -10,6 +10,9 @@ const { buscarEnTodos } = require('../services/busqueda');
 const ajustesBusqueda = require('../services/ajustesBusqueda');
 const programadas = require('../services/programadas');
 const filtrosGlobales = require('../services/filtrosGlobales');
+const directo = require('../services/directo');
+const { listarSitios } = require('../services/busqueda');
+const { hostDe } = require('../services/web');
 
 /**
  * Rutas de clip crew.
@@ -235,6 +238,33 @@ router.get(
 router.put(
   '/ajustes/filtros',
   manejar(req => filtrosGlobales.guardar(req.body || {}))
+);
+
+/* ── Sitios: opciones por dominio ───────────────────────────────────── */
+
+/** Los sitios guardados con sus opciones (p. ej. «mandar el fichero directo» a JDownloader). */
+router.get(
+  '/ajustes/sitios',
+  manejar(async () => {
+    const opciones = await directo.opcionesSitios();
+    const sitios = await listarSitios();
+    return {
+      sitios: sitios.map(s => {
+        const dominio = hostDe(s.perfil.config.searchUrl || '');
+        return {
+          id: s.id,
+          nombre: s.nombre,
+          dominio,
+          jdDirecto: directo.esDirecto(`https://${dominio}/`, opciones),
+        };
+      }),
+    };
+  })
+);
+
+router.put(
+  '/ajustes/sitios/:dominio',
+  manejar(req => directo.guardarOpcionesSitio(req.params.dominio, req.body || {}))
 );
 
 /* ── JDownloader (API local) ────────────────────────────────────────── */

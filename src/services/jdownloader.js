@@ -5,6 +5,7 @@ const logger = require('../lib/logger');
 const crew = require('./crew');
 const filtrosGlobales = require('./filtrosGlobales');
 const { bloqueadaPor } = require('../lib/filtros');
+const directo = require('./directo');
 
 /**
  * Enviar enlaces a JDownloader 2 por su API local («Deprecated API», puerto
@@ -139,39 +140,36 @@ async function enviar({
   // `overwritePackagizerRules`, todo va junto y a la carpeta exacta, sin carpetas en medio.
   const sub = limpiarSubcarpeta(carpeta);
   const fecha = new Date().toISOString().slice(0, 16).replace('T', ' ');
-  const consulta = {
-    links: lista.join('\n'),
-    autostart: Boolean(autostart),
-    deepDecrypt: false,
-    overwritePackagizerRules: true,
-    packageName:
-      String(paquete || '')
-        .trim()
-        .slice(0, 200) ||
-      sub.split('/').pop() ||
-      `clipscout ${fecha}`,
-  };
-  if (sub) {
-    const base = String(
-      await llamar(url, '/config/get', [
-        'org.jdownloader.settings.GeneralSettings',
-        null,
-        'DefaultDownloadFolder',
-      ])
-    ).replace(/\/+$/, '');
-    consulta.destinationFolder = `${base}/${sub}`;
+  const nombre =
+    String(paquete || '')
+      .trim()
+      .slice(0, 200) ||
+    sub.split('/').pop() ||
+    `clipscout ${fecha}`;
+  const destino = sub ? `${await carpetaBase(url)}/${sub}` : null;
+
+  // Sitios marcados «mandar el fichero directo» (Ajustes → Sitios): no se les manda la ficha,
+  // que JDownloader no sabe abrir, sino el fichero, resuelto fresco y en segundo plano.
+  const opciones = await directo.opcionesSitios();
+  const directas = [];
+  const normales = [];
+  for (const l of lista) (directo.esDirecto(l, opciones) ? directas : normales).push(l);
+
+  let trabajo = null;
+  if (normales.length > 0) {
+    trabajo = await anadir(url, { links: normales, paquete: nombre, destino, origen, autostart });
   }
-  if (/^https?:\/\//i.test(String(origen))) consulta.sourceUrl = String(origen).slice(0, 2000);
-  const trabajo = await llamar(url, '/linkgrabberv2/addLinks', [consulta]);
-  // `autostart` en addLinks no basta: JDownloader deja el paquete en el capturador si el gestor
-  // de descargas está parado, o si la comprobación tarda. Así que se espera a que termine de
-  // analizar los enlaces de ESTE envío, se pasan a descargas y se arranca el gestor. En segundo
-  // plano: la respuesta no espera.
-  if (autostart && trabajo?.id) {
-    descargarCuandoEste(url, trabajo.id).catch(error =>
-      logger.warn(`JDownloader: no se pudo arrancar la descarga: ${error.message}`)
+  // Se apunta para vigilarlo: estado, fichero directo si JDownloader no puede, aviso a clipkeeper.
+  const paquetes = require('./paquetesJd');
+  const idPaquete = await paquetes
+    .registrar({ nombre, carpeta: sub, destino, biblioteca, fichas: lista, jobIds: [trabajo?.id] })
+    .catch(error => logger.warn(`No se pudo apuntar el paquete: ${error.message}`));
+  if (directas.length > 0) {
+    mandarDirectos(url, { fichas: directas, paquete: nombre, destino, autostart, idPaquete }).catch(
+      error => logger.warn(`JDownloader: fichero directo: ${error.message}`)
     );
   }
+
   // Carpeta nueva con persona/categoría/etiqueta: clipkeeper lo apunta para catalogar lo que llegue.
   let reglaGuardada = null;
   if (regla && sub && biblioteca !== null && biblioteca !== undefined) {
@@ -187,10 +185,80 @@ async function enviar({
     regla: reglaGuardada,
     enviados: lista.length,
     bloqueados,
-    carpeta: consulta.destinationFolder || null,
-    paquete: consulta.packageName,
+    directos: directas.length,
+    carpeta: destino,
+    paquete: nombre,
     trabajo,
   };
+}
+
+/** La carpeta de descargas de JDownloader (sin barra final). */
+async function carpetaBase(url) {
+  return String(
+    await llamar(url, '/config/get', [
+      'org.jdownloader.settings.GeneralSettings',
+      null,
+      'DefaultDownloadFolder',
+    ])
+  ).replace(/\/+$/, '');
+}
+
+/**
+ * Un `addLinks`: enlaces a un paquete con nombre y carpeta exactos. `origen` va como `sourceUrl`
+ * (JDownloader lo usa como Referer: sin él, muchos CDN niegan el fichero directo).
+ */
+async function anadir(url, { links, paquete, destino = null, origen = '', autostart = true }) {
+  const consulta = {
+    links: links.join('\n'),
+    autostart: Boolean(autostart),
+    deepDecrypt: false,
+    overwritePackagizerRules: true,
+    packageName: paquete,
+  };
+  if (destino) consulta.destinationFolder = destino;
+  if (/^https?:\/\//i.test(String(origen))) consulta.sourceUrl = String(origen).slice(0, 2000);
+  const trabajo = await llamar(url, '/linkgrabberv2/addLinks', [consulta]);
+  // `autostart` en addLinks no basta: JDownloader deja el paquete en el capturador si el gestor
+  // de descargas está parado, o si la comprobación tarda. Así que se espera a que termine de
+  // analizar los enlaces de ESTE envío, se pasan a descargas y se arranca el gestor. En segundo
+  // plano: la respuesta no espera.
+  if (autostart && trabajo?.id) {
+    descargarCuandoEste(url, trabajo.id).catch(error =>
+      logger.warn(`JDownloader: no se pudo arrancar la descarga: ${error.message}`)
+    );
+  }
+  return trabajo;
+}
+
+/**
+ * Fichas de sitios «fichero directo»: cada una se resuelve fresca y se manda su fichero con la
+ * ficha como origen, al mismo paquete y carpeta. Si no se encuentra fichero, se manda la ficha:
+ * mejor que JDownloader lo intente a que se pierda sin decir nada.
+ */
+async function mandarDirectos(url, { fichas, paquete, destino, autostart, idPaquete }) {
+  const paquetes = require('./paquetesJd');
+  for (const ficha of fichas) {
+    let ficheros = [];
+    try {
+      ficheros = await directo.resolverDirecto(ficha);
+    } catch (error) {
+      logger.warn(`Fichero directo de ${ficha}: ${error.message}`);
+    }
+    const trabajo = await anadir(url, {
+      links: ficheros.length ? ficheros : [ficha],
+      paquete,
+      destino,
+      origen: ficha,
+      autostart,
+    });
+    if (idPaquete) {
+      await paquetes.anotarTrabajo(
+        idPaquete,
+        trabajo?.id,
+        Object.fromEntries(ficheros.map(f => [f, ficha]))
+      );
+    }
+  }
 }
 
 const esperar = ms => new Promise(resolver => setTimeout(resolver, ms).unref?.());
@@ -222,6 +290,8 @@ async function descargarCuandoEste(url, jobId, { maxMs = 180000, cadaMs = 3000 }
 }
 
 module.exports = {
+  llamar,
+  anadir,
   ajustes,
   guardar,
   probar,
