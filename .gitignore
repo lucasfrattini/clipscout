@@ -38,3 +38,5 @@ empaquetado/build/
 empaquetado/dist/
 empaquetado/__pycache__/
 salida/
+empaquetado/dist-linux/
+empaquetado/dist-win/

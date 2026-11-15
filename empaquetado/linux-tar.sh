@@ -2,11 +2,12 @@
 # Empaqueta para Linux: <app>-linux-x64.tar.gz con el programa y los scripts de instalación.
 set -euo pipefail
 cd "$(dirname "$0")"
-app=$(python -c "import ajustes_app as A; print(A.APP)")
-puerto=$(python -c "import ajustes_app as A; print(A.PUERTO)")
+app=$(python3 -c "import ajustes_app as A; print(A.APP)")
+puerto=$(python3 -c "import ajustes_app as A; print(A.PUERTO)")
+dist=${DIST:-dist}
 dir=$(mktemp -d)/$app
 mkdir -p "$dir" ../salida
-cp -a "dist/$app" "$dir/$app"
+cp -a "$dist/$app" "$dir/$app"
 cp linux/instalar.sh linux/desinstalar.sh icono.png "$dir/"
 echo "$app" > "$dir/APP"
 echo "$puerto" > "$dir/PUERTO"

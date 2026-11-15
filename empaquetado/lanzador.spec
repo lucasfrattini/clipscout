@@ -19,9 +19,9 @@ for paquete in A.PAQUETES:  # la app y lo que se importa por nombre (uvicorn)
 datas += getattr(A, "DATOS_EXTRA", [])
 
 a = Analysis(["lanzador.py"], pathex=["."], binaries=binaries, datas=datas, hiddenimports=hidden,
-             excludes=["tkinter", "pytest"])
+             excludes=["tkinter", "pytest", *getattr(A, "EXCLUIR", [])])
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name=A.APP,
+exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name=A.APP, upx=False,
           console=sys.platform != "win32",  # en Windows sin ventana negra: se maneja desde la bandeja
           icon="icono.ico" if sys.platform == "win32" else None)
-coll = COLLECT(exe, a.binaries, a.datas, name=A.APP)
+coll = COLLECT(exe, a.binaries, a.datas, name=A.APP, upx=False)

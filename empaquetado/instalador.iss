@@ -3,6 +3,10 @@
 ; Instala para el usuario actual (sin pedir administrador), con acceso en el menú Inicio, opción de
 ; arrancar con Windows y desinstalador. Los datos (AppData\Local\Clipgeist\<app>) no se borran.
 
+#ifndef Dist
+  #define Dist "dist"
+#endif
+
 [Setup]
 AppId={{Clipgeist-{#App}}
 AppName={#Nombre}
@@ -42,7 +46,7 @@ Name: "inicio"; Description: "{cm:Inicio}"
 Name: "escritorio"; Description: "{cm:Escritorio}"; Flags: unchecked
 
 [Files]
-Source: "dist\{#App}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#Dist}\{#App}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#Nombre}"; Filename: "{app}\{#App}.exe"

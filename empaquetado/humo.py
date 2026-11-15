@@ -11,7 +11,7 @@ from pathlib import Path
 
 import ajustes_app as A
 
-exe = Path("dist") / A.APP / (A.APP + (".exe" if sys.platform == "win32" else ""))
+exe = Path(os.environ.get("DIST", "dist")) / A.APP / (A.APP + (".exe" if sys.platform == "win32" else ""))
 datos = Path(tempfile.mkdtemp())
 puerto = "18" + A.PUERTO[-3:]
 p = subprocess.Popen([str(exe), "--sin-bandeja", "--puerto", puerto],

@@ -1,12 +1,10 @@
 name: Paquetes
 
-# Instaladores sin Docker: .exe para Windows (Inno Setup) y .tar.gz para Linux x64. Se lanza a mano
-# (Actions → Paquetes → Run workflow) o al subir una etiqueta v*. Los artefactos se publican luego en
-# https://clipgeist.com/descargas/.
+# Instaladores sin Docker: .exe para Windows (Inno Setup) y .tar.gz para Linux x64. Normalmente se
+# compilan en local con empaquetado/compilar.sh (gratis); esto queda solo como opción manual
+# (Actions → Paquetes → Run workflow), porque en repos privados gasta minutos de Actions.
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
 
 jobs:
   paquete:
