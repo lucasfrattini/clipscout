@@ -198,8 +198,16 @@ export function createExplorerView(container, { limits }) {
    * al servidor—; lo único que cambia es que ocupa una línea compartida en vez
    * de un bloque con título y ayuda.
    */
-  const makeChipToggle = (name, labelKey, hintKey) => {
-    const input = el('input', { attrs: { type: 'checkbox', id: `explorer-${name}`, name } });
+  const makeChipToggle = (name, labelKey, hintKey, marcado = false) => {
+    // `checked` como atributo: es el valor por defecto, el que respeta también form.reset().
+    const input = el('input', {
+      attrs: {
+        type: 'checkbox',
+        id: `explorer-${name}`,
+        name,
+        ...(marcado ? { checked: true } : {}),
+      },
+    });
     fields[name] = input;
 
     const root = el('label', {
@@ -251,7 +259,8 @@ export function createExplorerView(container, { limits }) {
    * formulario recordado): un campo con contenido que no se ve es justo el
    * estado invisible que aquí se paga caro.
    */
-  let terminoVisible = false;
+  // Visible de entrada: buscar una palabra es lo habitual (sigue siendo opcional y plegable).
+  let terminoVisible = true;
 
   const terminoToggle = el('button', {
     className: 'link-toggle',
@@ -369,11 +378,13 @@ export function createExplorerView(container, { limits }) {
    * "los archivos de dentro", que es lo correcto: sin fase 2 no hay ni pesos
    * ni miniaturas que traer.
    */
-  const chipPeso = makeChipToggle('withSizes', 'explorer.peso.breve', 'explorer.peso.hint');
+  // Marcados por defecto (lo pidió el usuario: casi siempre se quieren); se pueden desmarcar.
+  const chipPeso = makeChipToggle('withSizes', 'explorer.peso.breve', 'explorer.peso.hint', true);
   const chipMiniaturas = makeChipToggle(
     'withThumbnails',
     'explorer.miniaturas.breve',
-    'explorer.miniaturas.hint'
+    'explorer.miniaturas.hint',
+    true
   );
 
   /**
@@ -2066,7 +2077,7 @@ export function createExplorerView(container, { limits }) {
     fields.endPage.value = '5';
     fields.concurrency.value = String(limits.defaultConcurrency);
     mostrarExtensionesLibres = false;
-    terminoVisible = false;
+    terminoVisible = true;
     // Las direcciones extra son solo interfaz (ver más arriba): "Nueva
     // búsqueda" y "Limpiar" también las vacían, igual que a cualquier otro
     // campo del formulario.
