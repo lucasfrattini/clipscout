@@ -331,6 +331,7 @@ export function createAjustesView(raiz) {
       attrs: { type: 'number', min: '0', max: '600', value: '0' },
     });
     const sinDuracion = el('input', { attrs: { type: 'checkbox' } });
+    const abierta = el('input', { attrs: { type: 'checkbox' } });
     const contener = entrada(t('aj.prog.contener.ej'));
     const excluir = entrada(t('aj.prog.excluir.ej'));
     const cada = el('select', {
@@ -359,6 +360,7 @@ export function createAjustesView(raiz) {
       etiqueta.value = p?.etiqueta || '';
       minutos.value = String(p?.minutosMinimo ?? 0);
       sinDuracion.checked = Boolean(p?.sinDuracion);
+      abierta.checked = Boolean(p?.abierta);
       contener.value = p?.contener || '';
       excluir.value = p?.excluir || '';
       cada.value = String(p?.cadaDias || 7);
@@ -389,6 +391,11 @@ export function createAjustesView(raiz) {
           className: 'ajustes-casilla',
           children: [sinDuracion, t('aj.prog.sinDuracion')],
         }),
+        el('label', {
+          className: 'ajustes-casilla',
+          attrs: { title: t('buscar.webTodo.detalle') },
+          children: [abierta, t('aj.prog.abierta')],
+        }),
         campo(t('aj.prog.contener'), contener, t('aj.prog.contener.hint')),
         campo(t('aj.prog.excluir'), excluir, t('aj.prog.excluir.hint')),
         campo(t('aj.prog.cada'), cada),
@@ -406,6 +413,7 @@ export function createAjustesView(raiz) {
               etiqueta: etiqueta.value,
               minutosMinimo: Number(minutos.value) || 0,
               sinDuracion: sinDuracion.checked,
+              abierta: abierta.checked,
               contener: contener.value,
               excluir: excluir.value,
               cadaDias: Number(cada.value),

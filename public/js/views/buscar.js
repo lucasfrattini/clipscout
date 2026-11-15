@@ -141,27 +141,34 @@ export function createBuscarView(root) {
     }
   }
 
-  // «Tipo Google» (site:sitio nombre) con el SearXNG del servidor, si lo hay.
-  const CLAVE_WEB = 'clipscout:buscar-web';
-  const web = el('input', { attrs: { type: 'checkbox' } });
+  /**
+   * «También en toda la web»: cualquier sitio que nombre lo buscado, aunque no esté configurado.
+   * DESACTIVADA por defecto (trae mucho ruido y abre muchas páginas de desconocidos); la casilla
+   * se recuerda en este navegador, así que quien ya la marcó la sigue teniendo marcada.
+   * Solo se ve si hay SearXNG configurado.
+   */
+  const CLAVE_ABIERTA = 'clipscout:buscar-abierta';
+  const abierta = el('input', { attrs: { type: 'checkbox' } });
   try {
-    web.checked = localStorage.getItem(CLAVE_WEB) !== '0';
+    abierta.checked = localStorage.getItem(CLAVE_ABIERTA) === '1';
   } catch {
-    web.checked = true;
+    abierta.checked = false;
   }
-  web.addEventListener('change', () => {
+  abierta.addEventListener('change', () => {
     try {
-      localStorage.setItem(CLAVE_WEB, web.checked ? '1' : '0');
+      localStorage.setItem(CLAVE_ABIERTA, abierta.checked ? '1' : '0');
     } catch {
-      // sin almacenamiento
+      // sin almacenamiento: vuelve a desmarcada al recargar
     }
   });
-  const textoWeb = el('span');
-  const etiquetaWeb = el('label', {
+  const textoAbierta = el('span');
+  texto(textoAbierta, 'buscar.webTodo');
+  const etiquetaAbierta = el('label', {
     className: 'buscar__opcion',
     attrs: { hidden: '' },
-    children: [web, textoWeb],
+    children: [abierta, textoAbierta],
   });
+  atributo(etiquetaAbierta, 'title', 'buscar.webTodo.detalle');
   const textoPaginas = el('span');
   etiquetaPaginas.prepend(textoPaginas);
 
@@ -242,7 +249,14 @@ export function createBuscarView(root) {
       chipsSitios,
       el('div', {
         className: 'buscar__pie',
-        children: [ayuda, el('span', { children: [agregar, botonVarias] }), etiquetaPaginas],
+        children: [
+          ayuda,
+          el('span', { children: [agregar, botonVarias] }),
+          el('span', {
+            className: 'buscar__opciones',
+            children: [etiquetaAbierta, etiquetaPaginas],
+          }),
+        ],
       }),
     ],
     on: {
@@ -637,8 +651,6 @@ export function createBuscarView(root) {
     pintarIdiomas();
     pintarOrden();
     agregar.textContent = t('buscar.agregarSitios');
-    textoWeb.textContent = t('buscar.web');
-    etiquetaWeb.title = t('buscar.web.titulo');
   }
 
   /** La ayuda y el botón dicen qué va a pasar con lo escrito (palabra o enlace). */
@@ -659,6 +671,7 @@ export function createBuscarView(root) {
       const r = await fetch('/api/buscar/sitios').then(x => x.json());
       sitios = r.sitios || [];
       hayWeb = Boolean(r.web);
+      etiquetaAbierta.hidden = !hayWeb;
     } catch {
       sitios = [];
     }
@@ -699,17 +712,17 @@ export function createBuscarView(root) {
   /** La búsqueda web trae más, pero también mucho que no es: se pregunta cada vez (null = cancelar). */
   async function preguntarWeb() {
     if (!hayWeb) return { conWeb: false, conAbierta: false };
+    // «Toda la web» ya no se ofrece aquí: es la casilla del formulario, desmarcada por defecto.
     const r = await chooseDialog({
       titleKey: 'buscar.webPregunta',
       labelKey: 'buscar.webPregunta.texto',
       opciones: [
         { valor: 'no', titulo: t('buscar.webNo'), detalle: t('buscar.webNo.detalle') },
         { valor: 'si', titulo: t('buscar.webSi'), detalle: t('buscar.webSi.detalle') },
-        { valor: 'todo', titulo: t('buscar.webTodo'), detalle: t('buscar.webTodo.detalle') },
       ],
     });
     if (r === null) return null;
-    return { conWeb: r === 'si' || r === 'todo', conAbierta: r === 'todo' };
+    return { conWeb: r === 'si', conAbierta: abierta.checked };
   }
 
   async function empezar(opciones = {}) {

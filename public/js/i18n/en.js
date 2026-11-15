@@ -876,4 +876,5 @@ export const en = {
   'aj.sitios.fallidos.varios': '{n} failed in JDownloader',
   'aj.sitios.cero': 'Reset the numbers',
   'aj.sitios.ceroConfirmar': 'Clears the numbers of every site. Sites and their options are kept.',
+  'aj.prog.abierta': 'Also search the whole web (noisier)',
 };

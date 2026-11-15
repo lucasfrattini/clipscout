@@ -67,3 +67,25 @@ test('toca: nunca ejecutada, a los N días, y nunca si está pausada', () => {
   assert.equal(toca({ activa: true, ultimaVez: '2026-01-03T12:00:00Z', cadaDias: 7 }, ahora), true);
   assert.equal(toca({ activa: false, ultimaVez: null, cadaDias: 7 }, ahora), false);
 });
+
+test('la web abierta queda desactivada salvo que se marque (también en las ya guardadas)', async () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-prog-abierta-'));
+  const config = require('../src/config');
+  const antes = config.crew.path;
+  config.crew.path = path.join(dir, 'crew.json');
+  try {
+    const { guardar } = require('../src/services/programadas');
+    const nueva = await guardar({ termino: 'Playa' });
+    assert.equal(nueva.abierta, false);
+    const marcada = await guardar({ termino: 'Montaña', abierta: true });
+    assert.equal(marcada.abierta, true);
+    // Editar otra cosa no la desmarca
+    assert.equal((await guardar({ id: marcada.id, cadaDias: 3 })).abierta, true);
+  } finally {
+    config.crew.path = antes;
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

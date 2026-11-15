@@ -53,6 +53,8 @@ function limpiar(entrada = {}, anterior = {}) {
     contener: texto(entrada.contener ?? anterior.contener, 500),
     excluir: texto(entrada.excluir ?? anterior.excluir, 500),
     cadaDias: numero(entrada.cadaDias ?? anterior.cadaDias, 7, 1, 90),
+    // «También en toda la web»: desactivada salvo que se marque (las guardadas antes, igual).
+    abierta: Boolean(entrada.abierta ?? anterior.abierta ?? false),
     activa: Boolean(entrada.activa ?? anterior.activa ?? true),
     ultimaVez: anterior.ultimaVez || null,
     ultimo: anterior.ultimo || null,
@@ -141,10 +143,10 @@ function filtrar(items, prog, yaEnviados = new Set(), bloqueadas = filtrosGlobal
 }
 
 /** Lanza la búsqueda en segundo plano y espera a que acabe. Devuelve sus resultados. */
-function buscar(termino, carpeta = '') {
+function buscar(termino, carpeta = '', abierta = false) {
   // Pasa por la misma cola que las búsquedas a mano: si hay otras en marcha, espera su turno.
   const id = fondo.iniciar(
-    { q: termino, web: true, abierta: true },
+    { q: termino, web: true, abierta: abierta === true },
     { carpeta, origen: 'programada' }
   );
   return new Promise(resolver => {
@@ -213,7 +215,7 @@ async function lanzar(id) {
   if (enCurso) throw new crew.ErrorCrew('Ya hay una búsqueda programada en marcha.', 409);
   let busqueda;
   try {
-    busqueda = buscar(prog.termino, prog.carpeta);
+    busqueda = buscar(prog.termino, prog.carpeta, prog.abierta);
   } catch (error) {
     throw new crew.ErrorCrew(error.message, error.status || 500);
   }

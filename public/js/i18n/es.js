@@ -880,4 +880,5 @@ export const es = {
   'aj.sitios.cero': 'Poner las cifras a cero',
   'aj.sitios.ceroConfirmar':
     'Borra las cifras de todos los sitios. Los sitios y sus opciones no se tocan.',
+  'aj.prog.abierta': 'Buscar también en toda la web (más ruido)',
 };
