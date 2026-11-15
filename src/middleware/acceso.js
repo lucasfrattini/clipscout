@@ -24,11 +24,11 @@ const igual = (a, b) => {
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 
 /**
- * Acceso a la interfaz: pantalla de login como en las otras apps de clip crew, con cookie
- * firmada, o HTTP Basic / `X-Api-Key` (la clave de clip crew de esta app) para clientes de API,
+ * Acceso a la interfaz: pantalla de login como en las otras apps de Clipgeist, con cookie
+ * firmada, o HTTP Basic / `X-Api-Key` (la clave de Clipgeist de esta app) para clientes de API,
  * como en las *arr. Sin contraseña (ni en el entorno ni en Ajustes) todo pasa, como siempre.
  *
- * Libres siempre: el protocolo clip crew (tiene su propia clave), /api/health, /api/auth/* y lo
+ * Libres siempre: el protocolo Clipgeist (tiene su propia clave), /api/health, /api/auth/* y lo
  * que necesita la pantalla de acceso. La firma sale de la contraseña: cambiarla cierra todas las
  * sesiones.
  */

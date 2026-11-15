@@ -1,13 +1,13 @@
-# Protocolo clip crew v1
+# Protocolo Clipgeist v1
 
-Cómo se conectan entre sí las apps de **clip crew** (clipscout, clonbuster, clipkeeper). Cada app
+Cómo se conectan entre sí las apps de **Clipgeist** (clipscout, clonbuster, clipkeeper). Cada app
 es independiente — su base de datos, su contenedor — y habla con las demás solo por esta API.
 Inspirado en cómo se enlazan Sonarr, Radarr y Prowlarr.
 
 > Este documento es **idéntico en los tres repositorios** (clipscout, clonbuster y clipkeeper). Si el
 > protocolo cambia, se cambia en los tres a la vez.
 
-## Arquitectura de clip crew
+## Arquitectura de Clipgeist
 
 ```
                     ┌──────────────────────┐
@@ -61,7 +61,7 @@ Quién soy. Sirve para el botón **Probar** de una conexión.
 
 ```json
 {
-  "crew": "clip crew",
+  "crew": "Clipgeist",
   "protocolo": 1,
   "app": "clipkeeper",
   "version": "0.1.0",
@@ -97,7 +97,7 @@ Quitar una conexión. Opcional para llamadas entre apps; siempre disponible desd
 
 1. El usuario elige el tipo de app (B), su URL y su clave de API.
 2. **Probar**: A llama a `GET {url}/api/crew/v1/status` con la clave de B. Debe responder `200`, con
-   `crew == "clip crew"` y `app` igual al tipo elegido. Si no, se muestra el motivo.
+   `crew == "Clipgeist"` y `app` igual al tipo elegido. Si no, se muestra el motivo.
 3. **Guardar**: A guarda la conexión y, si está marcado «Conectar también en sentido contrario»
    (por defecto sí), hace `POST {url}/api/crew/v1/conexiones` en B con **su propia** URL y clave.
    Así B también ve a A sin configurar nada a mano.
@@ -143,12 +143,12 @@ X-Api-Key: <clave de clipkeeper>
 
 ### Autoconexión por entorno (instalación conjunta)
 
-- `CLIPCREW_CLAVE`: si existe, es la clave de API de clipscout (manda sobre la guardada en
+- `CLIPGEIST_CLAVE`: si existe, es la clave de API de clipscout (manda sobre la guardada en
   `data/crew.json`, que no se toca; regenerarla desde Ajustes da 409).
-- `CLIPCREW_CLIPKEEPER_URL`, `CLIPCREW_CLONBUSTER_URL`: al arrancar, clipscout asegura una
+- `CLIPGEIST_CLIPKEEPER_URL`, `CLIPGEIST_CLONBUSTER_URL`: al arrancar, clipscout asegura una
   conexión activa con cada una, con esa misma clave (comprobada con `GET /status`). Idempotente; la
   conexión creada así lleva `"auto": true` en `GET /conexiones`. Una conexión hecha a mano con la
   misma URL no se toca. Si la otra app no responde, se reintenta cada 15 s durante 10 min.
-- `CLIPCREW_CLIPSCOUT_URL`: la URL propia que se anuncia en `/status` si no hay otra en Ajustes.
-- `deploy/clip-crew/compose.yaml` levanta las tres apps con estas variables y las URLs internas
+- `CLIPGEIST_CLIPSCOUT_URL`: la URL propia que se anuncia en `/status` si no hay otra en Ajustes.
+- `deploy/clipgeist/compose.yaml` levanta las tres apps con estas variables y las URLs internas
   de la red de compose.

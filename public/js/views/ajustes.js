@@ -1,6 +1,6 @@
 /**
  * Vista Ajustes: identidad de esta instancia, clave de API y conexiones con
- * las otras apps de clip crew (clonbuster, clipkeeper), al estilo de las *arr.
+ * las otras apps de Clipgeist (clonbuster, clipkeeper), al estilo de las *arr.
  *
  * Todo se construye con `el()`: nada de innerHTML (regla del proyecto).
  */
@@ -278,7 +278,7 @@ export function createAjustesView(raiz) {
                 toast(t('aj.clave.noCopia'), 'error', 6000);
               }
             }),
-            // Con CLIPCREW_CLAVE la clave es la del entorno, común a las tres apps: no se regenera aquí.
+            // Con CLIPGEIST_CLAVE la clave es la del entorno, común a las tres apps: no se regenera aquí.
             general.clave_del_entorno
               ? el('span', { className: 'field__hint', text: t('aj.clave.entorno') })
               : null,
@@ -1303,7 +1303,7 @@ export function createAjustesView(raiz) {
         el('li', {
           className: 'ajustes-conexiones__vacio',
           children: [
-            el('img', { attrs: { src: '/img/crew/clipcrew.png', alt: '', width: 64, height: 64 } }),
+            el('img', { attrs: { src: '/img/crew/clipgeist.png', alt: '', width: 64, height: 64 } }),
             el('span', { text: t('aj.con.vacio') }),
           ],
         })
@@ -1512,7 +1512,7 @@ export function createAjustesView(raiz) {
 }
 
 /**
- * Selector común de clip crew en la cabecera: las tres apps siempre, la actual
+ * Selector común de Clipgeist en la cabecera: las tres apps siempre, la actual
  * resaltada y las que no están conectadas, apagadas (igual en las tres apps).
  */
 export function initCrewCabecera(contenedor) {

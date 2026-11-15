@@ -36,11 +36,11 @@ require('./src/services/paquetesJd').arrancar();
 // Copia de seguridad diaria de data/*.json (la de hoy, si falta, y luego cada hora se mira).
 require('./src/services/respaldos').arrancar();
 
-// Instalación conjunta de clip crew: con CLIPCREW_CLAVE y las URLs en el entorno, se conecta sola
+// Instalación conjunta de Clipgeist: con CLIPGEIST_CLAVE y las URLs en el entorno, se conecta sola
 // con las otras apps (y reintenta unos minutos si aún no responden). Sin ellas, nada.
 require('./src/services/crew')
   .autoconectar()
-  .catch(error => logger.warn('clip crew: autoconexión', error.message));
+  .catch(error => logger.warn('Clipgeist: autoconexión', error.message));
 
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();

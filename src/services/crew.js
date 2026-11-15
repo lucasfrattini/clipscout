@@ -8,20 +8,29 @@ const config = require('../config');
 const logger = require('../lib/logger');
 
 /**
- * Protocolo clip crew v1: conexión con las otras apps de la familia.
+ * Protocolo Clipgeist v1: conexión con las otras apps de la familia.
  *
  * Referencia común: `docs/CREW.md` del repositorio de clipkeeper. clonbuster
  * y clipkeeper implementan lo mismo; si cambia el protocolo, cambia en las tres.
  *
  * Ojo con la protección SSRF: el scraping NO puede tocar direcciones privadas,
  * y eso no cambia. Las llamadas de este módulo van SOLO a las URLs que el
- * administrador dio de alta como apps de clip crew (normalmente en la red
+ * administrador dio de alta como apps de Clipgeist (normalmente en la red
  * local), y solo a sus rutas `/api/crew/v1/...`. Por eso usan su propio fetch
  * y no el cliente HTTP del scraper.
  */
 
 const APP = 'clipscout';
-const CREW = 'clip crew';
+const CREW = 'Clipgeist';
+// Antes de llamarse Clipgeist la familia era «clip crew»: se siguen aceptando las variables
+// CLIPCREW_* (si no está la CLIPGEIST_* equivalente) y el nombre antiguo en el protocolo.
+const CREW_ANTIGUO = 'clip crew';
+for (const [k, v] of Object.entries(process.env)) {
+  if (k.startsWith('CLIPCREW_')) {
+    const nueva = `CLIPGEIST_${k.slice('CLIPCREW_'.length)}`;
+    if (process.env[nueva] === undefined) process.env[nueva] = v;
+  }
+}
 const PROTOCOLO = 1;
 const APPS = ['clipscout', 'clonbuster', 'clipkeeper'];
 const { version } = require('../../package.json');
@@ -69,15 +78,15 @@ function cambiar(fn) {
 }
 
 /**
- * Instalación conjunta de clip crew (igual en las tres apps): con `CLIPCREW_CLAVE` en el entorno,
+ * Instalación conjunta de Clipgeist (igual en las tres apps): con `CLIPGEIST_CLAVE` en el entorno,
  * ESA es la clave de API de esta app (manda sobre la guardada, que no se toca), y las
- * `CLIPCREW_<APP>_URL` dicen dónde está cada una. Sin las variables, nada cambia.
+ * `CLIPGEIST_<APP>_URL` dicen dónde está cada una. Sin las variables, nada cambia.
  */
-const claveEntorno = () => String(process.env.CLIPCREW_CLAVE || '').trim();
+const claveEntorno = () => String(process.env.CLIPGEIST_CLAVE || '').trim();
 const VARIABLES_URL = {
-  clipscout: 'CLIPCREW_CLIPSCOUT_URL',
-  clipkeeper: 'CLIPCREW_CLIPKEEPER_URL',
-  clonbuster: 'CLIPCREW_CLONBUSTER_URL',
+  clipscout: 'CLIPGEIST_CLIPSCOUT_URL',
+  clipkeeper: 'CLIPGEIST_CLIPKEEPER_URL',
+  clonbuster: 'CLIPGEIST_CLONBUSTER_URL',
 };
 const urlEntorno = app => String(process.env[VARIABLES_URL[app]] || '').trim();
 
@@ -217,7 +226,7 @@ async function probar(app, url, clave) {
   if (r.status === 404) {
     return {
       ok: false,
-      error: 'Responde, pero no es una app de clip crew (o es una versión antigua).',
+      error: 'Responde, pero no es una app de Clipgeist (o es una versión antigua).',
     };
   }
   if (r.status !== 200) return { ok: false, error: `Respondió con un error (${r.status}).` };
@@ -225,10 +234,10 @@ async function probar(app, url, clave) {
   try {
     remoto = await r.json();
   } catch {
-    return { ok: false, error: 'Respondió algo que no es una app de clip crew.' };
+    return { ok: false, error: 'Respondió algo que no es una app de Clipgeist.' };
   }
-  if (remoto.crew !== CREW) {
-    return { ok: false, error: 'Responde, pero no es una app de clip crew.' };
+  if (remoto.crew !== CREW && remoto.crew !== CREW_ANTIGUO) {
+    return { ok: false, error: 'Responde, pero no es una app de Clipgeist.' };
   }
   if (remoto.app !== app) {
     return { ok: false, error: `En esa URL hay un ${remoto.app}, no un ${app}.` };
@@ -393,9 +402,9 @@ async function asegurarConexion(app, url, clave) {
 }
 
 /**
- * Al arrancar: una conexión con cada app de `CLIPCREW_*_URL` que no sea esta. Si alguna aún no
+ * Al arrancar: una conexión con cada app de `CLIPGEIST_*_URL` que no sea esta. Si alguna aún no
  * responde (arrancan a la vez y cada una tarda lo suyo), se reintenta en segundo plano cada
- * `cadaMs` durante `maxMs`. Sin `CLIPCREW_CLAVE` no hace nada.
+ * `cadaMs` durante `maxMs`. Sin `CLIPGEIST_CLAVE` no hace nada.
  */
 function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
   const clave = claveEntorno();
@@ -410,13 +419,13 @@ function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
         resultado[app] = r;
         if (r !== 'no_responde') pendientes.splice(pendientes.indexOf(app), 1);
         if (r === 'creada' || r === 'actualizada') {
-          logger.info(`clip crew: conexión con ${app} (${urlEntorno(app)}) ${r} desde el entorno`);
+          logger.info(`Clipgeist: conexión con ${app} (${urlEntorno(app)}) ${r} desde el entorno`);
         }
       } catch (error) {
         // URL mal escrita en el entorno: no tiene arreglo reintentando.
         resultado[app] = `error: ${error.message}`;
         pendientes.splice(pendientes.indexOf(app), 1);
-        logger.warn(`clip crew: ${VARIABLES_URL[app]} no vale: ${error.message}`);
+        logger.warn(`Clipgeist: ${VARIABLES_URL[app]} no vale: ${error.message}`);
       }
     }
   };
@@ -428,7 +437,7 @@ function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
           clearInterval(reloj);
           if (pendientes.length) {
             logger.warn(
-              `clip crew: ${pendientes.join(', ')} no respondió; conéctala desde Ajustes`
+              `Clipgeist: ${pendientes.join(', ')} no respondió; conéctala desde Ajustes`
             );
           }
         }

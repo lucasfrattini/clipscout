@@ -15,7 +15,7 @@ const directo = require('./directo');
  * Formato de esa API: GET /<namespace>/<método>?<parámetro1 JSON>&<parámetro2 JSON>,
  * cada parámetro en orden y codificado como URL. Responde `{"data": ...}`.
  *
- * Igual que las conexiones de clip crew, la URL la da el administrador (suele
+ * Igual que las conexiones de Clipgeist, la URL la da el administrador (suele
  * ser una IP de la red local), así que no pasa por la protección SSRF del
  * scraper: solo se llama a ESA URL y solo a estas rutas.
  */

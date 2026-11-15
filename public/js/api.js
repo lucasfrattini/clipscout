@@ -214,7 +214,7 @@ export function openVideoStream(params, handlers = {}) {
   };
 }
 
-/* ── clip crew: ajustes y conexiones con las otras apps ───────────── */
+/* ── Clipgeist: ajustes y conexiones con las otras apps ───────────── */
 
 export const ajustes = {
   general: () => request('/ajustes/general'),

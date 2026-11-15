@@ -1,29 +1,29 @@
-# clip crew: las tres apps juntas, ya conectadas entre sí.
+# Clipgeist: las tres apps juntas, ya conectadas entre sí.
 #
 # Espera los tres repositorios como carpetas hermanas:
 #   proyectos/clipscout   (este)
 #   proyectos/clipkeeper
 #   proyectos/clonbuster
 #
-# Uso, desde esta carpeta (deploy/clip-crew):
-#   cp .env.example .env            # y pon tu CLIPCREW_CLAVE (32 caracteres hex)
+# Uso, desde esta carpeta (deploy/clipgeist):
+#   cp .env.example .env            # y pon tu CLIPGEIST_CLAVE (32 caracteres hex)
 #   mkdir -p datos/clipscout datos/clipkeeper datos/clonbuster
 #   docker compose up -d --build
 #
-# Las tres comparten CLIPCREW_CLAVE y se alcanzan por el nombre del servicio dentro de la red de
+# Las tres comparten CLIPGEIST_CLAVE y se alcanzan por el nombre del servicio dentro de la red de
 # compose: al arrancar, cada una crea sola su conexión con las otras dos (y reintenta unos
 # minutos si alguna tarda en levantar). Las conexiones hechas a mano en Ajustes no se tocan.
 #
-# Las CLIPCREW_*_URL son también las que se usan para los enlaces entre apps de la cabecera: si
+# Las CLIPGEIST_*_URL son también las que se usan para los enlaces entre apps de la cabecera: si
 # quieres que esos enlaces abran en tu navegador, pon en el .env las direcciones de la red local
 # (http://<ip-del-servidor>:<puerto>), que también valen desde dentro de los contenedores.
-name: clip-crew
+name: clipgeist
 
-x-clipcrew: &clipcrew
-  CLIPCREW_CLAVE: '${CLIPCREW_CLAVE:?Pon CLIPCREW_CLAVE en el .env (p. ej. openssl rand -hex 16)}'
-  CLIPCREW_CLIPSCOUT_URL: '${CLIPCREW_CLIPSCOUT_URL:-http://clipscout:3000}'
-  CLIPCREW_CLIPKEEPER_URL: '${CLIPCREW_CLIPKEEPER_URL:-http://clipkeeper:8096}'
-  CLIPCREW_CLONBUSTER_URL: '${CLIPCREW_CLONBUSTER_URL:-http://clonbuster:8095}'
+x-clipgeist: &clipgeist
+  CLIPGEIST_CLAVE: '${CLIPGEIST_CLAVE:?Pon CLIPGEIST_CLAVE en el .env (p. ej. openssl rand -hex 16)}'
+  CLIPGEIST_CLIPSCOUT_URL: '${CLIPGEIST_CLIPSCOUT_URL:-http://clipscout:3000}'
+  CLIPGEIST_CLIPKEEPER_URL: '${CLIPGEIST_CLIPKEEPER_URL:-http://clipkeeper:8096}'
+  CLIPGEIST_CLONBUSTER_URL: '${CLIPGEIST_CLONBUSTER_URL:-http://clonbuster:8095}'
 
 services:
   clipscout:
@@ -34,7 +34,7 @@ services:
     ports:
       - '${CLIPSCOUT_PUERTO:-3001}:3000'
     environment:
-      <<: *clipcrew
+      <<: *clipgeist
       NODE_ENV: production
       PORT: 3000
       SECURITY_BLOCK_PRIVATE_ADDRESSES: 'true'
@@ -62,7 +62,7 @@ services:
     ports:
       - '${CLIPKEEPER_PUERTO:-8096}:8096'
     environment:
-      <<: *clipcrew
+      <<: *clipgeist
       CLIPKEEPER_LIMITES: '${CARPETAS:-/videos}'
     volumes:
       - ${DATOS:-./datos}/clipkeeper:/datos
@@ -81,7 +81,7 @@ services:
       - '${CLONBUSTER_PUERTO:-8095}:8095'
     command: ['web', '--host', '0.0.0.0', '--limites', '${CARPETAS:-/videos}', '--datos', '/datos']
     environment:
-      <<: *clipcrew
+      <<: *clipgeist
     volumes:
       - ${DATOS:-./datos}/clonbuster:/datos
       - ${CARPETAS:-./videos}:${CARPETAS:-/videos}

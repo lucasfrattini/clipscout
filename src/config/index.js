@@ -309,7 +309,7 @@ const config = {
 
   security: {
     // Contraseña OPCIONAL para toda la interfaz (HTTP Basic). Vacía = sin contraseña, como hasta
-    // ahora. El protocolo clip crew (/api/crew/v1) y /api/health no la piden: el primero se
+    // ahora. El protocolo Clipgeist (/api/crew/v1) y /api/health no la piden: el primero se
     // protege con su propia clave de API y el segundo lo usa el healthcheck del contenedor.
     adminUser: process.env.ADMIN_USER || 'admin',
     adminPassword: process.env.ADMIN_PASSWORD || '',
@@ -352,7 +352,7 @@ const config = {
   },
 
   crew: {
-    // Conexión con las otras apps de clip crew (clonbuster, clipkeeper): clave de
+    // Conexión con las otras apps de Clipgeist (clonbuster, clipkeeper): clave de
     // API propia, nombre, URL y conexiones. Fuera del control de versiones.
     path: process.env.CREW_PATH || path.join(__dirname, '..', '..', 'data', 'crew.json'),
     // Tiempo máximo para hablar con otra app de la familia.

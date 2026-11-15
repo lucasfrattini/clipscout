@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { after, before, test } = require('node:test');
 
-// Con ADMIN_PASSWORD definida, toda la app pide HTTP Basic salvo health y el protocolo clip crew.
+// Con ADMIN_PASSWORD definida, toda la app pide HTTP Basic salvo health y el protocolo Clipgeist.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-admin-'));
 process.env.CREW_PATH = path.join(dir, 'crew.json');
 process.env.ADMIN_USER = 'lucas';
@@ -95,7 +95,7 @@ test('tras muchos fallos, el login se bloquea', async () => {
   assert.equal((await entrar('secreta:con:dos-puntos')).status, 429);
 });
 
-test('health y el protocolo clip crew no piden contraseña (tienen su propia clave)', async () => {
+test('health y el protocolo Clipgeist no piden contraseña (tienen su propia clave)', async () => {
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
   assert.equal((await fetch(`${base}/api/crew/v1/status`)).status, 401); // pide la clave de API, no la contraseña
   const sinClave = await (await fetch(`${base}/api/crew/v1/status`)).json();

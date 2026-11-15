@@ -481,16 +481,16 @@ export const es = {
   'video.progreso.via.encontrados.uno': 'encontró 1 vídeo',
   'video.progreso.via.encontrados.varios': 'encontró {n} vídeos',
 
-  /* ── Ajustes y clip crew ───────────────────────────────────────── */
+  /* ── Ajustes y Clipgeist ───────────────────────────────────────── */
   'nav.ajustes': 'Ajustes',
-  'crew.aria': 'Apps de clip crew',
+  'crew.aria': 'Apps de Clipgeist',
   'head.ajustes.titulo': 'Ajustes — clipscout',
-  'head.ajustes.desc': 'Identidad, clave de API y conexiones con las otras apps de clip crew.',
+  'head.ajustes.desc': 'Identidad, clave de API y conexiones con las otras apps de Clipgeist.',
   'aj.esta.titulo': 'General',
   'aj.esta.hint': '{app} · versión {version}',
   'aj.instancia.label': 'Nombre de esta instancia',
   'aj.instancia.placeholder': 'Por ejemplo: Buscador de casa',
-  'aj.instancia.hint': 'Es el nombre con el que la verán las otras apps de clip crew.',
+  'aj.instancia.hint': 'Es el nombre con el que la verán las otras apps de Clipgeist.',
   'aj.url.label': 'URL de esta app',
   'aj.url.hint':
     'La dirección por la que las otras apps llegan a esta. Si la dejas vacía se usa la que usas tú ahora: {url}',
@@ -498,7 +498,7 @@ export const es = {
   'aj.guardado': 'Ajustes guardados',
   'aj.clave.titulo': 'Clave de API',
   'aj.clave.hint':
-    'Las otras apps de clip crew la necesitan para conectarse con esta: pégala en su sección Ajustes → Conexiones.',
+    'Las otras apps de Clipgeist la necesitan para conectarse con esta: pégala en su sección Ajustes → Conexiones.',
   'aj.clave.mostrar': 'Mostrar',
   'aj.clave.ocultar': 'Ocultar',
   'aj.clave.copiar': 'Copiar',
@@ -925,9 +925,9 @@ export const es = {
   'aj.resp.ahora': 'Hacer una copia ahora',
   'aj.resp.hecha': 'Copia hecha',
   'aj.clave.entorno':
-    'Viene de CLIPCREW_CLAVE (instalación conjunta): se cambia allí, en las tres apps a la vez.',
+    'Viene de CLIPGEIST_CLAVE (instalación conjunta): se cambia allí, en las tres apps a la vez.',
   'aj.con.auto': '(automática)',
-  'aj.con.auto.titulo': 'Creada al arrancar por CLIPCREW_*_URL.',
+  'aj.con.auto.titulo': 'Creada al arrancar por CLIPGEIST_*_URL.',
   'aj.acceso.titulo': 'Acceso',
   'aj.acceso.sin':
     'Sin contraseña: entra cualquiera que llegue a esta dirección. Pon una si Ajustes (que muestra la clave de API) se ve desde otros equipos.',

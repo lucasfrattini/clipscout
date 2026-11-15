@@ -1,5 +1,5 @@
 /*
- * clip crew — sistema visual común (clipscout · clonbuster · clipkeeper).
+ * Clipgeist — sistema visual común (clipscout · clonbuster · clipkeeper).
  *
  * ESTE FICHERO ES IDÉNTICO EN LAS TRES APPS. Si se cambia, se cambia en las tres:
  * es lo que hace que pasar de una a otra no parezca cambiar de aplicación.
@@ -30,7 +30,7 @@
   --cc-letra: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --cc-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  /* Acento por app (por defecto, el violeta de clip crew). */
+  /* Acento por app (por defecto, el violeta de Clipgeist). */
   --cc-acento: #7c3aed;
   --cc-acento-claro: #a78bfa;
   --cc-acento-texto: #ffffff;

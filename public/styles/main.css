@@ -2,7 +2,7 @@
    Tokens de diseño + componentes. Sin dependencias externas (la CSP no
    permite hosts remotos). */
 
-/* Colores, radios y sombras de los componentes: del sistema común de clip crew
+/* Colores, radios y sombras de los componentes: del sistema común de Clipgeist
    (styles/crew.css). Aquí solo se nombran como los usa clipscout. */
 :root {
   color-scheme: light dark;
@@ -180,7 +180,7 @@ a {
 /* ── Cabecera ────────────────────────────────────────────────────────── */
 
 /*
- * La cabecera es la COMÚN de clip crew (styles/crew.css, clases cc-*), igual en
+ * La cabecera es la COMÚN de Clipgeist (styles/crew.css, clases cc-*), igual en
  * clonbuster y clipkeeper. Aquí solo se adaptan los controles propios de
  * clipscout (idioma y tema) al fondo oscuro, y las pestañas (.tab) dentro de
  * `.cc-menu`, que es lo que mira el enrutador.
@@ -2739,7 +2739,7 @@ a {
   margin-top: var(--space-5);
 }
 
-/* ── clip crew: marca, apps conectadas y Ajustes ────────────────────── */
+/* ── Clipgeist: marca, apps conectadas y Ajustes ────────────────────── */
 
 .ajustes-form {
   display: grid;

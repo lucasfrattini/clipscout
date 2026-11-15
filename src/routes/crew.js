@@ -18,7 +18,7 @@ const { listarSitios } = require('../services/busqueda');
 const { hostDe } = require('../services/web');
 
 /**
- * Rutas de clip crew.
+ * Rutas de Clipgeist.
  *
  * - `/api/crew/v1/...`: protocolo entre apps, con la clave de ESTA app en
  *   `X-Api-Key`. Lo usan clonbuster y clipkeeper.
@@ -158,7 +158,7 @@ router.post(
   manejar(async () => {
     if (crew.claveEntorno()) {
       throw new crew.ErrorCrew(
-        'La clave viene del entorno (CLIPCREW_CLAVE): se cambia allí, en las tres apps a la vez.',
+        'La clave viene del entorno (CLIPGEIST_CLAVE): se cambia allí, en las tres apps a la vez.',
         409
       );
     }

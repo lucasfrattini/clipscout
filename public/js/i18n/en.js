@@ -480,16 +480,16 @@ export const en = {
   'video.progreso.via.encontrados.uno': 'found 1 video',
   'video.progreso.via.encontrados.varios': 'found {n} videos',
 
-  /* ── Ajustes y clip crew ───────────────────────────────────────── */
+  /* ── Ajustes y Clipgeist ───────────────────────────────────────── */
   'nav.ajustes': 'Settings',
-  'crew.aria': 'clip crew apps',
+  'crew.aria': 'Clipgeist apps',
   'head.ajustes.titulo': 'Settings — clipscout',
-  'head.ajustes.desc': 'Identity, API key and connections with the other clip crew apps.',
+  'head.ajustes.desc': 'Identity, API key and connections with the other Clipgeist apps.',
   'aj.esta.titulo': 'General',
   'aj.esta.hint': '{app} · version {version}',
   'aj.instancia.label': 'Instance name',
   'aj.instancia.placeholder': 'For example: Home finder',
-  'aj.instancia.hint': 'The name the other clip crew apps will see.',
+  'aj.instancia.hint': 'The name the other Clipgeist apps will see.',
   'aj.url.label': 'URL of this app',
   'aj.url.hint':
     'The address the other apps use to reach this one. If you leave it empty, the one you are using now is used: {url}',
@@ -497,7 +497,7 @@ export const en = {
   'aj.guardado': 'Settings saved',
   'aj.clave.titulo': 'API key',
   'aj.clave.hint':
-    'The other clip crew apps need it to connect to this one: paste it under their Settings → Connections.',
+    'The other Clipgeist apps need it to connect to this one: paste it under their Settings → Connections.',
   'aj.clave.mostrar': 'Show',
   'aj.clave.ocultar': 'Hide',
   'aj.clave.copiar': 'Copy',
@@ -920,9 +920,9 @@ export const en = {
   'aj.resp.ahora': 'Back up now',
   'aj.resp.hecha': 'Backup done',
   'aj.clave.entorno':
-    'Comes from CLIPCREW_CLAVE (joint install): change it there, in all three apps at once.',
+    'Comes from CLIPGEIST_CLAVE (joint install): change it there, in all three apps at once.',
   'aj.con.auto': '(automatic)',
-  'aj.con.auto.titulo': 'Created at startup from CLIPCREW_*_URL.',
+  'aj.con.auto.titulo': 'Created at startup from CLIPGEIST_*_URL.',
   'aj.acceso.titulo': 'Access',
   'aj.acceso.sin':
     'No password: anyone who reaches this address gets in. Set one if Settings (which shows the API key) can be reached from other devices.',

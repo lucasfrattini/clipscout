@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { after, before, test } = require('node:test');
 
-// El fichero de clip crew va a un directorio temporal ANTES de cargar la config.
+// El fichero de Clipgeist va a un directorio temporal ANTES de cargar la config.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-crew-'));
 process.env.CREW_PATH = path.join(dir, 'crew.json');
 
@@ -46,7 +46,7 @@ test('status exige la clave y responde con la identidad de clipscout', async () 
     headers: { 'X-Api-Key': general.api_key },
   });
   assert.equal(status, 200);
-  assert.equal(body.crew, 'clip crew');
+  assert.equal(body.crew, 'Clipgeist');
   assert.equal(body.app, 'clipscout');
   assert.equal(body.protocolo, 1);
 });
