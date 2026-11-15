@@ -45,9 +45,11 @@ require('./src/services/crew')
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();
 
-const server = app.listen(config.port, () => {
-  logger.info(`clipscout escuchando en http://localhost:${config.port}`);
-});
+const escuchar = () =>
+  logger.info(`clipscout escuchando en http://${config.host || 'localhost'}:${config.port}`);
+const server = config.host
+  ? app.listen(config.port, config.host, escuchar)
+  : app.listen(config.port, escuchar);
 
 /** Apagado ordenado: cierra el servidor HTTP y el navegador del pool. */
 async function shutdown(signal) {

@@ -79,6 +79,8 @@ const config = {
 
   // No asumir 3000: esta máquina corre en 3001 vía .env
   port: intFromEnv('PORT', 3000),
+  // Interfaz en la que escucha. Vacío = todas (Docker); el lanzador de escritorio pone 127.0.0.1.
+  host: (process.env.HOST || '').trim(),
   env: process.env.NODE_ENV || 'development',
 
   http: {
@@ -259,7 +261,7 @@ const config = {
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     // Directorio de perfil de Chromium. Debe ser escribible aunque el resto
     // del sistema de ficheros esté en solo lectura.
-    userDataDir: process.env.BROWSER_USER_DATA_DIR || '/tmp/chromium-data',
+    userDataDir: process.env.BROWSER_USER_DATA_DIR || path.join(os.tmpdir(), 'chromium-data'),
     // Tamaño del pool: se reutilizan páginas en vez de lanzar un Chromium
     // por cada URL, que era el mayor coste de la versión anterior.
     poolSize: intFromEnv('BROWSER_POOL_SIZE', 2),

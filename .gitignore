@@ -32,3 +32,9 @@ src/extensions/*.js
 # (documenta los identificadores del espacio de trabajo).
 # NO se versiona. Sin esta línea, un "git add -A" rutinario lo publicaría.
 .claude/
+
+# Instaladores (empaquetado/)
+empaquetado/build/
+empaquetado/dist/
+empaquetado/__pycache__/
+salida/
