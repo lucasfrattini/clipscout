@@ -946,7 +946,7 @@ export function createBuscarView(root) {
       if (m.type === 'en_cola') {
         enCola = m.posicion;
         refrescarCola();
-      } else if (m.type === 'inicio') {
+      } else if (m.type === 'inicio' || m.type === 'reanudada') {
         enCola = null;
         refrescarCola();
       } else if (m.type === 'sitios') {

@@ -1,5 +1,6 @@
 'use strict';
 
+const os = require('node:os');
 const path = require('node:path');
 
 require('dotenv').config();
@@ -53,7 +54,24 @@ function trustProxyFromEnv(name, fallback) {
   return limpio;
 }
 
+/**
+ * Carpeta de los datos propios (búsquedas en curso, estadísticas, paquetes de JDownloader,
+ * respaldos). Fuera de git, como data/crew.json. Si no se dice nada, la misma carpeta que
+ * crew.json; en los tests, sin CREW_PATH, una temporal: que una suite escriba en el data/ del
+ * repositorio sería mezclar pruebas con datos de verdad.
+ */
+function carpetaDatos() {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  if (process.env.CREW_PATH) return path.dirname(process.env.CREW_PATH);
+  if (process.env.NODE_TEST_CONTEXT) return path.join(os.tmpdir(), `clipscout-test-${process.pid}`);
+  return path.join(__dirname, '..', '..', 'data');
+}
+
 const config = {
+  datos: {
+    dir: carpetaDatos(),
+  },
+
   // No asumir 3000: esta máquina corre en 3001 vía .env
   port: intFromEnv('PORT', 3000),
   env: process.env.NODE_ENV || 'development',
@@ -136,6 +154,9 @@ const config = {
     maxEnlacesPegados: intFromEnv('BUSQUEDA_MAX_ENLACES_PEGADOS', 10),
     fondoMaxMs: intFromEnv('BUSQUEDA_FONDO_MAX_MS', 20 * 60 * 1000),
     fondoConservarMs: intFromEnv('BUSQUEDA_FONDO_CONSERVAR_MS', 60 * 60 * 1000),
+    // Búsquedas en curso y en cola guardadas en disco (data/busquedas.json) para retomarlas tras
+    // un reinicio. Cada cuánto se guarda como mucho mientras hay cambios.
+    persistirMs: intFromEnv('BUSQUEDA_PERSISTIR_MS', 3000),
   },
 
   // Alta de un sitio con solo su dirección (services/autoSitio.js)

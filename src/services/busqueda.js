@@ -112,7 +112,7 @@ async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems }) {
  */
 async function buscarEnTodos(
   { q, sitios = null, paginas = null, web = false, enlaces = null, abierta = false },
-  { signal, emit = () => {} } = {}
+  { signal, emit = () => {}, itemsPrevios = [] } = {}
 ) {
   const conWeb = web === true && Boolean(config.busqueda.searxngUrl);
   const porSitio = Math.min(
@@ -121,7 +121,9 @@ async function buscarEnTodos(
   );
   const topeEnlaces =
     Number.isInteger(enlaces) && enlaces > 0 ? enlaces : config.busqueda.maxEnlaces * porSitio;
-  const todosLosItems = []; // para agrupar repetidos ENTRE sitios al final
+  // Para agrupar repetidos ENTRE sitios al final. Al reanudar tras un reinicio llegan ya los de
+  // antes: si no, una copia hallada antes y otra después no se verían nunca como repetidas.
+  const todosLosItems = [...itemsPrevios];
   const todos = await listarSitios();
   const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : todos;
 
@@ -312,21 +314,28 @@ async function recorrerListado(url, det, porPaginas, { signal, publicar, progres
  * Emite los mismos eventos que la búsqueda por nombre, así que la pantalla es la misma.
  */
 async function buscarEnlace(
-  { url, urls = null, paginas = null, listado = false },
-  { signal, emit = () => {} } = {}
+  { url, urls = null, paginas = null, listado = false, indices = null },
+  { signal, emit = () => {}, itemsPrevios = [] } = {}
 ) {
-  const lista = (urls && urls.length ? urls : [url]).slice(0, config.busqueda.maxEnlacesPegados);
+  // Con `indices` (reanudar) la lista es exactamente la que llega, aunque esté vacía.
+  const lista = (Array.isArray(indices) ? urls || [] : urls && urls.length ? urls : [url]).slice(
+    0,
+    config.busqueda.maxEnlacesPegados
+  );
+  // `indices`: la posición ORIGINAL de cada enlace. Al reanudar solo los que faltaban, cada uno
+  // conserva su id (-2 - posición): si se renumeraran, chocarían con los que ya terminaron.
+  const idDe = i => ID_ENLACE - (Array.isArray(indices) ? indices[i] : i);
   const porPaginas = Math.min(
     config.busqueda.maxPaginas,
     Math.max(1, Number.parseInt(paginas, 10) || config.busqueda.paginas)
   );
-  const nombres = lista.map((u, i) => ({ id: ID_ENLACE - i, nombre: hostDe(u) || u }));
+  const nombres = lista.map((u, i) => ({ id: idDe(i), nombre: hostDe(u) || u }));
   emit({ type: 'sitios', sitios: nombres });
-  const todosLosItems = [];
+  const todosLosItems = [...itemsPrevios];
   const resumen = [];
   for (const [i, u] of lista.entries()) {
     if (signal?.aborted) break;
-    const id = ID_ENLACE - i;
+    const id = idDe(i);
     emit({ type: 'sitio_inicio', sitio: id });
     let total = 0;
     const publicar = items => {

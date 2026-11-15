@@ -24,6 +24,12 @@ require('./src/services/filtrosGlobales')
   .cargar()
   .catch(error => logger.warn('No se pudieron cargar los filtros', error.message));
 
+// Búsquedas que estaban en marcha o en cola antes del reinicio: se retoman solas.
+const fondo = require('./src/services/busquedasFondo');
+fondo
+  .restaurar()
+  .catch(error => logger.warn('No se pudieron retomar las búsquedas', error.message));
+
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();
 
@@ -41,6 +47,8 @@ async function shutdown(signal) {
   }, 10000);
   forceExit.unref?.();
 
+  // Lo primero: la foto de las búsquedas en marcha, antes de que cerrar nada las haga fallar.
+  fondo.guardarAlApagar();
   server.close(() => logger.info('Servidor HTTP cerrado'));
   await pool.close().catch(error => logger.warn('Error cerrando el navegador', error.message));
   clearTimeout(forceExit);

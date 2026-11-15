@@ -1,6 +1,8 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const config = require('../config');
 const logger = require('../lib/logger');
@@ -20,6 +22,13 @@ const { idiomaProbable, bloqueadaPor, relevancia } = require('../lib/filtros');
  * Con `fondoMaxActivas` en marcha, la siguiente ya no da 409: queda EN COLA y arranca sola en
  * cuanto se libera un hueco, en el orden en que llegó. Las búsquedas programadas pasan por la
  * misma cola, así que una programada nunca se pierde por coincidir con una búsqueda a mano.
+ *
+ * Y sobreviven a un reinicio (data/busquedas.json, fuera de git como el resto de data/): las que
+ * estaban en marcha o en cola se retoman solas al arrancar, solo en los sitios que no habían
+ * terminado y con los eventos ya emitidos conservados (mismo `seq`), así que quien vuelve a
+ * mirar no nota el corte. Las terminadas siguen visibles hasta su tope de conservación. El
+ * fichero lleva lo que se buscó y lo encontrado: se guarda junto a los perfiles, que ya llevan
+ * los nombres de los sitios, y se va vaciando solo a medida que caducan las búsquedas.
  */
 
 /** @type {Map<string, object>} */
@@ -33,10 +42,165 @@ function purgar() {
   for (const [id, b] of busquedas) {
     if (b.terminadaEn && ahora - b.terminadaEn > config.busqueda.fondoConservarMs) {
       busquedas.delete(id);
+      marcarCambio();
     }
   }
 }
 setInterval(purgar, 60_000).unref?.();
+
+/* ── Persistencia ──────────────────────────────────────────────────── */
+
+const fichero = () => path.join(config.datos.dir, 'busquedas.json');
+let sucio = false;
+let relojGuardado = null;
+let guardando = Promise.resolve();
+// Al apagar se guarda una foto con lo que estaba en marcha y se deja de escribir: lo que pase
+// después (el navegador se cierra y las búsquedas fallan) no debe quedar como «terminada».
+let congelado = false;
+
+function foto() {
+  return {
+    version: 1,
+    guardadoEn: new Date().toISOString(),
+    ultima,
+    cola: [...cola],
+    busquedas: [...busquedas.values()].map(b => ({
+      id: b.id,
+      entrada: b.entrada,
+      q: b.q,
+      terminoRelevancia: b.terminoRelevancia,
+      carpeta: b.carpeta,
+      origen: b.origen,
+      estado: b.estado,
+      quitada: b.quitada === true,
+      creadaEn: b.creadaEn,
+      empezadaEn: b.empezadaEn,
+      terminadaEn: b.terminadaEn,
+      eventos: b.eventos,
+    })),
+  };
+}
+
+/** Marca cambios; se escriben como mucho cada `persistirMs` (en segundo plano). */
+function marcarCambio() {
+  if (congelado) return;
+  sucio = true;
+  if (relojGuardado) return;
+  relojGuardado = setTimeout(() => {
+    relojGuardado = null;
+    guardarAhora().catch(error =>
+      logger.warn(`No se pudieron guardar las búsquedas: ${error.message}`)
+    );
+  }, config.busqueda.persistirMs);
+  relojGuardado.unref?.();
+}
+
+/** Escribe ya (temporal + rename: un corte a medias no deja un JSON roto). */
+function guardarAhora() {
+  guardando = guardando.then(async () => {
+    if (!sucio || congelado) return;
+    sucio = false;
+    const destino = fichero();
+    await fs.promises.mkdir(path.dirname(destino), { recursive: true });
+    const temporal = `${destino}.tmp`;
+    await fs.promises.writeFile(temporal, JSON.stringify(foto()), 'utf8');
+    await fs.promises.rename(temporal, destino);
+  });
+  return guardando;
+}
+
+/**
+ * Para el apagado (SIGTERM): guarda en el acto, de forma síncrona, y deja de escribir. Las que
+ * estaban en marcha quedan como «en curso» en el fichero, que es lo que hace que se retomen.
+ */
+function guardarAlApagar() {
+  if (congelado) return;
+  clearTimeout(relojGuardado);
+  const destino = fichero();
+  try {
+    fs.mkdirSync(path.dirname(destino), { recursive: true });
+    fs.writeFileSync(`${destino}.tmp`, JSON.stringify(foto()), 'utf8');
+    fs.renameSync(`${destino}.tmp`, destino);
+  } catch (error) {
+    logger.warn(`No se pudieron guardar las búsquedas al apagar: ${error.message}`);
+  }
+  congelado = true;
+}
+
+/**
+ * Qué falta de una búsqueda que se cortó: la misma entrada, pero solo con los sitios (o enlaces)
+ * que no llegaron a terminar. Pura, para poder probarla.
+ */
+function entradaPendiente(entrada, eventos) {
+  const anunciados = eventos.filter(e => e.type === 'sitios').flatMap(e => e.sitios.map(x => x.id));
+  // Sin la lista de sitios no había empezado de verdad: se repite entera.
+  if (anunciados.length === 0) return entrada;
+  const hechos = new Set(eventos.filter(e => e.type === 'sitio_fin').map(e => e.sitio));
+  const faltan = [...new Set(anunciados)].filter(id => !hechos.has(id));
+  if (entrada.url) {
+    const urls = entrada.urls && entrada.urls.length ? entrada.urls : [entrada.url];
+    const indices = faltan.filter(id => id <= -2).map(id => -2 - id);
+    const pendientes = indices.map(i => urls[i]).filter(Boolean);
+    return { ...entrada, url: pendientes[0] || entrada.url, urls: pendientes, indices };
+  }
+  return {
+    ...entrada,
+    sitios: faltan.filter(id => id >= 0),
+    abierta: Boolean(entrada.abierta) && faltan.includes(-1),
+  };
+}
+
+/**
+ * Al arrancar: lo guardado vuelve a memoria. Las terminadas, tal cual (si no han caducado); las
+ * que estaban en marcha vuelven las PRIMERAS de la cola (con lo que les faltaba), y las que
+ * esperaban, detrás y en su orden.
+ */
+async function restaurar() {
+  let datos;
+  try {
+    datos = JSON.parse(await fs.promises.readFile(fichero(), 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      logger.warn(`busquedas.json ilegible, se ignora: ${error.message}`);
+    }
+    return { retomadas: 0, terminadas: 0 };
+  }
+  const ahora = Date.now();
+  const enMarcha = [];
+  const esperando = [];
+  let terminadas = 0;
+  for (const g of datos.busquedas || []) {
+    if (!g?.id || !g.entrada || busquedas.has(g.id)) continue;
+    if (g.terminadaEn && ahora - g.terminadaEn > config.busqueda.fondoConservarMs) continue;
+    const b = {
+      ...g,
+      eventos: Array.isArray(g.eventos) ? g.eventos : [],
+      oyentes: new Set(),
+      controller: new AbortController(),
+    };
+    busquedas.set(b.id, b);
+    if (b.estado === 'fin') {
+      terminadas += 1;
+      continue;
+    }
+    if (b.estado === 'curso') {
+      b.reanudar = true;
+      enMarcha.push(b.id);
+    } else esperando.push(b.id);
+    b.estado = 'cola';
+  }
+  const ordenCola = new Map((datos.cola || []).map((id, i) => [id, i]));
+  esperando.sort((a, b) => (ordenCola.get(a) ?? 1e9) - (ordenCola.get(b) ?? 1e9));
+  cola.unshift(...enMarcha, ...esperando);
+  if (datos.ultima && busquedas.has(datos.ultima)) ultima = datos.ultima;
+  if (enMarcha.length + esperando.length > 0) {
+    logger.info(
+      `Búsquedas retomadas tras el reinicio: ${enMarcha.length} en marcha, ${esperando.length} en cola`
+    );
+  }
+  despachar();
+  return { retomadas: enMarcha.length + esperando.length, terminadas };
+}
 
 const enCurso = () => [...busquedas.values()].filter(b => b.estado === 'curso').length;
 
@@ -67,6 +231,7 @@ function publicar(b, eventoOriginal) {
       : eventoOriginal;
   const conNumero = { ...evento, seq: b.eventos.length };
   b.eventos.push(conNumero);
+  marcarCambio();
   for (const oyente of b.oyentes) {
     try {
       oyente(conNumero);
@@ -80,6 +245,7 @@ function cerrar(b) {
   b.estado = 'fin';
   b.terminadaEn = Date.now();
   b.oyentes.clear();
+  marcarCambio();
 }
 
 /** Arranca la búsqueda `b` (que estaba en cola). */
@@ -92,9 +258,29 @@ function arrancar(b) {
     b.controller.signal,
     AbortSignal.timeout(config.busqueda.fondoMaxMs),
   ]);
-  publicar(b, { type: 'inicio' });
-  const buscar = b.entrada.url ? buscarEnlace : buscarEnTodos;
-  buscar(b.entrada, { signal, emit: evento => publicar(b, evento) })
+  let entrada = b.entrada;
+  let itemsPrevios = [];
+  if (b.reanudar) {
+    // Tras un reinicio: solo lo que faltaba, y lo ya encontrado entra en la agrupación final.
+    b.reanudar = false;
+    entrada = entradaPendiente(b.entrada, b.eventos);
+    itemsPrevios = b.eventos.filter(e => e.type === 'resultados').flatMap(e => e.items || []);
+    publicar(b, { type: 'reanudada' });
+  } else publicar(b, { type: 'inicio' });
+  marcarCambio();
+  // Un sitio que se cortó a medias se recorre de nuevo desde el principio: lo que ya se había
+  // encontrado en él no se vuelve a mandar (saldría repetido en la pantalla).
+  const yaVistos = new Set(itemsPrevios.map(it => it.url));
+  const emitir = evento => {
+    if (evento.type === 'resultados' && yaVistos.size > 0) {
+      const nuevos = (evento.items || []).filter(it => !yaVistos.has(it.url));
+      if (nuevos.length === 0) return;
+      evento = { ...evento, items: nuevos };
+    }
+    publicar(b, evento);
+  };
+  const buscar = entrada.url ? buscarEnlace : buscarEnTodos;
+  buscar(entrada, { signal, emit: emitir, itemsPrevios })
     .then(r => publicar(b, { type: 'fin', ...r, cancelada: signal.aborted }))
     .catch(error => {
       logger.warn(`Error en la búsqueda: ${error.message}`);
@@ -147,6 +333,7 @@ function iniciar(entrada, { carpeta = '', origen = 'manual' } = {}) {
   if (origen === 'manual') ultima = id;
   cola.push(id);
   publicar(b, { type: 'en_cola', posicion: cola.length });
+  marcarCambio();
   despachar();
   return id;
 }
@@ -214,4 +401,15 @@ function actual() {
     : null;
 }
 
-module.exports = { iniciar, suscribir, parar, actual, lista, marcar };
+module.exports = {
+  iniciar,
+  suscribir,
+  parar,
+  actual,
+  lista,
+  marcar,
+  restaurar,
+  guardarAhora,
+  guardarAlApagar,
+  entradaPendiente,
+};
