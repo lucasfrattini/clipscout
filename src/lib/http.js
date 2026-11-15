@@ -283,6 +283,7 @@ function agentesSeguros() {
 }
 
 module.exports = {
+  guardRedirect,
   sinProxy,
   agentesPara,
   agentesSeguros,

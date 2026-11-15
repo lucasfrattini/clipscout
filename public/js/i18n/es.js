@@ -715,6 +715,10 @@ export const es = {
   'buscar.nada': 'No se encontró nada.',
   'buscar.errorSitio': 'Este sitio dio un error: {error}',
   'buscar.bloqueo': 'Puede que el sitio esté frenando las peticiones: faltan resultados.',
+  'buscar.ver': '▶ Ver',
+  'buscar.cerrarVideo': '■ Cerrar',
+  'buscar.videoError':
+    'No se pudo reproducir: el sitio no lo deja o el enlace ha caducado. Prueba «Abrir».',
   'buscar.abrir': 'Abrir',
   'buscar.jd': '⬇ Descargar',
   'buscar.loTienes': '✓ Ya lo tienes',

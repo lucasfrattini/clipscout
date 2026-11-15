@@ -196,6 +196,29 @@ export function createBuscarView(root) {
   let ocultarRepetidos = true;
   let minDuracion = 0; // minutos; 0 = cualquiera
   const descartados = new Set(); // páginas quitadas a mano de esta búsqueda
+  // El vídeo que se está reproduciendo en su tarjeta: { enlace, tarjeta, video }. Mientras dura la
+  // búsqueda la rejilla se repinta entera con cada tanda de resultados; esa tarjeta se REUTILIZA y
+  // se vuelve a insertar en el mismo paso, y así el navegador no pausa el vídeo.
+  let reproduciendo = null;
+
+  /**
+   * ¿Hay un fichero de vídeo que reproducir, distinto de la ficha? Las listas HLS (.m3u8) y sus
+   * trozos (.ts) no los abre un <video> por sí solos: esos se ven con «Abrir».
+   */
+  const archivoReproducible = r =>
+    typeof r.url === 'string' &&
+    /^https?:\/\//i.test(r.url) &&
+    r.url !== (r.sourceUrl || '') &&
+    !/\.(m3u8|ts)(\?|$)/i.test(r.url);
+
+  function pararVideo() {
+    if (!reproduciendo) return;
+    const v = reproduciendo.video;
+    v.pause();
+    v.removeAttribute('src'); // corta la descarga que va por el servidor
+    v.load();
+    reproduciendo = null;
+  }
   let hayWeb = false; // ¿hay SearXNG configurado? (entonces se pregunta al buscar)
   let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
   let reglaFija = null; // si la carpeta fija es nueva: qué persona/categoría/etiqueta lleva
@@ -695,6 +718,7 @@ export function createBuscarView(root) {
 
   function tarjeta(r) {
     const enlace = r.sourceUrl || r.url;
+    if (reproduciendo?.enlace === enlace) return reproduciendo.tarjeta;
     const nombreDelSitio = r.sitio === ID_WEB ? dominioDe(enlace) : nombreSitio(r.sitio);
     const tengo = enBiblioteca.get(enlace);
     const imagen = r.thumbnail
@@ -718,6 +742,16 @@ export function createBuscarView(root) {
         text: t('buscar.abrir'),
       }),
     ];
+    if (archivoReproducible(r)) {
+      acciones.unshift(
+        el('button', {
+          className: 'button button--secondary button--small buscar__play',
+          attrs: { type: 'button' },
+          text: t('buscar.ver'),
+          on: { click: e => alternarVideo(r, enlace, e.currentTarget) },
+        })
+      );
+    }
     if (jd.configurado()) {
       acciones.push(
         el('button', {
@@ -787,6 +821,46 @@ export function createBuscarView(root) {
         }),
       ],
     });
+  }
+
+  /**
+   * Reproduce el vídeo dentro de su tarjeta, en lugar de la miniatura. Pasa por /api/media (el
+   * servidor), por lo mismo que las miniaturas: el navegador no habla con el sitio, y muchos solo
+   * sirven el fichero a quien abrió la ficha. Uno a la vez: empezar otro para el anterior.
+   */
+  function alternarVideo(r, enlace, boton) {
+    const tarjetaActual = boton.closest('.buscar__tarjeta');
+    if (reproduciendo?.enlace === enlace) {
+      pararVideo();
+      pintarResultados();
+      return;
+    }
+    const habia = Boolean(reproduciendo);
+    pararVideo();
+    const video = el('video', {
+      className: 'buscar__video',
+      attrs: {
+        controls: '',
+        autoplay: '',
+        playsinline: '',
+        preload: 'metadata',
+        src: `/api/media?url=${encodeURIComponent(r.url)}&ref=${encodeURIComponent(r.sourceUrl || '')}`,
+      },
+      on: {
+        error: () => {
+          if (reproduciendo?.video === video) toast(t('buscar.videoError'), 'error', 6000);
+        },
+      },
+    });
+    const caja = el('div', {
+      className: 'buscar__imagen buscar__imagen--video',
+      children: [video],
+    });
+    tarjetaActual.querySelector('.buscar__imagen').replaceWith(caja);
+    boton.textContent = t('buscar.cerrarVideo');
+    reproduciendo = { enlace, tarjeta: tarjetaActual, video };
+    // La tarjeta del vídeo anterior vuelve a su miniatura
+    if (habia) pintarResultados();
   }
 
   function lineaSitio(id, e) {

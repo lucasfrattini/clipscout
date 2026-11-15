@@ -713,6 +713,10 @@ export const en = {
   'buscar.nada': 'Nothing found.',
   'buscar.errorSitio': 'This site returned an error: {error}',
   'buscar.bloqueo': 'The site may be throttling requests: some results are missing.',
+  'buscar.ver': '▶ Play',
+  'buscar.cerrarVideo': '■ Close',
+  'buscar.videoError':
+    'Could not play it: the site does not allow it or the link expired. Try «Open».',
   'buscar.abrir': 'Open',
   'buscar.jd': '⬇ Download',
   'buscar.loTienes': '✓ Already have it',

@@ -6,6 +6,7 @@ const express = require('express');
 const config = require('./config');
 const apiRoutes = require('./routes');
 const thumbnailRoutes = require('./routes/thumbnail');
+const mediaRoutes = require('./routes/media');
 const { createRateLimiter } = require('./middleware/rateLimit');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
@@ -72,6 +73,9 @@ function createApp() {
    * el resto aparecía como imagen rota.
    */
   app.use('/api', createRateLimiter(config.thumbnails.rateLimit), thumbnailRoutes);
+  // Reproducir: cada salto del reproductor es una petición (Range), con su propio límite.
+  app.use('/api/media', createRateLimiter(config.media.rateLimit));
+  app.use('/api', mediaRoutes);
 
   // Lo caro tiene su propio límite, más estricto; el resto de /api va con el general.
   app.use(

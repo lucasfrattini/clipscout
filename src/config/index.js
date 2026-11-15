@@ -304,6 +304,17 @@ const config = {
    * Miniaturas. Las sirve el BACKEND, nunca el navegador del usuario: ver
    * services/thumbnails.js para el porqué (privacidad y CSP).
    */
+  /** Reproducir en el buscador: el vídeo pasa por el servidor (/api/media), sin caché. */
+  media: {
+    // Hasta que el sitio EMPIEZA a responder; el streaming en sí no tiene tope
+    timeoutMs: intFromEnv('MEDIA_TIMEOUT_MS', 20000),
+    // Cada salto en el vídeo es una petición: va con su propio límite
+    rateLimit: {
+      windowMs: intFromEnv('MEDIA_RATE_WINDOW_MS', 60 * 1000),
+      maxRequests: intFromEnv('MEDIA_RATE_MAX', 300),
+    },
+  },
+
   thumbnails: {
     // Desactivadas por defecto: son peticiones extra a los sitios explorados
     enabled: boolFromEnv('THUMBNAILS_ENABLED', true),

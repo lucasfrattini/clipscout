@@ -3396,3 +3396,15 @@ a {
 .programadas__acciones {
   width: auto;
 }
+
+/* Reproducir en la tarjeta (buscar.js · alternarVideo) */
+.buscar__imagen--video {
+  background: #000;
+}
+.buscar__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
