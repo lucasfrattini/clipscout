@@ -820,4 +820,10 @@ export const en = {
   'buscar.cola.programada': 'scheduled',
   'buscar.estado.enCola': 'Queued: it starts on its own when another search ends',
   'buscar.cola.quitada': 'removed from the queue',
+  'buscar.enAlbumes.uno': '1 more inside albums',
+  'buscar.enAlbumes.varios': '{n} more inside albums',
+  'buscar.album.uno': 'Album: 1 video on the same page',
+  'buscar.album.varios': 'Album: {n} videos on the same page',
+  'buscar.album.ver': 'Show all {n}',
+  'buscar.album.plegar': 'Fold album',
 };

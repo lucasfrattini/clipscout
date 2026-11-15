@@ -823,4 +823,10 @@ export const es = {
   'buscar.cola.programada': 'programada',
   'buscar.estado.enCola': 'En cola: empieza sola cuando termine otra búsqueda',
   'buscar.cola.quitada': 'quitada de la cola',
+  'buscar.enAlbumes.uno': '1 más dentro de álbumes',
+  'buscar.enAlbumes.varios': '{n} más dentro de álbumes',
+  'buscar.album.uno': 'Álbum: 1 vídeo en la misma ficha',
+  'buscar.album.varios': 'Álbum: {n} vídeos en la misma ficha',
+  'buscar.album.ver': 'Ver los {n}',
+  'buscar.album.plegar': 'Plegar álbum',
 };

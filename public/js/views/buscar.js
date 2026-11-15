@@ -5,6 +5,7 @@ import { createJdEnvio } from '../components/jdEnvio.js';
 import { chooseDialog } from '../components/dialog.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
 import { palabras, contieneAlguna, textoDe } from '../filtros.js';
+import { plegarAlbumes, claveAlbum } from '../albumes.js';
 
 /** El «sitio» de lo encontrado en toda la web (no es una configuración guardada). */
 const ID_WEB = -1;
@@ -382,9 +383,22 @@ export function createBuscarView(root) {
       })
       .map(x => x.r);
   };
-  const visibles = ({ plegar = ocultarRepetidos, conOcultos = false } = {}) => {
+  /**
+   * Álbumes: una ficha con varios ficheros llegaba como varios resultados sueltos. Se pliegan en
+   * uno (el primero que pasa los filtros, que se aplican POR FICHERO: así la duración mínima mira
+   * cada vídeo, no el álbum) con su contador, y se despliegan a mano. Plegar es una vista: nada
+   * se quita, y descargar el álbum manda la ficha, que JDownloader ya abre entera.
+   */
+  const albumesAbiertos = new Set(); // fichas desplegadas
+  let albumes = new Map(); // ficha → miembros visibles (los de la última lista pintada)
+  const plegarLista = lista => {
+    const r = plegarAlbumes(lista, albumesAbiertos);
+    albumes = r.albumes;
+    return r.lista;
+  };
+  const visibles = ({ plegar = ocultarRepetidos, conOcultos = false, porAlbum = true } = {}) => {
     const vistas = new Set();
-    return ordenar(resultados).filter(r => {
+    const lista = ordenar(resultados).filter(r => {
       if (!enPestana(r)) return false;
       if (!conOcultos && motivoOculto(r)) return false;
       if (!plegar) return true;
@@ -392,6 +406,7 @@ export function createBuscarView(root) {
       vistas.add(clavePagina(r));
       return true;
     });
+    return porAlbum ? plegarLista(lista) : lista;
   };
   const jd = createJdEnvio({ visibles: () => visibles().map(r => r.sourceUrl || r.url) });
   // La misma página (un álbum con varios vídeos) se manda una sola vez: JDownloader ya la abre entera.
@@ -1129,7 +1144,8 @@ export function createBuscarView(root) {
 
   function tarjeta(r) {
     const enlace = r.sourceUrl || r.url;
-    if (reproduciendo?.enlace === enlace) return reproduciendo.tarjeta;
+    // Por FICHERO, no por ficha: los vídeos de un álbum comparten ficha y cada uno tiene su tarjeta.
+    if (reproduciendo?.url === r.url) return reproduciendo.tarjeta;
     const nombreDelSitio = r.sitio === ID_WEB ? dominioDe(enlace) : nombreSitio(r.sitio);
     const tengo = enBiblioteca.get(enlace);
     const imagen =
@@ -1177,8 +1193,30 @@ export function createBuscarView(root) {
       );
     }
     const oculto = motivoOculto(r);
+    const kAlbum = claveAlbum(r);
+    const grupoAlbum = kAlbum ? albumes.get(kAlbum) : null;
+    const esCabezaAlbum = Boolean(grupoAlbum && grupoAlbum[0] === r);
+    const abierto = Boolean(kAlbum && albumesAbiertos.has(kAlbum));
+    if (esCabezaAlbum) {
+      acciones.push(
+        el('button', {
+          className: 'button button--ghost button--small buscar__album-boton',
+          attrs: { type: 'button', 'aria-expanded': String(abierto) },
+          text: abierto
+            ? t('buscar.album.plegar')
+            : t('buscar.album.ver', { n: grupoAlbum.length }),
+          on: {
+            click: () => {
+              if (abierto) albumesAbiertos.delete(kAlbum);
+              else albumesAbiertos.add(kAlbum);
+              pintarResultados();
+            },
+          },
+        })
+      );
+    }
     return el('article', {
-      className: `buscar__tarjeta${tengo ? ' buscar__tarjeta--tengo' : ''}${oculto ? ' buscar__tarjeta--oculta' : ''}`,
+      className: `buscar__tarjeta${tengo ? ' buscar__tarjeta--tengo' : ''}${oculto ? ' buscar__tarjeta--oculta' : ''}${grupoAlbum && !esCabezaAlbum ? ' buscar__tarjeta--miembro' : ''}`,
       children: [
         oculto
           ? el('span', {
@@ -1208,6 +1246,13 @@ export function createBuscarView(root) {
                   })
                 : null;
             })(),
+            esCabezaAlbum
+              ? el('span', {
+                  className: 'buscar__album',
+                  text: `▣ ${grupoAlbum.length}`,
+                  attrs: { title: tp('buscar.album', grupoAlbum.length) },
+                })
+              : null,
             r.web
               ? el('span', {
                   className: 'buscar__web',
@@ -1262,7 +1307,7 @@ export function createBuscarView(root) {
    */
   function alternarVideo(r, enlace, boton) {
     const tarjetaActual = boton.closest('.buscar__tarjeta');
-    if (reproduciendo?.enlace === enlace) {
+    if (reproduciendo?.url === r.url) {
       pararVideo();
       pintarResultados();
       return;
@@ -1290,7 +1335,7 @@ export function createBuscarView(root) {
     });
     tarjetaActual.querySelector('.buscar__imagen').replaceWith(caja);
     boton.textContent = t('buscar.cerrarVideo');
-    reproduciendo = { enlace, tarjeta: tarjetaActual, video };
+    reproduciendo = { enlace, url: r.url, tarjeta: tarjetaActual, video };
     // La tarjeta del vídeo anterior vuelve a su miniatura
     if (habia) pintarResultados();
   }
@@ -1383,13 +1428,20 @@ export function createBuscarView(root) {
           })
         );
       }
-      const repetidos = ocultarRepetidos ? visibles({ plegar: false }).length - lista.length : 0;
+      const sueltos = visibles({ porAlbum: false }).length;
+      const repetidos = ocultarRepetidos
+        ? visibles({ plegar: false, porAlbum: false }).length - sueltos
+        : 0;
+      const enAlbumes = sueltos - lista.length;
+      // `visibles` deja en `albumes` lo de la última llamada: se recalcula con la lista pintada.
+      visibles();
       barra.append(
         el('span', {
           className: 'buscar__cuenta',
           text:
             tp('buscar.resultados', lista.length) +
-            (repetidos ? ` · ${tp('buscar.repetidos', repetidos)}` : ''),
+            (repetidos ? ` · ${tp('buscar.repetidos', repetidos)}` : '') +
+            (enAlbumes > 0 ? ` · ${tp('buscar.enAlbumes', enAlbumes)}` : ''),
         }),
         yaLoTengo
       );
