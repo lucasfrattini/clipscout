@@ -33,6 +33,9 @@ fondo
 // Paquetes mandados a JDownloader que seguían sin terminar: se siguen vigilando.
 require('./src/services/paquetesJd').arrancar();
 
+// Copia de seguridad diaria de data/*.json (la de hoy, si falta, y luego cada hora se mira).
+require('./src/services/respaldos').arrancar();
+
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();
 

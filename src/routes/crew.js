@@ -13,6 +13,7 @@ const filtrosGlobales = require('../services/filtrosGlobales');
 const directo = require('../services/directo');
 const paquetesJd = require('../services/paquetesJd');
 const estadisticas = require('../services/estadisticas');
+const respaldos = require('../services/respaldos');
 const { listarSitios } = require('../services/busqueda');
 const { hostDe } = require('../services/web');
 
@@ -377,6 +378,35 @@ router.get(
 router.post(
   '/ajustes/jdownloader/enviar',
   manejar(req => jd.enviar(req.body || {}))
+);
+
+/* ── Copias de seguridad de data/ ───────────────────────────────────── */
+
+router.get(
+  '/ajustes/respaldos',
+  manejar(async () => ({ copias: await respaldos.listar(), dias: config.respaldos.dias }))
+);
+
+/** Hacer la copia de hoy ya (rehace la de hoy si existía). */
+router.post(
+  '/ajustes/respaldos',
+  manejar(() => respaldos.asegurarDiario({ forzar: true }))
+);
+
+/** Descargar una copia: un solo JSON con todos sus ficheros. */
+router.get(
+  '/ajustes/respaldos/:id/descargar',
+  manejar(async (req, res) => {
+    const p = await respaldos.paquete(req.params.id);
+    res.set('Content-Disposition', `attachment; filename="clipscout-respaldo-${p.id}.json"`);
+    res.set('Cache-Control', 'no-store');
+    return p;
+  })
+);
+
+router.post(
+  '/ajustes/respaldos/:id/restaurar',
+  manejar(req => respaldos.restaurar(req.params.id))
 );
 
 /* ── Búsquedas programadas ─────────────────────────────────────────── */

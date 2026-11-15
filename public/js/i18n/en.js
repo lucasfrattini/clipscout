@@ -877,4 +877,16 @@ export const en = {
   'aj.sitios.cero': 'Reset the numbers',
   'aj.sitios.ceroConfirmar': 'Clears the numbers of every site. Sites and their options are kept.',
   'aj.prog.abierta': 'Also search the whole web (noisier)',
+  'aj.resp.titulo': 'Backups',
+  'aj.resp.hint':
+    "One a day of clipscout's data (connections, sites, scheduled searches, filters, statistics), in data/respaldos. The download includes the API keys: keep it somewhere safe.",
+  'aj.resp.vacio': 'No backups yet.',
+  'aj.resp.previa': 'Before restoring',
+  'aj.resp.descargar': 'Download',
+  'aj.resp.restaurar': 'Restore',
+  'aj.resp.restaurarConfirmar':
+    'Goes back to that copy: the current data is replaced (a “Before restoring” copy is saved first, in case you need to undo it).',
+  'aj.resp.restaurado': 'Backup restored',
+  'aj.resp.ahora': 'Back up now',
+  'aj.resp.hecha': 'Backup done',
 };

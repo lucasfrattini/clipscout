@@ -72,6 +72,11 @@ const config = {
     dir: carpetaDatos(),
   },
 
+  // Copias de seguridad diarias de data/*.json en data/respaldos/ (services/respaldos.js)
+  respaldos: {
+    dias: intFromEnv('RESPALDOS_DIAS', 7),
+  },
+
   // No asumir 3000: esta máquina corre en 3001 vía .env
   port: intFromEnv('PORT', 3000),
   env: process.env.NODE_ENV || 'development',

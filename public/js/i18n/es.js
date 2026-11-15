@@ -881,4 +881,16 @@ export const es = {
   'aj.sitios.ceroConfirmar':
     'Borra las cifras de todos los sitios. Los sitios y sus opciones no se tocan.',
   'aj.prog.abierta': 'Buscar también en toda la web (más ruido)',
+  'aj.resp.titulo': 'Copias de seguridad',
+  'aj.resp.hint':
+    'Una al día de los datos de clipscout (conexiones, sitios, programadas, filtros, estadísticas), en data/respaldos. La descarga lleva las claves de API: guárdala en un sitio seguro.',
+  'aj.resp.vacio': 'Todavía no hay ninguna copia.',
+  'aj.resp.previa': 'Antes de restaurar',
+  'aj.resp.descargar': 'Descargar',
+  'aj.resp.restaurar': 'Restaurar',
+  'aj.resp.restaurarConfirmar':
+    'Vuelve a esa copia: lo de ahora se sustituye (antes se guarda una copia «Antes de restaurar», por si hay que deshacerlo).',
+  'aj.resp.restaurado': 'Copia restaurada',
+  'aj.resp.ahora': 'Hacer una copia ahora',
+  'aj.resp.hecha': 'Copia hecha',
 };

@@ -66,6 +66,7 @@ export function createAjustesView(raiz) {
       tarjetaBusqueda(),
       tarjetaFiltros(),
       tarjetaProgramadas(),
+      tarjetaRespaldos(),
       ...(protegido ? [botonSalir()] : [])
     );
   }
@@ -546,6 +547,124 @@ export function createAjustesView(raiz) {
         }),
         el('div', { className: 'card__body', children: [lista] }),
         form,
+      ],
+    });
+  }
+
+  /* ── Copias de seguridad ───────────────────────────────────────────── */
+
+  function tarjetaRespaldos() {
+    const lista = el('ul', { className: 'ajustes-paquetes' });
+    const kb = n => `${Math.max(1, Math.round(n / 1024))} KB`;
+    async function cargarRespaldos() {
+      let datos;
+      try {
+        datos = await ajustes.respaldos();
+      } catch (error) {
+        lista.replaceChildren(el('li', { className: 'ajustes-error', text: error.message }));
+        return;
+      }
+      if (!datos.copias.length) {
+        lista.replaceChildren(el('li', { className: 'field__hint', text: t('aj.resp.vacio') }));
+        return;
+      }
+      lista.replaceChildren(
+        ...datos.copias.map(c =>
+          el('li', {
+            className: 'ajustes-paquetes__fila',
+            children: [
+              el('div', {
+                className: 'programadas__texto',
+                children: [
+                  el('strong', { text: c.previa ? t('aj.resp.previa') : c.id }),
+                  el('span', {
+                    className: 'field__hint',
+                    text: c.ficheros.map(f => `${f.nombre} (${kb(f.bytes)})`).join(' · '),
+                  }),
+                ],
+              }),
+              el('div', {
+                className: 'ajustes-acciones',
+                children: [
+                  el('a', {
+                    className: 'button button--small button--secondary',
+                    attrs: {
+                      href: `/api/ajustes/respaldos/${encodeURIComponent(c.id)}/descargar`,
+                      download: `clipscout-respaldo-${c.id}.json`,
+                    },
+                    text: t('aj.resp.descargar'),
+                  }),
+                  el('button', {
+                    className: 'button button--small button--secondary ajustes-peligro',
+                    attrs: { type: 'button' },
+                    text: t('aj.resp.restaurar'),
+                    on: {
+                      click: async () => {
+                        if (
+                          !(await confirmDialog({
+                            titleKey: 'aj.resp.restaurar',
+                            bodyKey: 'aj.resp.restaurarConfirmar',
+                            variant: 'danger',
+                          }))
+                        ) {
+                          return;
+                        }
+                        try {
+                          await ajustes.restaurarRespaldo(c.id);
+                          toast(t('aj.resp.restaurado'));
+                          cargar();
+                        } catch (error) {
+                          toast(error.message, 'error', 6000);
+                        }
+                      },
+                    },
+                  }),
+                ],
+              }),
+            ],
+          })
+        )
+      );
+    }
+    cargarRespaldos();
+    return el('section', {
+      className: 'card',
+      attrs: { id: 'ajustes-respaldos' },
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.resp.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.resp.hint') }),
+          ],
+        }),
+        el('div', {
+          className: 'card__body',
+          children: [
+            el('div', {
+              className: 'ajustes-acciones',
+              children: [
+                el('button', {
+                  className: 'button button--small button--secondary',
+                  attrs: { type: 'button' },
+                  text: t('aj.resp.ahora'),
+                  on: {
+                    click: async () => {
+                      try {
+                        await ajustes.respaldarAhora();
+                        toast(t('aj.resp.hecha'));
+                        cargarRespaldos();
+                      } catch (error) {
+                        toast(error.message, 'error', 6000);
+                      }
+                    },
+                  },
+                }),
+              ],
+            }),
+            lista,
+          ],
+        }),
       ],
     });
   }

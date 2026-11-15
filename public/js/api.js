@@ -265,6 +265,13 @@ export const ajustes = {
     }),
   vaciarCapturador: () =>
     request('/ajustes/jdownloader/vaciar-capturador', { method: 'POST', body: '{}' }),
+  respaldos: () => request('/ajustes/respaldos'),
+  respaldarAhora: () => request('/ajustes/respaldos', { method: 'POST', body: '{}' }),
+  restaurarRespaldo: id =>
+    request(`/ajustes/respaldos/${encodeURIComponent(id)}/restaurar`, {
+      method: 'POST',
+      body: '{}',
+    }),
   programadas: () => request('/ajustes/programadas'),
   guardarProgramada: datos =>
     request('/ajustes/programadas', { method: 'POST', body: JSON.stringify(datos) }),
