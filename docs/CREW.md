@@ -140,3 +140,15 @@ X-Api-Key: <clave de clipkeeper>
 - Si clipkeeper no responde, se reintenta en las siguientes revisiones (como mucho
   `JD_AVISOS_CLIPKEEPER` veces).
 - `carpeta` puede ir vacía si el paquete se descargó en la raíz de la carpeta de JDownloader.
+
+### Autoconexión por entorno (instalación conjunta)
+
+- `CLIPCREW_CLAVE`: si existe, es la clave de API de clipscout (manda sobre la guardada en
+  `data/crew.json`, que no se toca; regenerarla desde Ajustes da 409).
+- `CLIPCREW_CLIPKEEPER_URL`, `CLIPCREW_CLONBUSTER_URL`: al arrancar, clipscout asegura una
+  conexión activa con cada una, con esa misma clave (comprobada con `GET /status`). Idempotente; la
+  conexión creada así lleva `"auto": true` en `GET /conexiones`. Una conexión hecha a mano con la
+  misma URL no se toca. Si la otra app no responde, se reintenta cada 15 s durante 10 min.
+- `CLIPCREW_CLIPSCOUT_URL`: la URL propia que se anuncia en `/status` si no hay otra en Ajustes.
+- `deploy/clip-crew/compose.yaml` levanta las tres apps con estas variables y las URLs internas
+  de la red de compose.

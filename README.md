@@ -186,6 +186,26 @@ the ones not connected dimmed), to jump between them. With **clipkeeper** connec
 authentication with the `X-Api-Key` header, error format) is described in
 [docs/CREW.md](docs/CREW.md).
 
+### Install the three apps together
+
+If you run all three on the same server, [`deploy/clip-crew/compose.yaml`](deploy/clip-crew/compose.yaml)
+builds and starts them together, already connected. It expects the three repositories side by
+side (`clipscout/`, `clipkeeper/`, `clonbuster/`):
+
+```bash
+cd clipscout/deploy/clip-crew
+cp .env.example .env        # set CLIPCREW_CLAVE (openssl rand -hex 16) and CARPETAS
+mkdir -p datos/clipscout datos/clipkeeper datos/clonbuster
+docker compose up -d --build
+```
+
+All three share the API key in `CLIPCREW_CLAVE` and find each other through
+`CLIPCREW_CLIPSCOUT_URL`, `CLIPCREW_CLIPKEEPER_URL` and `CLIPCREW_CLONBUSTER_URL` (by default the
+internal service names). On startup each app creates its connections to the other two, and keeps
+retrying for a few minutes if one is still starting. Connections you added by hand are left
+alone, and without these variables nothing changes. Set the URLs to LAN addresses
+(`http://<server-ip>:<port>`) if you want the header links between apps to open in your browser.
+
 ### Sending to JDownloader
 
 clipscout can hand what it finds straight to **JDownloader 2**, so a search ends in a download
@@ -252,16 +272,16 @@ git pull
 docker compose up -d --build
 ```
 
-Your saved configurations survive updates. The only things worth backing up
-are three small files:
+Your saved configurations survive updates. clipscout makes a **daily backup** of its own files
+(`data/*.json`: connections, sites, scheduled searches, filters, statistics) in `data/respaldos/`
+and keeps the last `RESPALDOS_DIAS` days (7). **Settings → Backups** lists them and lets you
+download or restore one (restoring first saves the current state, so it can be undone). The
+download contains your API keys: keep it somewhere safe. Keep a copy of `.env` yourself.
 
-```bash
-cp data/profiles.json data/crew.json .env ~/backups/
-```
-
-Results are never written to disk — they live in the browser tab that ran the
-exploration, so export them if you want to keep them. Paused explorations are
-kept in memory and are lost on restart.
+Searches that were running or queued when the server stops are saved in `data/busquedas.json` and
+resume on their own after a restart (only the sites that hadn't finished). Explorer results are
+never written to disk — they live in the browser tab that ran the exploration, so export them if
+you want to keep them. Paused explorations are kept in memory and are lost on restart.
 
 ---
 

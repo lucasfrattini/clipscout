@@ -889,4 +889,8 @@ export const en = {
   'aj.resp.restaurado': 'Backup restored',
   'aj.resp.ahora': 'Back up now',
   'aj.resp.hecha': 'Backup done',
+  'aj.clave.entorno':
+    'Comes from CLIPCREW_CLAVE (joint install): change it there, in all three apps at once.',
+  'aj.con.auto': '(automatic)',
+  'aj.con.auto.titulo': 'Created at startup from CLIPCREW_*_URL.',
 };

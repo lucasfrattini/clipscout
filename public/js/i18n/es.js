@@ -893,4 +893,8 @@ export const es = {
   'aj.resp.restaurado': 'Copia restaurada',
   'aj.resp.ahora': 'Hacer una copia ahora',
   'aj.resp.hecha': 'Copia hecha',
+  'aj.clave.entorno':
+    'Viene de CLIPCREW_CLAVE (instalación conjunta): se cambia allí, en las tres apps a la vez.',
+  'aj.con.auto': '(automática)',
+  'aj.con.auto.titulo': 'Creada al arrancar por CLIPCREW_*_URL.',
 };

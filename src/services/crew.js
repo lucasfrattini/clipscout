@@ -68,9 +68,23 @@ function cambiar(fn) {
   return paso;
 }
 
+/**
+ * Instalación conjunta de clip crew (igual en las tres apps): con `CLIPCREW_CLAVE` en el entorno,
+ * ESA es la clave de API de esta app (manda sobre la guardada, que no se toca), y las
+ * `CLIPCREW_<APP>_URL` dicen dónde está cada una. Sin las variables, nada cambia.
+ */
+const claveEntorno = () => String(process.env.CLIPCREW_CLAVE || '').trim();
+const VARIABLES_URL = {
+  clipscout: 'CLIPCREW_CLIPSCOUT_URL',
+  clipkeeper: 'CLIPCREW_CLIPKEEPER_URL',
+  clonbuster: 'CLIPCREW_CLONBUSTER_URL',
+};
+const urlEntorno = app => String(process.env[VARIABLES_URL[app]] || '').trim();
+
 /** Los datos, creando la clave de API la primera vez. */
 async function datos() {
   const actuales = await leer();
+  if (claveEntorno()) return { ...actuales, api_key: claveEntorno(), claveDelEntorno: true };
   if (actuales.api_key) return actuales;
   return cambiar(d => {
     if (!d.api_key) d.api_key = crypto.randomBytes(16).toString('hex');
@@ -122,13 +136,13 @@ async function estadoPropio(req) {
     app: APP,
     version,
     instancia: d.instancia || APP,
-    url: (d.url || urlDetectada(req)).replace(/\/+$/, ''),
+    url: (d.url || urlEntorno(APP) || urlDetectada(req)).replace(/\/+$/, ''),
   };
 }
 
 function publica(conexion) {
-  const { id, app, nombre, url, activa } = conexion;
-  return { id, app, nombre, url, activa };
+  const { id, app, nombre, url, activa, auto = false } = conexion;
+  return { id, app, nombre, url, activa, auto };
 }
 
 async function listar() {
@@ -339,7 +353,96 @@ async function escanearClipkeeper({ bibliotecaId, carpeta = '' }) {
   }
 }
 
+/* ── Autoconexión por entorno ─────────────────────────────────────────── */
+
+/**
+ * Asegura UNA conexión con `app` en `url` y la clave común. Idempotente: si ya existe la creada
+ * por el entorno, solo se le pone la clave al día; si hay una creada A MANO con esa URL, no se
+ * toca. Devuelve 'creada' | 'actualizada' | 'igual' | 'manual' | 'no_responde'.
+ */
+async function asegurarConexion(app, url, clave) {
+  const limpia = normalizarUrl(url);
+  const { conexiones = [] } = await leer();
+  const existente = conexiones.find(c => c.url === limpia);
+  if (existente && !existente.auto) return 'manual';
+  if (existente && existente.api_key === clave && existente.activa && existente.app === app) {
+    return 'igual';
+  }
+  const prueba = await probar(app, limpia, clave);
+  if (!prueba.ok) return 'no_responde';
+  await cambiar(d => {
+    d.conexiones = d.conexiones || [];
+    const c = d.conexiones.find(x => x.url === limpia);
+    if (c) {
+      Object.assign(c, { app, api_key: clave, activa: true, auto: true });
+      return;
+    }
+    const id = d.conexiones.reduce((max, x) => Math.max(max, x.id), 0) + 1;
+    d.conexiones.push({
+      id,
+      app,
+      nombre: prueba.instancia || app,
+      url: limpia,
+      api_key: clave,
+      activa: true,
+      auto: true,
+      creada: new Date().toISOString(),
+    });
+  });
+  return existente ? 'actualizada' : 'creada';
+}
+
+/**
+ * Al arrancar: una conexión con cada app de `CLIPCREW_*_URL` que no sea esta. Si alguna aún no
+ * responde (arrancan a la vez y cada una tarda lo suyo), se reintenta en segundo plano cada
+ * `cadaMs` durante `maxMs`. Sin `CLIPCREW_CLAVE` no hace nada.
+ */
+function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
+  const clave = claveEntorno();
+  if (!clave) return Promise.resolve({});
+  const pendientes = Object.keys(VARIABLES_URL).filter(a => a !== APP && urlEntorno(a));
+  const resultado = {};
+  const hasta = Date.now() + maxMs;
+  const intentar = async () => {
+    for (const app of [...pendientes]) {
+      try {
+        const r = await asegurarConexion(app, urlEntorno(app), clave);
+        resultado[app] = r;
+        if (r !== 'no_responde') pendientes.splice(pendientes.indexOf(app), 1);
+        if (r === 'creada' || r === 'actualizada') {
+          logger.info(`clip crew: conexión con ${app} (${urlEntorno(app)}) ${r} desde el entorno`);
+        }
+      } catch (error) {
+        // URL mal escrita en el entorno: no tiene arreglo reintentando.
+        resultado[app] = `error: ${error.message}`;
+        pendientes.splice(pendientes.indexOf(app), 1);
+        logger.warn(`clip crew: ${VARIABLES_URL[app]} no vale: ${error.message}`);
+      }
+    }
+  };
+  return intentar().then(() => {
+    if (pendientes.length > 0) {
+      const reloj = setInterval(async () => {
+        await intentar();
+        if (pendientes.length === 0 || Date.now() > hasta) {
+          clearInterval(reloj);
+          if (pendientes.length) {
+            logger.warn(
+              `clip crew: ${pendientes.join(', ')} no respondió; conéctala desde Ajustes`
+            );
+          }
+        }
+      }, cadaMs);
+      reloj.unref?.();
+    }
+    return resultado;
+  });
+}
+
 module.exports = {
+  autoconectar,
+  asegurarConexion,
+  claveEntorno,
   escanearClipkeeper,
   reglaClipkeeper,
   buscarEnClipkeeper,

@@ -135,6 +135,7 @@ router.get(
       url: d.url || '',
       url_detectada: crew.urlDetectada(req),
       api_key: d.api_key,
+      clave_del_entorno: Boolean(d.claveDelEntorno),
     };
   })
 );
@@ -155,6 +156,12 @@ router.put(
 router.post(
   '/ajustes/api-key',
   manejar(async () => {
+    if (crew.claveEntorno()) {
+      throw new crew.ErrorCrew(
+        'La clave viene del entorno (CLIPCREW_CLAVE): se cambia allí, en las tres apps a la vez.',
+        409
+      );
+    }
     const clave = crypto.randomBytes(16).toString('hex');
     await crew.cambiar(d => {
       d.api_key = clave;

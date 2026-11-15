@@ -183,26 +183,32 @@ export function createAjustesView(raiz) {
                 toast(t('aj.clave.noCopia'), 'error', 6000);
               }
             }),
-            boton(
-              t('aj.clave.regenerar'),
-              async () => {
-                if (
-                  !(await confirmDialog({
-                    titleKey: 'aj.clave.regenerar',
-                    bodyKey: 'aj.clave.confirmar',
-                    variant: 'danger',
-                  }))
-                ) {
-                  return;
-                }
-                const r = await ajustes.regenerarClave();
-                general.api_key = r.api_key;
-                claveVisible = true;
-                pintar();
-                toast(t('aj.clave.nueva'));
-              },
-              'ajustes-peligro'
-            ),
+            // Con CLIPCREW_CLAVE la clave es la del entorno, común a las tres apps: no se regenera aquí.
+            general.clave_del_entorno
+              ? el('span', { className: 'field__hint', text: t('aj.clave.entorno') })
+              : null,
+            general.clave_del_entorno
+              ? null
+              : boton(
+                  t('aj.clave.regenerar'),
+                  async () => {
+                    if (
+                      !(await confirmDialog({
+                        titleKey: 'aj.clave.regenerar',
+                        bodyKey: 'aj.clave.confirmar',
+                        variant: 'danger',
+                      }))
+                    ) {
+                      return;
+                    }
+                    const r = await ajustes.regenerarClave();
+                    general.api_key = r.api_key;
+                    claveVisible = true;
+                    pintar();
+                    toast(t('aj.clave.nueva'));
+                  },
+                  'ajustes-peligro'
+                ),
           ],
         }),
       ],
@@ -1204,6 +1210,13 @@ export function createAjustesView(raiz) {
           className: 'ajustes-conexiones__datos',
           children: [
             el('b', { text: c.nombre }),
+            c.auto
+              ? el('span', {
+                  className: 'field__hint',
+                  text: ` ${t('aj.con.auto')}`,
+                  attrs: { title: t('aj.con.auto.titulo') },
+                })
+              : null,
             el('span', {
               className: 'field__hint',
               children: [`${c.app} · `, el('a', { attrs: { href: c.url }, text: c.url })],

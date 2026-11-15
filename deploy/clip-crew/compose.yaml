@@ -1,0 +1,87 @@
+# clip crew: las tres apps juntas, ya conectadas entre sí.
+#
+# Espera los tres repositorios como carpetas hermanas:
+#   proyectos/clipscout   (este)
+#   proyectos/clipkeeper
+#   proyectos/clonbuster
+#
+# Uso, desde esta carpeta (deploy/clip-crew):
+#   cp .env.example .env            # y pon tu CLIPCREW_CLAVE (32 caracteres hex)
+#   mkdir -p datos/clipscout datos/clipkeeper datos/clonbuster
+#   docker compose up -d --build
+#
+# Las tres comparten CLIPCREW_CLAVE y se alcanzan por el nombre del servicio dentro de la red de
+# compose: al arrancar, cada una crea sola su conexión con las otras dos (y reintenta unos
+# minutos si alguna tarda en levantar). Las conexiones hechas a mano en Ajustes no se tocan.
+#
+# Las CLIPCREW_*_URL son también las que se usan para los enlaces entre apps de la cabecera: si
+# quieres que esos enlaces abran en tu navegador, pon en el .env las direcciones de la red local
+# (http://<ip-del-servidor>:<puerto>), que también valen desde dentro de los contenedores.
+name: clip-crew
+
+x-clipcrew: &clipcrew
+  CLIPCREW_CLAVE: '${CLIPCREW_CLAVE:?Pon CLIPCREW_CLAVE en el .env (p. ej. openssl rand -hex 16)}'
+  CLIPCREW_CLIPSCOUT_URL: '${CLIPCREW_CLIPSCOUT_URL:-http://clipscout:3000}'
+  CLIPCREW_CLIPKEEPER_URL: '${CLIPCREW_CLIPKEEPER_URL:-http://clipkeeper:8096}'
+  CLIPCREW_CLONBUSTER_URL: '${CLIPCREW_CLONBUSTER_URL:-http://clonbuster:8095}'
+
+services:
+  clipscout:
+    build: ../..
+    image: clipscout:latest
+    container_name: clipscout
+    restart: unless-stopped
+    ports:
+      - '${CLIPSCOUT_PUERTO:-3001}:3000'
+    environment:
+      <<: *clipcrew
+      NODE_ENV: production
+      PORT: 3000
+      SECURITY_BLOCK_PRIVATE_ADDRESSES: 'true'
+      # read_only: Chromium necesita un HOME escribible (ver el compose.yaml de clipscout)
+      HOME: /tmp
+      BROWSER_USER_DATA_DIR: /tmp/chromium-data
+    volumes:
+      - ${DATOS:-./datos}/clipscout:/app/data
+    shm_size: '1gb'
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+
+  clipkeeper:
+    build: ../../../clipkeeper
+    image: clipkeeper:latest
+    container_name: clipkeeper
+    user: '${UID_GID:-1000:1000}'
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    ports:
+      - '${CLIPKEEPER_PUERTO:-8096}:8096'
+    environment:
+      <<: *clipcrew
+      CLIPKEEPER_LIMITES: '${CARPETAS:-/videos}'
+    volumes:
+      - ${DATOS:-./datos}/clipkeeper:/datos
+      # La carpeta de vídeos se monta en la MISMA ruta: las rutas que se ven son las reales.
+      - ${CARPETAS:-./videos}:${CARPETAS:-/videos}
+
+  clonbuster:
+    build: ../../../clonbuster
+    image: clonbuster:latest
+    container_name: clonbuster
+    user: '${UID_GID:-1000:1000}'
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    ports:
+      - '${CLONBUSTER_PUERTO:-8095}:8095'
+    command: ['web', '--host', '0.0.0.0', '--limites', '${CARPETAS:-/videos}', '--datos', '/datos']
+    environment:
+      <<: *clipcrew
+    volumes:
+      - ${DATOS:-./datos}/clonbuster:/datos
+      - ${CARPETAS:-./videos}:${CARPETAS:-/videos}
