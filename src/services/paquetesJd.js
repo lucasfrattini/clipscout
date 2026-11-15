@@ -65,8 +65,36 @@ function resumir(enlacesDescarga, enlacesCapturador) {
 
 const FINALES = new Set(['terminado']);
 
+/** Terminado y aún sin avisar a clipkeeper (que tenga a quién avisar y queden intentos). */
+function faltaAviso(p) {
+  return (
+    p.estado === 'terminado' &&
+    p.biblioteca !== null &&
+    p.biblioteca !== undefined &&
+    !p.escaneado &&
+    !p.sinClipkeeper &&
+    (p.avisos || 0) < config.jd.avisosClipkeeper
+  );
+}
+
 function vigilable(p, ahora = Date.now()) {
-  return !FINALES.has(p.estado) && ahora - p.creado < config.jd.vigilarMaxMs;
+  return (!FINALES.has(p.estado) && ahora - p.creado < config.jd.vigilarMaxMs) || faltaAviso(p);
+}
+
+/**
+ * Un paquete terminado → clipkeeper escanea su carpeta (una vez por paquete). La carpeta es la
+ * subcarpeta relativa a la de descargas de JDownloader, que es la raíz de la biblioteca elegida
+ * en Ajustes → JDownloader. Sin clipkeeper conectado no se hace nada (ni se reintenta).
+ */
+async function avisarClipkeeper(p) {
+  const crew = require('./crew');
+  const r = await crew.escanearClipkeeper({ bibliotecaId: p.biblioteca, carpeta: p.carpeta || '' });
+  if (!r.conectado) p.sinClipkeeper = true;
+  else if (r.ok) p.escaneado = Date.now();
+  else {
+    p.avisos = (p.avisos || 0) + 1;
+    logger.warn(`clipkeeper no pudo escanear «${p.carpeta}»: ${r.error}`);
+  }
 }
 
 /** Apunta un envío. Devuelve su id. */
@@ -237,6 +265,7 @@ async function revisar({ soloId = null, forzar = false } = {}) {
     p.contadores = r;
     p.revisado = ahora;
     if (r.estado === 'terminado' && !p.terminadoEn) p.terminadoEn = ahora;
+    if (faltaAviso(p)) await avisarClipkeeper(p);
     cambios.set(p.id, p);
   }
   await almacen.cambiar(d => {
@@ -299,5 +328,6 @@ module.exports = {
   parar,
   resumir,
   fallido,
+  faltaAviso,
   almacen,
 };

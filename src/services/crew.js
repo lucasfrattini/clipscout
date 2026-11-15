@@ -314,7 +314,33 @@ async function reglaClipkeeper({ bibliotecaId, carpeta, personas = [], etiquetas
   }
 }
 
+/**
+ * «Ya llegó»: pide a clipkeeper que escanee SOLO esa carpeta (y sus subcarpetas) de esa
+ * biblioteca, para que lo recién descargado entre al momento con sus reglas, sin esperar al
+ * escaneo periódico. Contrato: POST /api/crew/v1/escanear {biblioteca_id, carpeta} → 202.
+ * `{conectado: false}` si no hay clipkeeper: entonces no se hace nada.
+ */
+async function escanearClipkeeper({ bibliotecaId, carpeta = '' }) {
+  const { conexiones = [] } = await datos();
+  const destino = conexiones.find(c => c.app === 'clipkeeper' && c.activa);
+  if (!destino) return { conectado: false, ok: false };
+  try {
+    const r = await llamar(`${destino.url}/api/crew/v1/escanear`, {
+      method: 'POST',
+      headers: { 'X-Api-Key': destino.api_key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ biblioteca_id: bibliotecaId, carpeta }),
+    });
+    if (r.status !== 202 && r.status !== 200) {
+      return { conectado: true, ok: false, error: `clipkeeper respondió ${r.status}` };
+    }
+    return { conectado: true, ok: true };
+  } catch {
+    return { conectado: true, ok: false, error: 'clipkeeper no responde.' };
+  }
+}
+
 module.exports = {
+  escanearClipkeeper,
   reglaClipkeeper,
   buscarEnClipkeeper,
   destinosClipkeeper,

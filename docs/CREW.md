@@ -120,3 +120,23 @@ sí, y entonces las rutas pasan a `/api/crew/v2`.
 - Webhooks: `archivo.movido`, `archivo.renombrado`, `archivo.papelera`, `video.creado`
 - clonbuster: `GET /duplicados?ubicacion=…`
 - clipkeeper: `POST /entrada` (llegada desde clipscout)
+
+## Añadido en 2026-11 (clipscout)
+
+### clipscout → clipkeeper: `POST /api/crew/v1/escanear`
+
+clipscout recuerda los paquetes que manda a JDownloader (carpeta relativa a la de descargas de
+JDownloader, y la biblioteca de clipkeeper elegida en Ajustes → JDownloader). Cuando JDownloader
+marca uno como **terminado**, llama una vez por paquete a clipkeeper:
+
+```
+POST /api/crew/v1/escanear
+X-Api-Key: <clave de clipkeeper>
+{"biblioteca_id": 3, "carpeta": "Viajes/Playa"}
+→ 202 {"encolado": true}
+```
+
+- Sin clipkeeper conectado no se llama (ni se reintenta).
+- Si clipkeeper no responde, se reintenta en las siguientes revisiones (como mucho
+  `JD_AVISOS_CLIPKEEPER` veces).
+- `carpeta` puede ir vacía si el paquete se descargó en la raíz de la carpeta de JDownloader.
