@@ -66,7 +66,12 @@ async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems }) {
         withThumbnails: true,
       });
       await crawl(
-        { ...params, extensions: parseExtensionList(EXTENSIONES_ABIERTA), maxLinks: urls.length },
+        {
+          ...params,
+          extensions: parseExtensionList(EXTENSIONES_ABIERTA),
+          maxLinks: urls.length,
+          usarCache: true,
+        },
         {
           signal,
           linksPrevios: urls,
@@ -178,6 +183,8 @@ async function buscarEnTodos(
           extensions: parseExtensionList(c.fileExtensions || '.mp4'),
           // El tope crece con las páginas pedidas: con uno fijo, 2 o 5 páginas daban lo mismo.
           maxLinks: topeEnlaces,
+          // Las fichas que ya abrió otra búsqueda hace poco no se vuelven a abrir.
+          usarCache: true,
         },
         { signal, emit: reenviar() }
       );
@@ -192,7 +199,7 @@ async function buscarEnTodos(
         const urls = web.fichas.filter(u => !vistos.has(u));
         if (urls.length > 0) {
           await crawl(
-            { ...params, extensions: extensiones, maxLinks: topeEnlaces },
+            { ...params, extensions: extensiones, maxLinks: topeEnlaces, usarCache: true },
             {
               signal,
               emit: reenviar({ web: true }),
@@ -213,7 +220,7 @@ async function buscarEnTodos(
               withThumbnails: true,
             });
             await crawl(
-              { ...p, extensions: extensiones, maxLinks: topeEnlaces },
+              { ...p, extensions: extensiones, maxLinks: topeEnlaces, usarCache: true },
               { signal, emit: reenviar({ web: true }) }
             );
           } catch {
@@ -289,6 +296,7 @@ async function recorrerListado(url, det, porPaginas, { signal, publicar, progres
       ...params,
       extensions: parseExtensionList(EXTENSIONES_ABIERTA),
       maxLinks: config.busqueda.maxEnlaces * porPaginas,
+      usarCache: true,
     },
     {
       signal,

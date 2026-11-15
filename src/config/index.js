@@ -159,6 +159,15 @@ const config = {
     persistirMs: intFromEnv('BUSQUEDA_PERSISTIR_MS', 3000),
   },
 
+  /**
+   * Caché de fichas de Buscar (services/cacheFichas.js): lo que la fase 2 sacó de cada ficha se
+   * reutiliza entre búsquedas parecidas sin volver a abrirla. EN MEMORIA. 0 entradas = apagada.
+   */
+  cacheFichas: {
+    ttlMs: intFromEnv('CACHE_FICHAS_TTL_MS', 6 * 60 * 60 * 1000),
+    maxEntradas: intFromEnv('CACHE_FICHAS_MAX', 3000),
+  },
+
   // Alta de un sitio con solo su dirección (services/autoSitio.js)
   autoSitio: {
     // Enlaces internos mínimos para dar una página por «listado de resultados»
