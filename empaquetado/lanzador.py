@@ -109,8 +109,12 @@ def main() -> None:
     datos.mkdir(parents=True, exist_ok=True)
     a_registro(datos)
     os.chdir(datos)
-    if (PROGRAMA / "bin").is_dir():  # ffmpeg/ffprobe incluidos
-        os.environ["PATH"] = str(PROGRAMA / "bin") + os.pathsep + os.environ.get("PATH", "")
+    # ffmpeg/ffprobe incluidos: junto al programa (instalador de una app) o en «comun», compartido
+    # por las apps del instalador de Clipgeist (Windows: Clipgeist\comun; Linux: clipgeist/comun).
+    for bin_ in (PROGRAMA / "bin", PROGRAMA.parent / "comun" / "bin", PROGRAMA.parent.parent / "comun" / "bin"):
+        if bin_.is_dir():
+            os.environ["PATH"] = str(bin_) + os.pathsep + os.environ.get("PATH", "")
+            break
     url = f"http://127.0.0.1:{args.puerto}/"
 
     if escuchando(args.puerto):  # ya está abierta (o el puerto lo usa otra cosa): solo mostrarla
