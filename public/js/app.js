@@ -43,6 +43,8 @@ function initRouter(views) {
   }
 
   function activate(name, { updateHash = true } = {}) {
+    // «ajustes/sitios»: la vista es la primera parte; el resto lo lee la propia vista.
+    name = String(name).split('/')[0];
     if (!sections[name]) name = 'buscar';
 
     aplicarCabecera(name);
@@ -59,7 +61,8 @@ function initRouter(views) {
 
     if (updateHash) {
       const hash = `#/${name}`;
-      if (window.location.hash !== hash) {
+      const actual = window.location.hash;
+      if (actual !== hash && !actual.startsWith(`${hash}/`)) {
         window.history.replaceState(null, '', hash);
       }
     }
@@ -81,7 +84,7 @@ function initRouter(views) {
   // El título es texto calculado, así que se rehace al cambiar de idioma: si
   // no, se quedaría en español con la interfaz ya en inglés.
   alCambiarIdioma(() => {
-    const actual = window.location.hash.replace('#/', '') || 'buscar';
+    const actual = (window.location.hash.replace('#/', '') || 'buscar').split('/')[0];
     aplicarCabecera(sections[actual] ? actual : 'buscar');
   });
 }

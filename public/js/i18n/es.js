@@ -10,7 +10,6 @@
  *  - Nada de HTML aquí dentro: todo entra por textContent.
  */
 export const es = {
-  'ajustes.salir': 'Cerrar sesión',
   /* ── Cabecera y navegación ─────────────────────────────────────── */
   'app.subtitulo': 'Explora enlaces y recursos de un sitio',
   'app.saltar': 'Saltar al contenido',
@@ -483,6 +482,16 @@ export const es = {
 
   /* ── Ajustes y Clipgeist ───────────────────────────────────────── */
   'nav.ajustes': 'Ajustes',
+  'aj.tab.sitios': 'Sitios',
+  'aj.tab.busqueda': 'Búsqueda',
+  'aj.tab.jd': 'JDownloader',
+  'aj.tab.general': 'General',
+  'aj.tab.conexiones': 'Conexiones',
+  'aj.tab.seguridad': 'Seguridad',
+  'aj.tab.copia': 'Copia de seguridad',
+  'aj.tab.apariencia': 'Apariencia',
+  'cab.salir': 'Salir',
+  'cab.cerrarSesion': 'Cerrar la sesión de {usuario}',
   'crew.aria': 'Apps de Clipgeist',
   'head.ajustes.titulo': 'Ajustes — clipscout',
   'head.ajustes.desc': 'Identidad, clave de API y conexiones con las otras apps de Clipgeist.',

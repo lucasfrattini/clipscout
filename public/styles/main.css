@@ -3276,18 +3276,9 @@ a {
   background: var(--c-danger);
 }
 
-/* Ajustes: dos columnas en pantallas anchas, en lugar de una tira muy larga. */
+/* Ajustes: el diseño de la página (menú + sección) está en crew.css (.cc-ajustes). */
 .card[hidden] {
   display: none;
-}
-@media (min-width: 1000px) {
-  #view-ajustes {
-    columns: 2;
-    column-gap: var(--space-4);
-  }
-  #view-ajustes > * {
-    break-inside: avoid;
-  }
 }
 @media (max-width: 720px) {
   .buscar__sitios {

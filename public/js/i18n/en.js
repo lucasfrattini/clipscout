@@ -10,7 +10,6 @@
  * because `t()` leaves unknown placeholders untouched. There is a test.
  */
 export const en = {
-  'ajustes.salir': 'Sign out',
   /* ── Header and navigation ─────────────────────────────────────── */
   'app.subtitulo': "Explore a site's links and resources",
   'app.saltar': 'Skip to content',
@@ -482,6 +481,16 @@ export const en = {
 
   /* ── Ajustes y Clipgeist ───────────────────────────────────────── */
   'nav.ajustes': 'Settings',
+  'aj.tab.sitios': 'Sites',
+  'aj.tab.busqueda': 'Search',
+  'aj.tab.jd': 'JDownloader',
+  'aj.tab.general': 'General',
+  'aj.tab.conexiones': 'Connections',
+  'aj.tab.seguridad': 'Security',
+  'aj.tab.copia': 'Backup',
+  'aj.tab.apariencia': 'Appearance',
+  'cab.salir': 'Sign out',
+  'cab.cerrarSesion': 'Sign out {usuario}',
   'crew.aria': 'Clipgeist apps',
   'head.ajustes.titulo': 'Settings — clipscout',
   'head.ajustes.desc': 'Identity, API key and connections with the other Clipgeist apps.',

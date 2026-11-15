@@ -377,3 +377,63 @@ a.cc-app:hover img {
     animation: none;
   }
 }
+
+/* ── Ajustes: misma página en las tres apps ──────────────────────────────────
+   Título, menú de secciones a la izquierda y una sección a la vez a la derecha
+   (el formato de clipkeeper). En el móvil, el menú pasa a una fila deslizable. */
+.cc-pagina-titulo {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: var(--cc-texto);
+}
+.cc-ajustes {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.cc-ajustes-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: 16px;
+}
+.cc-ajustes-menu a {
+  padding: 9px 12px;
+  border-radius: var(--cc-radio-chico);
+  color: var(--cc-texto);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.cc-ajustes-menu a:hover {
+  background: var(--cc-borde);
+}
+.cc-ajustes-menu a.active,
+.cc-ajustes-menu a[aria-current='page'] {
+  background: var(--cc-acento-suave);
+  color: var(--cc-acento);
+  font-weight: 600;
+}
+.cc-ajustes-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* Cada app trae sus márgenes entre tarjetas: aquí manda el hueco común. */
+.cc-ajustes-panel > * {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+@media (max-width: 720px) {
+  .cc-ajustes {
+    grid-template-columns: 1fr;
+  }
+  .cc-ajustes-menu {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+}

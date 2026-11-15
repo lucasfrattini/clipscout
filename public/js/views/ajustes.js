@@ -20,7 +20,6 @@ export const avisarCambio = () => window.dispatchEvent(new Event(EVENTO));
 
 export function createAjustesView(raiz) {
   let general = null;
-  let protegido = false;
   let claveVisible = false;
   let formularioAbierto = false;
 
@@ -30,7 +29,6 @@ export function createAjustesView(raiz) {
     try {
       general = await ajustes.general();
       estadoAcceso = await (await fetch('/api/auth/estado')).json();
-      protegido = estadoAcceso.protegido;
     } catch (error) {
       toast(error.message, 'error', 6000);
       return;
@@ -38,42 +36,61 @@ export function createAjustesView(raiz) {
     pintar();
   }
 
-  function botonSalir() {
-    return el('button', {
-      className: 'button button--secondary',
-      attrs: { type: 'button' },
-      text: t('ajustes.salir'),
-      on: {
-        click: async () => {
-          await fetch('/api/auth/logout', { method: 'POST' });
-          location.replace('/login');
-        },
-      },
-    });
-  }
+  /*
+   * Mismo formato que los Ajustes de clipkeeper y clonbuster: título, menú de
+   * secciones a la izquierda y una sección a la vez (#/ajustes/<sección>).
+   * Solo se construyen las tarjetas de la sección visible.
+   */
+  const SECCIONES = [
+    ['sitios', 'aj.tab.sitios', () => [tarjetaSitios(), tarjetaFiltros()]],
+    ['busqueda', 'aj.tab.busqueda', () => [tarjetaBusqueda(), tarjetaProgramadas()]],
+    ['jdownloader', 'aj.tab.jd', () => [tarjetaJd(), tarjetaPaquetes()]],
+    ['general', 'aj.tab.general', () => [tarjetaGeneral()]],
+    ['conexiones', 'aj.tab.conexiones', () => [tarjetaConexiones()]],
+    ['seguridad', 'aj.tab.seguridad', () => [tarjetaAcceso(), tarjetaClave()]],
+    ['copia', 'aj.tab.copia', () => [tarjetaRespaldos()]],
+    ['apariencia', 'aj.tab.apariencia', () => [tarjetaApariencia()]],
+  ];
+
+  const seccionActual = () => {
+    const pedida = window.location.hash.replace(/^#\/ajustes\/?/, '').split('/')[0];
+    return SECCIONES.some(([id]) => id === pedida) ? pedida : SECCIONES[0][0];
+  };
 
   function pintar() {
+    const actual = seccionActual();
+    const [, , tarjetas] = SECCIONES.find(([id]) => id === actual);
     raiz.replaceChildren(
-      el('h2', {
-        className: 'visually-hidden',
+      el('h1', {
+        className: 'cc-pagina-titulo',
         attrs: { id: 'ajustes-heading' },
         text: t('nav.ajustes'),
       }),
-      tarjetaGeneral(),
-      tarjetaApariencia(),
-      tarjetaAcceso(),
-      tarjetaClave(),
-      tarjetaConexiones(),
-      tarjetaJd(),
-      tarjetaPaquetes(),
-      tarjetaSitios(),
-      tarjetaBusqueda(),
-      tarjetaFiltros(),
-      tarjetaProgramadas(),
-      tarjetaRespaldos(),
-      ...(protegido ? [botonSalir()] : [])
+      el('div', {
+        className: 'cc-ajustes',
+        children: [
+          el('nav', {
+            className: 'cc-ajustes-menu',
+            attrs: { 'aria-label': t('nav.ajustes') },
+            children: SECCIONES.map(([id, clave]) =>
+              el('a', {
+                attrs: {
+                  href: `#/ajustes/${id}`,
+                  ...(id === actual ? { 'aria-current': 'page' } : {}),
+                },
+                text: t(clave),
+              })
+            ),
+          }),
+          el('div', { className: 'cc-ajustes-panel', children: tarjetas() }),
+        ],
+      })
     );
   }
+
+  window.addEventListener('hashchange', () => {
+    if (general && window.location.hash.startsWith('#/ajustes')) pintar();
+  });
 
   /* ── Esta app ──────────────────────────────────────────────────────── */
 
@@ -176,8 +193,8 @@ export function createAjustesView(raiz) {
         const r = await llamada();
         toast(t(aviso));
         estadoAcceso = r;
-        protegido = r.protegido;
-        pintar();
+        // Con contraseña aparece «Salir» en la cabecera (y sin ella se va): se recarga entera.
+        location.reload();
       } catch (error) {
         toast(error.message, 'error', 6000);
       }
@@ -1303,7 +1320,9 @@ export function createAjustesView(raiz) {
         el('li', {
           className: 'ajustes-conexiones__vacio',
           children: [
-            el('img', { attrs: { src: '/img/crew/clipgeist.png', alt: '', width: 64, height: 64 } }),
+            el('img', {
+              attrs: { src: '/img/crew/clipgeist.png', alt: '', width: 64, height: 64 },
+            }),
             el('span', { text: t('aj.con.vacio') }),
           ],
         })
@@ -1551,4 +1570,35 @@ export function initCrewCabecera(contenedor) {
   };
   window.addEventListener(EVENTO, pintar);
   pintar();
+  botonSalirCabecera(contenedor.parentElement);
+}
+
+/**
+ * «Salir» en la cabecera, en el mismo sitio que en clipkeeper y clonbuster.
+ * Solo si hay contraseña: sin ella no hay sesión que cerrar.
+ */
+async function botonSalirCabecera(destino) {
+  let estado = {};
+  try {
+    estado = await (await fetch('/api/auth/estado')).json();
+  } catch {
+    return;
+  }
+  if (!estado.protegido || destino.querySelector('.cc-boton-cabecera')) return;
+  destino.append(
+    el('button', {
+      className: 'cc-boton-cabecera',
+      attrs: {
+        type: 'button',
+        title: estado.usuario ? t('cab.cerrarSesion', { usuario: estado.usuario }) : '',
+      },
+      text: t('cab.salir'),
+      on: {
+        click: async () => {
+          await fetch('/api/auth/logout', { method: 'POST' });
+          location.replace('/login');
+        },
+      },
+    })
+  );
 }
