@@ -15,11 +15,23 @@
   'use strict';
   const clave = app => 'cg-guia-' + app;
 
+  // Se recuerda en localStorage y en una cookie: la cookie no depende del puerto, así que vale
+  // aunque la app se abra con otra dirección (127.0.0.1, localhost, la IP del equipo…).
   function guiaVista(app) {
+    if (document.cookie.split('; ').includes(clave(app) + '=1')) return true;
     try {
       return localStorage.getItem(clave(app)) === '1';
     } catch (e) {
-      return true;
+      return false;
+    }
+  }
+
+  function marcarVista(app) {
+    document.cookie = clave(app) + '=1; max-age=315360000; path=/; samesite=lax';
+    try {
+      localStorage.setItem(clave(app), '1');
+    } catch (e) {
+      /* sin almacenamiento: queda la cookie */
     }
   }
 
@@ -69,11 +81,7 @@
     fondo.append(caja);
 
     const cerrar = () => {
-      try {
-        localStorage.setItem(clave(app), '1');
-      } catch (e) {
-        /* sin almacenamiento */
-      }
+      marcarVista(app);
       fondo.remove();
       document.removeEventListener('keydown', tecla);
     };

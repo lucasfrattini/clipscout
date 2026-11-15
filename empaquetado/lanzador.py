@@ -44,6 +44,43 @@ def limites() -> list[Path]:
     return [Path.home()] + [Path(p) for p in ("/mnt", "/media", "/srv", "/data") if os.path.isdir(p)]
 
 
+PUERTOS = {"clipscout": "3001", "clonbuster": "8095", "clipkeeper": "8096"}
+
+
+def conectar_hermanas(datos: Path) -> list[str]:
+    """Instalación conjunta: si las otras apps de Clipgeist están instaladas al lado, les da a las tres
+    la misma clave (CLIPGEIST_CLAVE) y la dirección de cada una (CLIPGEIST_<APP>_URL), y ellas solas
+    se conectan al arrancar. La clave se crea la primera vez en la carpeta de datos común."""
+    exe = ".exe" if ES_WIN else ""
+    hermanas = []
+    for app in PUERTOS:
+        if app == A.APP:
+            continue
+        # Windows: Clipgeist\<app>\<app>.exe · Linux: clipgeist/<app>/programa/<app>
+        if (PROGRAMA.parent / app / (app + exe)).is_file() or (PROGRAMA.parent.parent / app / "programa" / app).is_file():
+            hermanas.append(app)
+    if not hermanas or os.environ.get("CLIPGEIST_CLAVE"):
+        return hermanas
+    archivo = datos.parent / "clave-clipgeist.txt"
+    try:  # las tres arrancan a la vez tras instalar: solo una crea la clave
+        with open(archivo, "x", encoding="utf-8") as f:
+            import secrets
+
+            f.write(secrets.token_hex(24))
+    except FileExistsError:
+        pass
+    for _ in range(20):
+        clave = archivo.read_text(encoding="utf-8").strip()
+        if clave:
+            break
+        time.sleep(0.1)
+    os.environ["CLIPGEIST_CLAVE"] = clave
+    for app in [A.APP, *hermanas]:
+        puerto = A.PUERTO if app == A.APP else PUERTOS[app]
+        os.environ.setdefault(f"CLIPGEIST_{app.upper()}_URL", f"http://127.0.0.1:{puerto}")
+    return hermanas
+
+
 def escuchando(puerto: int) -> bool:
     with socket.socket() as s:
         s.settimeout(0.5)
@@ -116,6 +153,9 @@ def main() -> None:
             os.environ["PATH"] = str(bin_) + os.pathsep + os.environ.get("PATH", "")
             break
     url = f"http://127.0.0.1:{args.puerto}/"
+    hermanas = conectar_hermanas(datos)
+    if hermanas:
+        print("Clipgeist: conectando con", ", ".join(hermanas))
 
     if escuchando(args.puerto):  # ya está abierta (o el puerto lo usa otra cosa): solo mostrarla
         if not args.sin_bandeja:
