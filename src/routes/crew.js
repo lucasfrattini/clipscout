@@ -8,6 +8,7 @@ const config = require('../config');
 const jd = require('../services/jdownloader');
 const { buscarEnTodos } = require('../services/busqueda');
 const ajustesBusqueda = require('../services/ajustesBusqueda');
+const programadas = require('../services/programadas');
 
 /**
  * Rutas de clip crew.
@@ -252,6 +253,33 @@ router.get(
 router.post(
   '/ajustes/jdownloader/enviar',
   manejar(req => jd.enviar(req.body || {}))
+);
+
+/* ── Búsquedas programadas ─────────────────────────────────────────── */
+
+router.get(
+  '/ajustes/programadas',
+  manejar(() => programadas.listar())
+);
+
+router.post(
+  '/ajustes/programadas',
+  manejar(req => programadas.guardar(req.body || {}))
+);
+
+router.delete(
+  '/ajustes/programadas/:id',
+  manejar(req => programadas.quitar(req.params.id))
+);
+
+/** La lanza ya; la respuesta no espera a que acabe (se ve en Buscar como cualquier búsqueda). */
+router.post(
+  '/ajustes/programadas/:id/ahora',
+  manejar(async req => {
+    const { terminada } = await programadas.lanzar(req.params.id);
+    terminada.catch(() => {});
+    return { ok: true };
+  })
 );
 
 router.get(

@@ -68,6 +68,9 @@ progress, real cancellation and export.
 - **Send to JDownloader**: one click sends the results to JDownloader 2 as a
   single package, into the folder you choose — see
   [Sending to JDownloader](#sending-to-jdownloader).
+- **Scheduled searches** (_Settings_): a saved search repeats every few days and sends only
+  what is new to JDownloader — with a minimum length, words it must or must not contain, and
+  a person or category for clipkeeper. Starts empty.
 - **Works with clip crew**: lists your clipkeeper folders as download
   destinations and tells you which videos you already have.
 - **Outbound proxy** (`OUTBOUND_PROXY`) for networks that block some sites.

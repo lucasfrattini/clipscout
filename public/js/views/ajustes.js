@@ -62,6 +62,7 @@ export function createAjustesView(raiz) {
       tarjetaConexiones(),
       tarjetaJd(),
       tarjetaBusqueda(),
+      tarjetaProgramadas(),
       ...(protegido ? [botonSalir()] : [])
     );
   }
@@ -302,6 +303,237 @@ export function createAjustesView(raiz) {
             el('p', { className: 'card__hint', text: t('aj.jd.hint') }),
           ],
         }),
+        form,
+      ],
+    });
+  }
+
+  /* ── Búsquedas programadas ─────────────────────────────────────────── */
+
+  function tarjetaProgramadas() {
+    const lista = el('ul', { className: 'programadas' });
+    let editando = null; // la programada que está en el formulario (null = nueva)
+    const entrada = (placeholder, extra = {}) =>
+      el('input', {
+        className: 'input',
+        attrs: { type: 'text', spellcheck: 'false', placeholder, ...extra },
+      });
+    const termino = entrada(t('aj.prog.termino.ej'));
+    const carpeta = entrada(t('aj.prog.carpeta.ej'), { list: 'programadas-carpetas' });
+    const carpetas = el('datalist', { attrs: { id: 'programadas-carpetas' } });
+    const persona = entrada(t('aj.prog.persona.ej'));
+    const etiqueta = entrada(t('aj.prog.etiqueta.ej'));
+    const minutos = el('input', {
+      className: 'input',
+      attrs: { type: 'number', min: '0', max: '600', value: '0' },
+    });
+    const sinDuracion = el('input', { attrs: { type: 'checkbox' } });
+    const contener = entrada(t('aj.prog.contener.ej'));
+    const excluir = entrada(t('aj.prog.excluir.ej'));
+    const cada = el('select', {
+      className: 'input',
+      children: [1, 3, 7, 14, 30].map(n =>
+        el('option', { attrs: { value: n }, text: t('aj.prog.cada.n', { n }) })
+      ),
+    });
+    cada.value = '7';
+    ajustes
+      .destinos()
+      .then(d => {
+        for (const b of d.bibliotecas || []) {
+          for (const c of b.carpetas || []) {
+            carpetas.append(el('option', { attrs: { value: c.carpeta } }));
+          }
+        }
+      })
+      .catch(() => {});
+
+    const rellenar = p => {
+      editando = p;
+      termino.value = p?.termino || '';
+      carpeta.value = p?.carpeta || '';
+      persona.value = p?.persona || '';
+      etiqueta.value = p?.etiqueta || '';
+      minutos.value = String(p?.minutosMinimo ?? 0);
+      sinDuracion.checked = Boolean(p?.sinDuracion);
+      contener.value = p?.contener || '';
+      excluir.value = p?.excluir || '';
+      cada.value = String(p?.cadaDias || 7);
+      guardar.textContent = t(p ? 'aj.guardar' : 'aj.prog.agregar');
+      cancelar.hidden = !p;
+    };
+    const guardar = el('button', {
+      className: 'button button--small',
+      attrs: { type: 'submit' },
+      text: t('aj.prog.agregar'),
+    });
+    const cancelar = el('button', {
+      className: 'button button--small button--secondary',
+      attrs: { type: 'button', hidden: true },
+      text: t('aj.prog.cancelar'),
+      on: { click: () => rellenar(null) },
+    });
+    const form = el('form', {
+      className: 'card__body ajustes-form',
+      children: [
+        campo(t('aj.prog.termino'), termino),
+        campo(t('aj.prog.carpeta'), carpeta, t('aj.prog.carpeta.hint')),
+        carpetas,
+        campo(t('aj.prog.persona'), persona),
+        campo(t('aj.prog.etiqueta'), etiqueta),
+        campo(t('aj.prog.minutos'), minutos),
+        el('label', {
+          className: 'ajustes-casilla',
+          children: [sinDuracion, t('aj.prog.sinDuracion')],
+        }),
+        campo(t('aj.prog.contener'), contener, t('aj.prog.contener.hint')),
+        campo(t('aj.prog.excluir'), excluir, t('aj.prog.excluir.hint')),
+        campo(t('aj.prog.cada'), cada),
+        el('div', { className: 'ajustes-acciones', children: [guardar, cancelar] }),
+      ],
+      on: {
+        submit: async e => {
+          e.preventDefault();
+          try {
+            await ajustes.guardarProgramada({
+              id: editando?.id,
+              termino: termino.value,
+              carpeta: carpeta.value,
+              persona: persona.value,
+              etiqueta: etiqueta.value,
+              minutosMinimo: Number(minutos.value) || 0,
+              sinDuracion: sinDuracion.checked,
+              contener: contener.value,
+              excluir: excluir.value,
+              cadaDias: Number(cada.value),
+              activa: editando ? editando.activa : true,
+            });
+            toast(t('aj.prog.guardada'));
+            rellenar(null);
+            cargarLista();
+          } catch (error) {
+            toast(error.message, 'error', 6000);
+          }
+        },
+      },
+    });
+
+    const resumen = p => {
+      if (!p.ultimo) return t('aj.prog.nunca');
+      const fecha = new Date(p.ultimo.fecha).toLocaleString();
+      return p.ultimo.error
+        ? t('aj.prog.ultimoError', { fecha, error: p.ultimo.error })
+        : t('aj.prog.ultimo', {
+            fecha,
+            encontrados: p.ultimo.encontrados,
+            enviados: p.ultimo.enviados,
+          });
+    };
+    const boton = (clave, onClick, extra = 'button--secondary') =>
+      el('button', {
+        className: `button button--small ${extra}`,
+        attrs: { type: 'button' },
+        text: t(clave),
+        on: { click: onClick },
+      });
+
+    async function cargarLista() {
+      let datos;
+      try {
+        datos = await ajustes.programadas();
+      } catch (error) {
+        lista.replaceChildren(el('li', { className: 'ajustes-error', text: error.message }));
+        return;
+      }
+      if (!datos.programadas.length) {
+        lista.replaceChildren(
+          el('li', { className: 'programadas__vacio', text: t('aj.prog.vacio') })
+        );
+        return;
+      }
+      lista.replaceChildren(
+        ...datos.programadas.map(p =>
+          el('li', {
+            className: p.activa ? '' : 'programadas__pausada',
+            children: [
+              el('div', {
+                className: 'programadas__texto',
+                children: [
+                  el('strong', { text: p.termino }),
+                  el('span', {
+                    className: 'field__hint',
+                    text: [
+                      p.carpeta || t('aj.prog.sinCarpeta'),
+                      t('aj.prog.cada.n', { n: p.cadaDias }),
+                      p.minutosMinimo ? t('aj.prog.masDe', { n: p.minutosMinimo }) : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · '),
+                  }),
+                  el('span', {
+                    className: 'field__hint',
+                    text: datos.enCurso === p.id ? t('aj.prog.enCurso') : resumen(p),
+                  }),
+                ],
+              }),
+              el('div', {
+                className: 'ajustes-acciones programadas__acciones',
+                children: [
+                  boton('aj.prog.ahora', async () => {
+                    try {
+                      await ajustes.lanzarProgramada(p.id);
+                      toast(t('aj.prog.lanzada'));
+                      cargarLista();
+                    } catch (error) {
+                      toast(error.message, 'error', 6000);
+                    }
+                  }),
+                  boton(p.activa ? 'aj.prog.pausar' : 'aj.prog.reanudar', async () => {
+                    await ajustes.guardarProgramada({ id: p.id, activa: !p.activa });
+                    cargarLista();
+                  }),
+                  boton('aj.prog.editar', () => {
+                    rellenar(p);
+                    termino.focus();
+                  }),
+                  boton(
+                    'aj.prog.quitar',
+                    async () => {
+                      if (
+                        !(await confirmDialog({
+                          titleKey: 'aj.prog.quitar',
+                          bodyKey: 'aj.prog.quitarConfirmar',
+                          variant: 'danger',
+                        }))
+                      ) {
+                        return;
+                      }
+                      await ajustes.quitarProgramada(p.id);
+                      if (editando?.id === p.id) rellenar(null);
+                      cargarLista();
+                    },
+                    'button--secondary ajustes-peligro'
+                  ),
+                ],
+              }),
+            ],
+          })
+        )
+      );
+    }
+    cargarLista();
+
+    return el('section', {
+      className: 'card',
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.prog.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.prog.hint') }),
+          ],
+        }),
+        el('div', { className: 'card__body', children: [lista] }),
         form,
       ],
     });

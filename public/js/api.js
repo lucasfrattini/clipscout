@@ -246,6 +246,13 @@ export const ajustes = {
     request('/ajustes/jdownloader/probar', { method: 'POST', body: JSON.stringify({ url }) }),
   enviarJd: datos =>
     request('/ajustes/jdownloader/enviar', { method: 'POST', body: JSON.stringify(datos) }),
+  programadas: () => request('/ajustes/programadas'),
+  guardarProgramada: datos =>
+    request('/ajustes/programadas', { method: 'POST', body: JSON.stringify(datos) }),
+  quitarProgramada: id =>
+    request(`/ajustes/programadas/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  lanzarProgramada: id =>
+    request(`/ajustes/programadas/${encodeURIComponent(id)}/ahora`, { method: 'POST', body: '{}' }),
 };
 
 export { ApiError };

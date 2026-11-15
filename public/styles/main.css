@@ -3359,3 +3359,40 @@ a {
 .buscar__sugeridos[hidden] {
   display: none;
 }
+
+/* Búsquedas programadas */
+.programadas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.programadas li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3);
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+}
+.programadas li.programadas__vacio {
+  justify-content: center;
+  color: var(--c-text-muted);
+  border-style: dashed;
+}
+.programadas__pausada {
+  opacity: 0.6;
+}
+.programadas__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.programadas__acciones {
+  width: auto;
+}

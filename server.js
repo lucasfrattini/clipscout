@@ -19,6 +19,9 @@ require('./src/services/ajustesBusqueda')
   .cargar()
   .catch(error => logger.warn('No se pudieron cargar los ajustes de búsqueda', error.message));
 
+// Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
+require('./src/services/programadas').arrancar();
+
 const server = app.listen(config.port, () => {
   logger.info(`clipscout escuchando en http://localhost:${config.port}`);
 });
