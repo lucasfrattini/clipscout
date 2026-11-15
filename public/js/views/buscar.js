@@ -70,6 +70,8 @@ export function createBuscarView(root) {
   // La búsqueda corre en el servidor: la página solo la mira. Se guarda por dónde iba para
   // reengancharse si la conexión se corta (otra app, pantalla apagada…).
   let trabajo = null; // id de la búsqueda en el servidor
+  let trabajoVisto = null; // la que se está mirando (sigue tras terminar, para marcarla en la cola)
+  let enCola = null; // puesto en la cola mientras espera su turno (null = ya arrancó)
   let recibidos = 0; // eventos ya procesados
   let reintento = null;
   let enBiblioteca = new Map(); // sourceUrl → coincidencia de clipkeeper
@@ -156,12 +158,85 @@ export function createBuscarView(root) {
   const textoPaginas = el('span');
   etiquetaPaginas.prepend(textoPaginas);
 
+  // Varias búsquedas de golpe (una por línea, opcional «término → carpeta»): van todas a la cola.
+  const botonVarias = el('button', {
+    className: 'button button--secondary button--small',
+    attrs: { type: 'button' },
+    on: { click: () => abrirVarias('') },
+  });
+  texto(botonVarias, 'buscar.varias');
+  const textoVarias = el('textarea', {
+    className: 'input buscar__varias-texto',
+    attrs: { rows: 5, spellcheck: 'false' },
+  });
+  atributo(textoVarias, 'placeholder', 'buscar.varias.ej');
+  atributo(textoVarias, 'aria-label', 'buscar.varias');
+  const ayudaVarias = el('p', { className: 'field__hint' });
+  texto(ayudaVarias, 'buscar.varias.hint');
+  const encolar = el('button', { className: 'button button--small', attrs: { type: 'submit' } });
+  const cancelarVarias = el('button', {
+    className: 'button button--secondary button--small',
+    attrs: { type: 'button' },
+    on: {
+      click: () => {
+        zonaVarias.hidden = true;
+      },
+    },
+  });
+  texto(cancelarVarias, 'aj.prog.cancelar');
+  const zonaVarias = el('form', {
+    className: 'buscar__varias',
+    attrs: { hidden: '' },
+    children: [
+      textoVarias,
+      ayudaVarias,
+      el('div', { className: 'ajustes-acciones', children: [encolar, cancelarVarias] }),
+    ],
+    on: {
+      submit: e => {
+        e.preventDefault();
+        encolarVarias();
+      },
+    },
+  });
+  const pintarEncolar = () => {
+    encolar.textContent = t('buscar.varias.encolar', { n: leerLineas(textoVarias.value).length });
+  };
+  textoVarias.addEventListener('input', pintarEncolar);
+  function abrirVarias(textoInicial) {
+    if (textoInicial) textoVarias.value = textoInicial;
+    zonaVarias.hidden = false;
+    pintarEncolar();
+    textoVarias.focus();
+  }
+  // Pegar una lista en la caja normal (que es de una línea y se comería los saltos) abre la de varias.
+  entrada.addEventListener('paste', e => {
+    const pegado = e.clipboardData?.getData('text') || '';
+    if (pegado.split(/\r?\n/).filter(l => l.trim()).length > 1) {
+      e.preventDefault();
+      abrirVarias(pegado);
+    }
+  });
+
+  // La cola: lo que está en marcha, lo que espera su turno y lo terminado hace poco.
+  const listaCola = el('ul', { className: 'buscar__cola-lista' });
+  const tituloCola = el('h3', { className: 'buscar__cola-titulo' });
+  texto(tituloCola, 'buscar.cola');
+  const zonaCola = el('section', {
+    className: 'buscar__cola',
+    attrs: { hidden: '' },
+    children: [tituloCola, listaCola],
+  });
+
   const form = el('form', {
     className: 'buscar__form',
     children: [
       el('div', { className: 'buscar__fila', children: [entrada, boton, parar] }),
       chipsSitios,
-      el('div', { className: 'buscar__pie', children: [ayuda, agregar, etiquetaPaginas] }),
+      el('div', {
+        className: 'buscar__pie',
+        children: [ayuda, el('span', { children: [agregar, botonVarias] }), etiquetaPaginas],
+      }),
     ],
     on: {
       submit: e => {
@@ -191,7 +266,12 @@ export function createBuscarView(root) {
   const titulo = el('h2', { className: 'buscar__titulo', attrs: { id: 'buscar-heading' } });
   texto(titulo, 'buscar.titulo');
 
-  root.append(el('div', { className: 'buscar', children: [titulo, form, zonaResultados] }));
+  root.append(
+    el('div', {
+      className: 'buscar',
+      children: [titulo, form, zonaVarias, zonaCola, zonaResultados],
+    })
+  );
 
   /* ── Repetidos y filtros de la lista ─────────────────────────────────── */
   // url → { representante, n }: copias del mismo vídeo (mismo o distinto sitio). Se pliegan bajo
@@ -595,6 +675,22 @@ export function createBuscarView(root) {
     comprobarBiblioteca(false);
   }
 
+  /** La búsqueda web trae más, pero también mucho que no es: se pregunta cada vez (null = cancelar). */
+  async function preguntarWeb() {
+    if (!hayWeb) return { conWeb: false, conAbierta: false };
+    const r = await chooseDialog({
+      titleKey: 'buscar.webPregunta',
+      labelKey: 'buscar.webPregunta.texto',
+      opciones: [
+        { valor: 'no', titulo: t('buscar.webNo'), detalle: t('buscar.webNo.detalle') },
+        { valor: 'si', titulo: t('buscar.webSi'), detalle: t('buscar.webSi.detalle') },
+        { valor: 'todo', titulo: t('buscar.webTodo'), detalle: t('buscar.webTodo.detalle') },
+      ],
+    });
+    if (r === null) return null;
+    return { conWeb: r === 'si' || r === 'todo', conAbierta: r === 'todo' };
+  }
+
   async function empezar(opciones = {}) {
     const q = (opciones.url || entrada.value).trim();
     if (opciones.url) entrada.value = opciones.url;
@@ -606,22 +702,12 @@ export function createBuscarView(root) {
     // «ejemplo.com» a secas: no hay nada que buscar en él todavía; se ofrece agregarlo.
     if (tipo === 'dominio') return abrirAlta({ dominios: [q] });
     const esEnlace = tipo === 'enlace';
-    // La búsqueda web trae más, pero también mucho que no es: se pregunta cada vez.
     let conWeb = false;
     let conAbierta = false;
-    if (hayWeb && !esEnlace) {
-      const r = await chooseDialog({
-        titleKey: 'buscar.webPregunta',
-        labelKey: 'buscar.webPregunta.texto',
-        opciones: [
-          { valor: 'no', titulo: t('buscar.webNo'), detalle: t('buscar.webNo.detalle') },
-          { valor: 'si', titulo: t('buscar.webSi'), detalle: t('buscar.webSi.detalle') },
-          { valor: 'todo', titulo: t('buscar.webTodo'), detalle: t('buscar.webTodo.detalle') },
-        ],
-      });
-      if (r === null) return;
-      conWeb = r === 'si' || r === 'todo';
-      conAbierta = r === 'todo';
+    if (!esEnlace) {
+      const web = await preguntarWeb();
+      if (web === null) return;
+      ({ conWeb, conAbierta } = web);
     }
     const elegidos = esEnlace ? [] : sitios.filter(s => !apagados.has(s.nombre));
     if (!esEnlace && elegidos.length === 0 && !conAbierta) return;
@@ -676,12 +762,170 @@ export function createBuscarView(root) {
     }
     conectar(r.id, 0);
     pintarResultados();
+    refrescarCola();
+  }
+
+  /** «término → carpeta» por línea (también «->», «=>» o un tabulador); las vacías no cuentan. */
+  function leerLineas(textoLineas) {
+    return String(textoLineas || '')
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(l => {
+        const [termino, ...resto] = l.split(/\s*(?:→|->|=>|\t)\s*/);
+        const carpeta = resto.join('/').trim();
+        return tipoDeEntrada(termino) === 'enlace'
+          ? { url: termino.trim(), carpeta }
+          : { q: termino.trim(), carpeta };
+      });
+  }
+
+  async function encolarVarias() {
+    const lineas = leerLineas(textoVarias.value);
+    if (lineas.length === 0) return textoVarias.focus();
+    const web = lineas.some(l => l.q) ? await preguntarWeb() : { conWeb: false, conAbierta: false };
+    if (web === null) return;
+    const elegidos = sitios.filter(x => !apagados.has(x.nombre));
+    try {
+      const resp = await fetch('/api/buscar/varias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          busquedas: lineas,
+          paginas: paginas.value,
+          web: web.conWeb,
+          abierta: web.conAbierta,
+          ...(elegidos.length < sitios.length ? { sitios: elegidos.map(x => x.id) } : {}),
+        }),
+      });
+      const r = await resp.json();
+      if (r.ids?.length) toast(tp('buscar.varias.encoladas', r.ids.length), 'success', 4000);
+      if (r.errores?.length) {
+        toast(r.errores.map(e => `${e.q || '—'}: ${e.error}`).join(' · '), 'error', 8000);
+      }
+      if (r.ids?.length) {
+        textoVarias.value = '';
+        zonaVarias.hidden = true;
+        // Si no se está mirando ninguna, se mira la primera de la tanda.
+        if (!trabajo) await refrescarCola({ verId: r.ids[0] });
+        else await refrescarCola();
+      }
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+    }
+  }
+
+  let colaActual = [];
+  let relojCola = null;
+  async function refrescarCola({ verId = null } = {}) {
+    try {
+      const r = await fetch('/api/buscar/cola').then(x => x.json());
+      colaActual = r.busquedas || [];
+    } catch {
+      return;
+    }
+    pintarCola();
+    if (verId) {
+      const b = colaActual.find(x => x.id === verId);
+      if (b) ver(b);
+    }
+  }
+  relojCola = setInterval(() => {
+    if (document.visibilityState !== 'hidden') refrescarCola();
+  }, 4000);
+
+  function pintarCola() {
+    // Se enseña cuando hay algo más que la búsqueda que se mira: si no, es ruido.
+    zonaCola.hidden = !colaActual.some(b => b.id !== trabajoVisto);
+    if (zonaCola.hidden) return;
+    listaCola.replaceChildren(
+      ...colaActual.slice(0, 15).map(b => {
+        const marca =
+          b.estado === 'curso'
+            ? t('buscar.cola.curso')
+            : b.estado === 'cola'
+              ? t('buscar.cola.esperando', { n: b.posicion })
+              : b.quitada
+                ? t('buscar.cola.quitada')
+                : tp('buscar.resultados', b.total);
+        const acciones = [];
+        if (b.id !== trabajoVisto) {
+          acciones.push(
+            el('button', {
+              className: 'button button--secondary button--small',
+              attrs: { type: 'button' },
+              text: t('buscar.cola.ver'),
+              on: { click: () => ver(b) },
+            })
+          );
+        }
+        if (b.estado !== 'fin') {
+          acciones.push(
+            el('button', {
+              className: 'button button--ghost button--small',
+              attrs: { type: 'button' },
+              text: t(b.estado === 'cola' ? 'buscar.cola.quitar' : 'buscar.parar'),
+              on: {
+                click: async () => {
+                  await fetch(`/api/buscar/cola/${encodeURIComponent(b.id)}`, {
+                    method: 'DELETE',
+                  }).catch(() => {});
+                  refrescarCola();
+                },
+              },
+            })
+          );
+        }
+        return el('li', {
+          className: `buscar__cola-fila buscar__cola-fila--${b.estado}${b.id === trabajoVisto ? ' buscar__cola-fila--vista' : ''}`,
+          children: [
+            el('span', {
+              className: b.estado === 'fin' ? 'buscar__hecho' : 'buscar__girando',
+              text: b.estado === 'fin' ? '✓' : '',
+            }),
+            el('strong', { text: b.q }),
+            b.carpeta ? el('span', { className: 'buscar__sitio', text: `→ ${b.carpeta}` }) : null,
+            b.origen === 'programada'
+              ? el('span', { className: 'buscar__sitio', text: t('buscar.cola.programada') })
+              : null,
+            el('span', { className: 'buscar__cola-estado', text: marca }),
+            el('span', { className: 'buscar__acciones', children: acciones }),
+          ],
+        });
+      })
+    );
+  }
+
+  /** Mirar otra búsqueda del servidor (de la cola o terminada): se vuelve a pintar desde cero. */
+  function ver(b) {
+    pararVideo();
+    entrada.value = b.q;
+    ultimaBusqueda = b.q;
+    resultados = [];
+    estado = new Map();
+    descartados.clear();
+    copias = new Map();
+    enBiblioteca = new Map();
+    listados = new Map();
+    sugeridos = [];
+    pestana = 'todos';
+    enCola = null;
+    // La carpeta con la que se encoló pasa a ser el «Descargar en» de lo que encuentre.
+    if (b.carpeta) {
+      destinoFijo = b.carpeta;
+      reglaFija = null;
+      pintarDestinos();
+    }
+    conectar(b.id, 0);
+    pintarCola();
+    pintarResultados();
   }
 
   /** Se suscribe a la búsqueda `id` del servidor desde el evento `desde`. */
   function conectar(id, desde) {
     soltar();
     trabajo = id;
+    trabajoVisto = id;
     recibidos = desde;
     zonaResultados.hidden = false;
     boton.hidden = true;
@@ -699,7 +943,13 @@ export function createBuscarView(root) {
         if (m.seq < recibidos) return; // ya visto (al reengancharse)
         recibidos = m.seq + 1;
       }
-      if (m.type === 'sitios') {
+      if (m.type === 'en_cola') {
+        enCola = m.posicion;
+        refrescarCola();
+      } else if (m.type === 'inicio') {
+        enCola = null;
+        refrescarCola();
+      } else if (m.type === 'sitios') {
         for (const x of m.sitios || []) {
           nombresDelServidor.set(x.id, x.nombre);
           if (!estado.has(x.id)) estado.set(x.id, { fase: 'espera', total: 0 });
@@ -1063,9 +1313,11 @@ export function createBuscarView(root) {
         className: 'buscar__resumen',
         children: [
           el('span', {
-            text: quedan
-              ? t('buscar.estado.quedan', { n: quedan, total: estado.size })
-              : t('buscar.estado.terminado'),
+            text: enCola
+              ? t('buscar.estado.enCola')
+              : quedan
+                ? t('buscar.estado.quedan', { n: quedan, total: estado.size })
+                : t('buscar.estado.terminado'),
           }),
           quedan
             ? el('button', {
@@ -1243,17 +1495,14 @@ export function createBuscarView(root) {
     try {
       const { busqueda } = await fetch('/api/buscar/actual').then(x => x.json());
       if (!busqueda) return;
-      entrada.value = busqueda.q;
-      ultimaBusqueda = busqueda.q;
-      resultados = [];
-      estado = new Map();
-      conectar(busqueda.id, 0);
+      ver(busqueda);
     } catch {
       // sin búsqueda previa: la pantalla queda vacía, como siempre
     }
   }
 
   cargarSitios().then(() => {
+    refrescarCola();
     const hash = window.location.hash;
     if (inicial && (hash === '' || hash.startsWith('#/buscar'))) empezar();
     else if (!prellenado) reengancharse();
@@ -1262,6 +1511,9 @@ export function createBuscarView(root) {
   return {
     focus: () => enfocarAlAbrir(entrada),
     // Solo deja de mirar: la búsqueda sigue en el servidor.
-    teardown: () => soltar(),
+    teardown: () => {
+      soltar();
+      clearInterval(relojCola);
+    },
   };
 }

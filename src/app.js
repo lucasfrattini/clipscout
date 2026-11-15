@@ -79,7 +79,14 @@ function createApp() {
 
   // Lo caro tiene su propio límite, más estricto; el resto de /api va con el general.
   app.use(
-    ['/api/scrape', '/api/video', '/api/buscar/stream', '/api/buscar/iniciar', '/api/sitios/auto'],
+    [
+      '/api/scrape',
+      '/api/video',
+      '/api/buscar/stream',
+      '/api/buscar/iniciar',
+      '/api/buscar/varias',
+      '/api/sitios/auto',
+    ],
     createRateLimiter({ maxRequests: config.security.rateLimit.maxPesadas })
   );
   app.use('/api', createRateLimiter(), apiRoutes);

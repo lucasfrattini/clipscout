@@ -18,9 +18,9 @@ const { palabras, textoDe, contieneAlguna, bloqueadaPor } = require('../lib/filt
  * (`programadasEnviados`, por búsqueda y con tope) para no repetirlos. Empieza vacío: el
  * usuario las da de alta en Ajustes.
  *
- * Cada vuelta es una búsqueda normal en segundo plano (busquedasFondo): se ve en Buscar como
- * cualquier otra y respeta el mismo tope de búsquedas a la vez. Si no hay hueco, espera a la
- * siguiente comprobación.
+ * Cada vuelta es una búsqueda normal en segundo plano (busquedasFondo): se ve en la cola de Buscar
+ * como cualquier otra y respeta el mismo tope de búsquedas a la vez: si no hay hueco, espera en
+ * la cola.
  */
 
 const CADA_MS = 5 * 60 * 1000; // cada cuánto se mira si toca alguna
@@ -140,8 +140,12 @@ function filtrar(items, prog, yaEnviados = new Set(), bloqueadas = filtrosGlobal
 }
 
 /** Lanza la búsqueda en segundo plano y espera a que acabe. Devuelve sus resultados. */
-function buscar(termino) {
-  const id = fondo.iniciar({ q: termino, web: true, abierta: true });
+function buscar(termino, carpeta = '') {
+  // Pasa por la misma cola que las búsquedas a mano: si hay otras en marcha, espera su turno.
+  const id = fondo.iniciar(
+    { q: termino, web: true, abierta: true },
+    { carpeta, origen: 'programada' }
+  );
   return new Promise(resolver => {
     const items = [];
     let error = null;
@@ -196,7 +200,7 @@ async function lanzar(id) {
   if (enCurso) throw new crew.ErrorCrew('Ya hay una búsqueda programada en marcha.', 409);
   let busqueda;
   try {
-    busqueda = buscar(prog.termino);
+    busqueda = buscar(prog.termino, prog.carpeta);
   } catch (error) {
     throw new crew.ErrorCrew(error.message, error.status || 500);
   }
@@ -271,7 +275,7 @@ async function comprobar() {
       await lanzar(pendiente.id)
     ).terminada;
   } catch (error) {
-    // 409: el usuario tiene búsquedas en marcha. Se reintenta en la próxima vuelta.
+    // 409: la cola está llena (o ya hay otra programada). Se reintenta en la próxima vuelta.
     if (error.status !== 409) logger.warn(`Programada «${pendiente.termino}»: ${error.message}`);
   }
 }

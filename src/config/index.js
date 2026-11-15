@@ -130,6 +130,8 @@ const config = {
     // Búsquedas en segundo plano (siguen aunque se cierre la página): a la vez, tope de
     // duración de cada una, y cuánto se conservan sus resultados tras terminar
     fondoMaxActivas: intFromEnv('BUSQUEDA_FONDO_MAX_ACTIVAS', 2),
+    // Las que pasan de ese tope esperan en cola (y arrancan solas); esto acota cuántas esperan
+    fondoMaxEnCola: intFromEnv('BUSQUEDA_FONDO_MAX_EN_COLA', 50),
     // Enlaces que se pueden pegar a la vez en la caja de Buscar
     maxEnlacesPegados: intFromEnv('BUSQUEDA_MAX_ENLACES_PEGADOS', 10),
     fondoMaxMs: intFromEnv('BUSQUEDA_FONDO_MAX_MS', 20 * 60 * 1000),

@@ -123,13 +123,59 @@ function entradaDe(fuente) {
   };
 }
 
-/** POST /api/buscar/iniciar — lanza la búsqueda en segundo plano; devuelve `{ id }`. */
+/** Carpeta propuesta para lo que encuentre una búsqueda (texto corto; la valida JD al enviar). */
+const carpetaDe = v =>
+  String(v || '')
+    .trim()
+    .slice(0, 200);
+
+/**
+ * POST /api/buscar/iniciar — lanza la búsqueda en segundo plano (o la encola si ya hay el máximo
+ * en marcha); devuelve `{ id }`.
+ */
 router.post('/buscar/iniciar', (req, res) => {
   try {
-    res.json({ id: fondo.iniciar(entradaDe(req.body || {})) });
+    const cuerpo = req.body || {};
+    res.json({ id: fondo.iniciar(entradaDe(cuerpo), { carpeta: carpetaDe(cuerpo.carpeta) }) });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });
   }
+});
+
+/**
+ * POST /api/buscar/varias { busquedas: [{ q | url, carpeta }], sitios, paginas, web, abierta } —
+ * varias búsquedas de golpe (pegadas una por línea), todas a la cola. Una sola petición: una por
+ * línea chocaría con el límite de peticiones caras al pegar una lista larga.
+ */
+router.post('/buscar/varias', (req, res) => {
+  const cuerpo = req.body || {};
+  const lista = Array.isArray(cuerpo.busquedas) ? cuerpo.busquedas : [];
+  if (lista.length === 0) return res.status(400).json({ error: 'No hay búsquedas.' });
+  const ids = [];
+  const errores = [];
+  for (const b of lista.slice(0, config.busqueda.fondoMaxEnCola)) {
+    try {
+      const entrada = entradaDe({
+        ...cuerpo,
+        q: typeof b?.q === 'string' ? b.q : '',
+        url: typeof b?.url === 'string' ? b.url : '',
+      });
+      ids.push(fondo.iniciar(entrada, { carpeta: carpetaDe(b?.carpeta) }));
+    } catch (error) {
+      errores.push({ q: String(b?.q || b?.url || ''), error: error.message });
+    }
+  }
+  res.status(ids.length ? 200 : 409).json({ ids, errores });
+});
+
+/** GET /api/buscar/cola — en marcha, esperando y terminadas recientes. */
+router.get('/buscar/cola', (req, res) => {
+  res.json({ busquedas: fondo.lista(), maxActivas: config.busqueda.fondoMaxActivas });
+});
+
+/** DELETE /api/buscar/cola/:id — saca una de la cola (o la para si ya estaba en marcha). */
+router.delete('/buscar/cola/:id', (req, res) => {
+  res.json({ ok: fondo.parar(req.params.id) });
 });
 
 /** GET /api/buscar/actual — la última búsqueda (para reengancharse al volver). */
