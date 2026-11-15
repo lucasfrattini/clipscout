@@ -383,14 +383,23 @@ organised, the API and the design decisions are in
 clipscout is a generic tool: it automates what you would do by hand clicking
 "next page", sending plain HTTP requests (or rendering with a normal browser)
 to URLs **you** provide. It ships with no list of targets and does not get past
-any access control.
+any access control: it does not break DRM or encryption, bypass paywalls or
+logins, or solve CAPTCHAs. It only reads what a page already serves to any
+visitor.
+
+It is meant for content you are entitled to download: your own uploads,
+public-domain or openly licensed works (see the open-license filter), and
+material whose owner allows downloading.
 
 By running it, you are responsible for:
 
-- having the right to access the content you point it at;
-- respecting the site's terms of service and its `robots.txt`;
-- complying with copyright law, and not downloading or redistributing material
-  you have no rights to.
+- having the right to access and download the content you point it at;
+- respecting each site's terms of service and its `robots.txt`;
+- complying with the copyright law of your country, and not downloading or
+  redistributing material you have no rights to.
+
+Do not run a public instance that offers its search results to other people:
+clipscout is designed to be self-hosted by each user, for their own use.
 
 Keep the throttling defaults so a run does not overload the sites you explore.
 The open-license filter relies on what the site declares and is not legal
