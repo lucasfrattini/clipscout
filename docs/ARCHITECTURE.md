@@ -19,7 +19,8 @@ Browser  ──  public/  (no bundler, no framework, hash-routed views)
 │   HTTP shape only: parse, validate, stream, map AppError → status    │
 │                          │                                           │
 │ services/      the actual work                                       │
-│   scraper.js      phase 1 and phase 2                                │
+│   scraper.js      reads the HTML, validates params, assembles:       │
+│     crawl/        descarga · fase1 · fase2 · orquestacion            │
 │   pagination.js   ONE STRATEGY PER MODE  ← the extension seam        │
 │   detector.js     proposes a configuration from a URL                │
 │   jobs.js         paused runs — the ONLY server-side state           │
