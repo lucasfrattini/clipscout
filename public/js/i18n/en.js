@@ -194,6 +194,8 @@ export const en = {
   /* ── Explorer: header ──────────────────────────────────────────── */
   'explorer.titulo': 'Walk a site page by page',
   'explorer.subtitulo': 'Goes through the pages of a section and returns whatever it finds.',
+  'explorer.atajo': 'Just want to search a word across your saved sites, even 30 pages deep?',
+  'explorer.atajo.enlace': 'Search already does that →',
   'explorer.vacio.titulo': 'No results yet',
   'explorer.vacio.texto': 'Paste an address and press “Explore now”.',
 
@@ -206,7 +208,7 @@ export const en = {
   /* ── Explorer: where to start ──────────────────────────────────── */
   'explorer.url.label': 'Addresses to explore',
   'explorer.url.hint':
-    'Paste each address as it is. If you write {q} where the searched word would go and {page} where the page number goes, the site is saved once and you only change the word. The link pattern, file type and page range apply equally to all of them. If the site is paginated and you are going to use "Set it up for me", paste an address that already includes the page (for example, with page=2 or /page/2).',
+    'Paste the address as it is. Put {q} where the word goes and {page} where the page number goes: save it once and only change the word. Everything below applies to every address alike.',
   'explorer.url.placeholder': 'https://example.com/gallery?q=cats',
   'explorer.urls.agregar': '+ Add another address',
   'explorer.urls.quitar': 'Remove this address',

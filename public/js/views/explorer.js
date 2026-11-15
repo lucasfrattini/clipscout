@@ -269,13 +269,28 @@ export function createExplorerView(container, { limits }) {
   function aplicarVistaTermino() {
     // Con valor puesto no se puede plegar: se vería una configuración
     // distinta de la que se ejecuta.
-    const abierto = terminoVisible || Boolean(fields.searchTerm.value.trim());
+    const abierto =
+      terminoVisible || Boolean(fields.searchTerm.value.trim()) || direccionesPidenPalabra();
     show(campoTermino, abierto);
     terminoToggle.setAttribute('aria-expanded', String(abierto));
     terminoToggle.textContent = t(
       abierto ? 'explorer.termino.ocultar' : 'explorer.termino.mostrar'
     );
   }
+  /**
+   * ¿Alguna dirección lleva {q}? Entonces la palabra es obligatoria y su campo tiene que verse
+   * sin que haya que encontrar el enlace «Buscar una palabra concreta».
+   */
+  function direccionesPidenPalabra() {
+    let extra = [];
+    try {
+      extra = filasUrlExtra.map(f => f.input.value); // aún no existe al montar la vista
+    } catch {
+      // sin filas extra todavía
+    }
+    return /\{(?:q|query|termino|término)\}/i.test([fields.searchUrl.value, ...extra].join(' '));
+  }
+  fields.searchUrl.addEventListener('input', () => aplicarVistaTermino());
   // Texto calculado a partir del estado: se repinta, no se enlaza.
   alCambiarIdioma(() => aplicarVistaTermino());
 
@@ -1044,6 +1059,16 @@ export function createExplorerView(container, { limits }) {
             'explorer.titulo'
           ),
           texto(el('p', { className: 'card__hint' }), 'explorer.subtitulo'),
+          // Lo más habitual (una palabra en los sitios guardados, aunque sean muchas páginas) ya
+          // lo hace Buscar con la configuración de cada sitio: aquí solo hace falta para lo demás.
+          el('p', {
+            className: 'card__hint explorer-atajo',
+            children: [
+              texto(el('span'), 'explorer.atajo'),
+              ' ',
+              texto(el('a', { attrs: { href: '#/buscar' } }), 'explorer.atajo.enlace'),
+            ],
+          }),
         ],
       }),
       configBody,

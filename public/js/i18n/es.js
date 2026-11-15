@@ -194,6 +194,9 @@ export const es = {
   /* ── Explorador: cabecera ──────────────────────────────────────── */
   'explorer.titulo': 'Recorrer un sitio página a página',
   'explorer.subtitulo': 'Pasa por las páginas de una sección y te devuelve lo que encuentre.',
+  'explorer.atajo':
+    '¿Solo quieres buscar una palabra en tus sitios guardados, aunque sean 30 páginas?',
+  'explorer.atajo.enlace': 'Buscar ya lo hace →',
   'explorer.vacio.titulo': 'Todavía no hay resultados',
   'explorer.vacio.texto': 'Pega una dirección y pulsa «Explorar ahora».',
 
@@ -206,7 +209,7 @@ export const es = {
   /* ── Explorador: de dónde se parte ─────────────────────────────── */
   'explorer.url.label': 'Direcciones a explorar',
   'explorer.url.hint':
-    'Pega cada dirección tal cual. Si escribes {q} donde iría la palabra buscada y {page} donde va el número de página, el sitio se guarda una vez y solo cambias la palabra. El patrón de enlace, el tipo de archivo y el rango de páginas se aplican por igual a todas. Si el sitio usa paginado y vas a usar «Que lo configure por mí», pega ya una URL que incluya la página (por ejemplo, con page=2 o /page/2).',
+    'Pega la dirección tal cual. Pon {q} donde va la palabra y {page} donde va el número de página: así la guardas una vez y solo cambias la palabra. Lo de abajo se aplica a todas las direcciones por igual.',
   'explorer.url.placeholder': 'https://ejemplo.com/galeria?q=gatos',
   'explorer.urls.agregar': '+ Agregar otra dirección',
   'explorer.urls.quitar': 'Quitar esta dirección',

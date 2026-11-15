@@ -110,7 +110,10 @@ export function createBuscarView(root) {
   // Cuántas páginas de resultados mirar en cada sitio (se recuerda).
   const CLAVE_PAGINAS = 'clipscout:buscar-paginas';
   const paginas = el('select', { className: 'input buscar__paginas' });
-  for (const n of [1, 2, 3, 5, 10]) paginas.append(el('option', { attrs: { value: n }, text: n }));
+  // Hasta 50: a veces se quiere barrer a fondo, y es la cola la que reparte el trabajo.
+  for (const n of [1, 2, 3, 5, 10, 20, 30, 50]) {
+    paginas.append(el('option', { attrs: { value: n }, text: n }));
+  }
   try {
     paginas.value = localStorage.getItem(CLAVE_PAGINAS) || '2';
   } catch {

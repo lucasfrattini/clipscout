@@ -131,7 +131,7 @@ const config = {
     // Páginas de resultados por sitio: es una búsqueda rápida, no un barrido
     paginas: intFromEnv('BUSQUEDA_PAGINAS', 2),
     // Lo máximo que se puede elegir en la pantalla
-    maxPaginas: intFromEnv('BUSQUEDA_MAX_PAGINAS', 10),
+    maxPaginas: intFromEnv('BUSQUEDA_MAX_PAGINAS', 50),
     // Fichas que se abren como mucho por sitio Y POR PÁGINA pedida (cada una es una visita)
     maxEnlaces: intFromEnv('BUSQUEDA_MAX_ENLACES', 30),
     // Búsqueda web («site:») con SearXNG; vacío = desactivada
