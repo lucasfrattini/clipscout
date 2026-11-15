@@ -2,7 +2,12 @@
 
 const crypto = require('node:crypto');
 
+const acceso = require('../services/acceso');
+const crew = require('../services/crew');
+
 const COOKIE = 'clipscout_sesion';
+// Igual que clipkeeper y clonbuster: sesión de 30 días, y 8 fallos seguidos desde una misma
+// dirección bloquean el login 5 minutos.
 const DURACION_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_FALLOS = 8;
 const BLOQUEO_MS = 5 * 60 * 1000;
@@ -16,16 +21,20 @@ const igual = (a, b) => {
   return crypto.timingSafeEqual(x, y);
 };
 
+const esperar = ms => new Promise(r => setTimeout(r, ms));
+
 /**
- * Acceso opcional (ADMIN_PASSWORD): pantalla de login como en las otras apps de clip crew, con
- * cookie firmada, o HTTP Basic para clientes de API. Libres: el protocolo clip crew (tiene su
- * propia clave), /api/health y lo que necesita la pantalla de acceso. La firma deriva de la
- * contraseña, así que cambiarla cierra todas las sesiones.
+ * Acceso a la interfaz: pantalla de login como en las otras apps de clip crew, con cookie
+ * firmada, o HTTP Basic / `X-Api-Key` (la clave de clip crew de esta app) para clientes de API,
+ * como en las *arr. Sin contraseña (ni en el entorno ni en Ajustes) todo pasa, como siempre.
+ *
+ * Libres siempre: el protocolo clip crew (tiene su propia clave), /api/health, /api/auth/* y lo
+ * que necesita la pantalla de acceso. La firma sale de la contraseña: cambiarla cierra todas las
+ * sesiones.
  */
-function crearAcceso({ adminUser, adminPassword }) {
-  const clave = crypto.createHash('sha256').update(`clipscout-sesion:${adminPassword}`).digest();
-  const firmar = caduca => crypto.createHmac('sha256', clave).update(String(caduca)).digest('hex');
-  const usuarioBien = u => igual(String(u).trim().toLowerCase(), String(adminUser).toLowerCase());
+function crearAcceso({ retrasoFalloMs = 600 } = {}) {
+  const firmar = caduca =>
+    crypto.createHmac('sha256', acceso.secreto()).update(String(caduca)).digest('hex');
 
   function sesionValida(req) {
     const par = (req.get('cookie') || '')
@@ -41,11 +50,23 @@ function crearAcceso({ adminUser, adminPassword }) {
     const [tipo, valor] = (req.get('authorization') || '').split(' ');
     if (tipo !== 'Basic' || !valor) return false;
     const [usuario, ...resto] = Buffer.from(valor, 'base64').toString('utf8').split(':');
-    return usuarioBien(usuario) && igual(resto.join(':'), adminPassword);
+    return acceso.verificar(usuario, resto.join(':'));
   }
 
-  function guardia(req, res, next) {
+  async function claveApiValida(req) {
+    const recibida = req.get('X-Api-Key');
+    if (!recibida) return false;
+    return crew.claveValida(recibida, (await crew.datos()).api_key);
+  }
+
+  async function guardia(req, res, next) {
+    try {
+      await acceso.cargar();
+    } catch {
+      // crew.json ilegible: mejor cerrado que abierto si había contraseña; sin datos, abierto
+    }
     if (
+      !acceso.activo() ||
       req.path === '/api/health' ||
       req.path.startsWith('/api/crew/v1/') ||
       req.path.startsWith('/img/') ||
@@ -56,6 +77,7 @@ function crearAcceso({ adminUser, adminPassword }) {
       return next();
     }
     if (sesionValida(req) || basicValido(req)) return next();
+    if (req.path.startsWith('/api/') && (await claveApiValida(req))) return next();
     if (req.method === 'GET' && (req.get('accept') || '').includes('text/html')) {
       return res.redirect(302, '/login');
     }
@@ -65,7 +87,19 @@ function crearAcceso({ adminUser, adminPassword }) {
 
   const fallos = new Map();
 
-  function login(req, res) {
+  function ponerSesion(req, res) {
+    const caduca = Date.now() + DURACION_MS;
+    res.cookie(COOKIE, `${caduca}.${firmar(caduca)}`, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: req.secure,
+      maxAge: DURACION_MS,
+    });
+  }
+
+  async function login(req, res) {
+    await acceso.cargar().catch(() => {});
+    if (!acceso.activo()) return res.json({ ok: true });
     // La dirección real del socket: el contador no puede depender de una cabecera.
     const ip = req.socket.remoteAddress || '?';
     const previo = fallos.get(ip);
@@ -74,20 +108,16 @@ function crearAcceso({ adminUser, adminPassword }) {
       return res.status(429).json({ detail: 'Demasiados intentos: espera unos minutos.' });
     }
     const { usuario = '', contrasena = '' } = req.body || {};
-    if (!usuarioBien(usuario) || !igual(contrasena, adminPassword)) {
+    if (!acceso.verificar(usuario, contrasena)) {
       if (fallos.size >= MAX_IPS) fallos.clear();
       const n = previo && previo.hasta > Date.now() ? previo.n + 1 : 1;
       fallos.set(ip, { n, hasta: Date.now() + BLOQUEO_MS });
+      // Como en las otras apps: un fallo tarda un poco, y eso frena los intentos a ciegas.
+      await esperar(retrasoFalloMs);
       return res.status(401).json({ detail: 'Usuario o contraseña incorrectos.' });
     }
     fallos.delete(ip);
-    const caduca = Date.now() + DURACION_MS;
-    res.cookie(COOKIE, `${caduca}.${firmar(caduca)}`, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: req.secure,
-      maxAge: DURACION_MS,
-    });
+    ponerSesion(req, res);
     return res.json({ ok: true });
   }
 
@@ -96,7 +126,7 @@ function crearAcceso({ adminUser, adminPassword }) {
     res.json({ ok: true });
   }
 
-  return { guardia, login, logout };
+  return { guardia, login, logout, ponerSesion };
 }
 
-module.exports = { crearAcceso };
+module.exports = { crearAcceso, COOKIE };

@@ -151,6 +151,10 @@ async function restaurar(id) {
   await require('./filtrosGlobales')
     .cargar()
     .catch(() => {});
+  // La contraseña de Ajustes también vive en crew.json.
+  await require('./acceso')
+    .cargar({ forzar: true })
+    .catch(() => {});
   logger.info(`Restaurada la copia ${copia.id} (la anterior quedó en ${previa})`);
   return { ok: true, restaurados: copia.ficheros.map(f => f.nombre), previa };
 }

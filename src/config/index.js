@@ -313,6 +313,8 @@ const config = {
     // protege con su propia clave de API y el segundo lo usa el healthcheck del contenedor.
     adminUser: process.env.ADMIN_USER || 'admin',
     adminPassword: process.env.ADMIN_PASSWORD || '',
+    // Lo que tarda en contestar un login fallido (como en las otras apps): frena los intentos a ciegas
+    loginRetrasoFalloMs: intFromEnv('LOGIN_RETRASO_FALLO_MS', 600),
     // Protección SSRF. Desactivar SOLO en tests contra fixtures locales.
     blockPrivateAddresses: boolFromEnv('SECURITY_BLOCK_PRIVATE_ADDRESSES', true),
     allowedProtocols: listFromEnv('SECURITY_ALLOWED_PROTOCOLS', ['http:', 'https:']),

@@ -24,10 +24,13 @@ export function createAjustesView(raiz) {
   let claveVisible = false;
   let formularioAbierto = false;
 
+  let estadoAcceso = { protegido: false, delEntorno: false, usuario: '' };
+
   async function cargar() {
     try {
       general = await ajustes.general();
-      protegido = (await (await fetch('/api/auth/estado')).json()).protegido;
+      estadoAcceso = await (await fetch('/api/auth/estado')).json();
+      protegido = estadoAcceso.protegido;
     } catch (error) {
       toast(error.message, 'error', 6000);
       return;
@@ -58,6 +61,7 @@ export function createAjustesView(raiz) {
       }),
       tarjetaGeneral(),
       tarjetaApariencia(),
+      tarjetaAcceso(),
       tarjetaClave(),
       tarjetaConexiones(),
       tarjetaJd(),
@@ -139,6 +143,97 @@ export function createAjustesView(raiz) {
         form,
       ],
     });
+  }
+
+  /* ── Acceso: usuario y contraseña ──────────────────────────────────── */
+
+  function tarjetaAcceso() {
+    const cabecera = el('div', {
+      className: 'card__header',
+      children: [
+        el('h3', { className: 'card__title', text: t('aj.acceso.titulo') }),
+        el('p', {
+          className: 'card__hint',
+          text: estadoAcceso.delEntorno
+            ? t('aj.acceso.entorno', { usuario: estadoAcceso.usuario })
+            : estadoAcceso.protegido
+              ? t('aj.acceso.con', { usuario: estadoAcceso.usuario })
+              : t('aj.acceso.sin'),
+        }),
+      ],
+    });
+    if (estadoAcceso.delEntorno) return el('section', { className: 'card', children: [cabecera] });
+    const entrada = (tipo, autocompletar, valor = '') =>
+      el('input', {
+        className: 'input',
+        attrs: { type: tipo, autocomplete: autocompletar, spellcheck: 'false', value: valor },
+      });
+    const usuario = entrada('text', 'username', estadoAcceso.usuario || 'admin');
+    const nueva = entrada('password', 'new-password');
+    const actual = entrada('password', 'current-password');
+    const enviar = async (llamada, aviso) => {
+      try {
+        const r = await llamada();
+        toast(t(aviso));
+        estadoAcceso = r;
+        protegido = r.protegido;
+        pintar();
+      } catch (error) {
+        toast(error.message, 'error', 6000);
+      }
+    };
+    const form = el('form', {
+      className: 'card__body ajustes-form',
+      attrs: { id: 'ajustes-acceso' },
+      children: [
+        campo(t('aj.acceso.usuario'), usuario),
+        campo(
+          t(estadoAcceso.protegido ? 'aj.acceso.nueva' : 'aj.acceso.contrasena'),
+          nueva,
+          t('aj.acceso.minimo')
+        ),
+        estadoAcceso.protegido ? campo(t('aj.acceso.actual'), actual) : null,
+        el('div', {
+          className: 'ajustes-acciones',
+          children: [
+            el('button', {
+              className: 'button button--small',
+              attrs: { type: 'submit' },
+              text: t(estadoAcceso.protegido ? 'aj.acceso.cambiar' : 'aj.acceso.poner'),
+            }),
+            estadoAcceso.protegido
+              ? el('button', {
+                  className: 'button button--small button--secondary ajustes-peligro',
+                  attrs: { type: 'button' },
+                  text: t('aj.acceso.quitar'),
+                  on: {
+                    click: () =>
+                      enviar(
+                        () => ajustes.quitarAcceso({ actual: actual.value }),
+                        'aj.acceso.quitada'
+                      ),
+                  },
+                })
+              : null,
+          ],
+        }),
+      ],
+      on: {
+        submit: e => {
+          e.preventDefault();
+          enviar(
+            () =>
+              ajustes.guardarAcceso({
+                usuario: usuario.value,
+                contrasena: nueva.value,
+                actual: actual.value,
+              }),
+            'aj.acceso.guardada'
+          );
+        },
+      },
+    });
+    return el('section', { className: 'card', children: [cabecera, form] });
   }
 
   /* ── Clave de API ──────────────────────────────────────────────────── */

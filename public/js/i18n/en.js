@@ -893,4 +893,21 @@ export const en = {
     'Comes from CLIPCREW_CLAVE (joint install): change it there, in all three apps at once.',
   'aj.con.auto': '(automatic)',
   'aj.con.auto.titulo': 'Created at startup from CLIPCREW_*_URL.',
+  'aj.acceso.titulo': 'Access',
+  'aj.acceso.sin':
+    'No password: anyone who reaches this address gets in. Set one if Settings (which shows the API key) can be reached from other devices.',
+  'aj.acceso.con':
+    'Password protected (user “{usuario}”). Sessions last 30 days; 8 failed attempts in a row lock sign-in for 5 minutes.',
+  'aj.acceso.entorno':
+    'The password comes from ADMIN_PASSWORD (environment), user “{usuario}”: change it there.',
+  'aj.acceso.usuario': 'Username',
+  'aj.acceso.contrasena': 'Password',
+  'aj.acceso.nueva': 'New password',
+  'aj.acceso.actual': 'Current password',
+  'aj.acceso.minimo': 'At least 8 characters.',
+  'aj.acceso.poner': 'Set password',
+  'aj.acceso.cambiar': 'Change',
+  'aj.acceso.quitar': 'Remove the password',
+  'aj.acceso.guardada': 'Password saved: other sessions were signed out',
+  'aj.acceso.quitada': 'Password removed',
 };

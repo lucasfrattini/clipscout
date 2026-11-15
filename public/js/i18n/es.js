@@ -897,4 +897,21 @@ export const es = {
     'Viene de CLIPCREW_CLAVE (instalación conjunta): se cambia allí, en las tres apps a la vez.',
   'aj.con.auto': '(automática)',
   'aj.con.auto.titulo': 'Creada al arrancar por CLIPCREW_*_URL.',
+  'aj.acceso.titulo': 'Acceso',
+  'aj.acceso.sin':
+    'Sin contraseña: entra cualquiera que llegue a esta dirección. Pon una si Ajustes (que muestra la clave de API) se ve desde otros equipos.',
+  'aj.acceso.con':
+    'Con contraseña (usuario «{usuario}»). La sesión dura 30 días; 8 fallos seguidos bloquean el acceso 5 minutos.',
+  'aj.acceso.entorno':
+    'La contraseña viene de ADMIN_PASSWORD (entorno), usuario «{usuario}»: se cambia allí.',
+  'aj.acceso.usuario': 'Usuario',
+  'aj.acceso.contrasena': 'Contraseña',
+  'aj.acceso.nueva': 'Contraseña nueva',
+  'aj.acceso.actual': 'Contraseña actual',
+  'aj.acceso.minimo': 'Al menos 8 caracteres.',
+  'aj.acceso.poner': 'Poner contraseña',
+  'aj.acceso.cambiar': 'Cambiar',
+  'aj.acceso.quitar': 'Quitar la contraseña',
+  'aj.acceso.guardada': 'Contraseña guardada: las demás sesiones se cerraron',
+  'aj.acceso.quitada': 'Contraseña quitada',
 };

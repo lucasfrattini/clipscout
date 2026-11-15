@@ -40,10 +40,11 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | SEG-1  | Toda petición saliente DEBE pasar la validación SSRF, también al resolver y en redirecciones.                    | `ssrf`, `security-regressions`               |
 | SEG-2  | `trust proxy` nunca es `true`.                                                                                   | `security-regressions`                       |
 | SEG-3  | La interfaz no usa `innerHTML` y la CSP no admite inline.                                                        | ESLint                                       |
-| ACC-1  | Sin `ADMIN_PASSWORD` no hay acceso que pedir; con ella, un navegador va a `/login`.                              | `admin-password.test.js`                     |
+| ACC-1  | Sin contraseña (ni `ADMIN_PASSWORD` ni la de Ajustes) no hay acceso que pedir; con ella, a `/login`.             | `admin-password.test.js`                     |
 | ACC-2  | El usuario se acepta sin distinguir mayúsculas; la contraseña sí las distingue.                                  | `admin-password.test.js`                     |
 | ACC-3  | La sesión es una cookie HttpOnly firmada; HTTP Basic sigue valiendo para clientes de API.                        | `admin-password.test.js`                     |
 | ACC-4  | Tras 8 fallos por dirección de socket, 429 durante 5 min.                                                        | `admin-password.test.js`                     |
+| ACC-6  | La contraseña se pone, cambia o quita en Ajustes → Acceso (scrypt); ADMIN_PASSWORD manda si existe.              | `acceso-ajustes.test.js`                     |
 | ACC-5  | `/api/health` y el protocolo no piden contraseña.                                                                | `admin-password.test.js`                     |
 | CRW-1  | Implementa el protocolo v1 de CREW.md.                                                                           | `tests/` de crew                             |
 | I18N-1 | Toda cadena existe en `es.js` y `en.js`.                                                                         | `i18n.test.js`                               |
