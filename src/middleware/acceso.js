@@ -5,7 +5,11 @@ const crypto = require('node:crypto');
 const acceso = require('../services/acceso');
 const crew = require('../services/crew');
 
-const COOKIE = 'clipscout_sesion';
+// Sesión común de Clipgeist: misma cookie y mismo formato («<caduca en s>.<hmac>») en las tres
+// apps. Las cookies no distinguen puertos: la que pone una app la reciben las otras del mismo
+// servidor, y cualquiera la comprueba porque la firma sale del usuario y del hash de la
+// contraseña, iguales en las tres (ver acceso.secreto()).
+const COOKIE = 'clipgeist_sesion';
 // Igual que clipkeeper y clonbuster: sesión de 30 días, y 8 fallos seguidos desde una misma
 // dirección bloquean el login 5 minutos.
 const DURACION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -42,8 +46,9 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       .map(c => c.trim())
       .find(c => c.startsWith(`${COOKIE}=`));
     if (!par) return false;
-    const [caduca, firma] = par.slice(COOKIE.length + 1).split('.');
-    return Number(caduca) > Date.now() && igual(firma, firmar(caduca));
+    const [caduca, firma, ...sobra] = par.slice(COOKIE.length + 1).split('.');
+    if (sobra.length || !/^\d+$/.test(caduca || '')) return false;
+    return Number(caduca) * 1000 > Date.now() && igual(firma, firmar(caduca));
   }
 
   function basicValido(req) {
@@ -88,7 +93,7 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
   const fallos = new Map();
 
   function ponerSesion(req, res) {
-    const caduca = Date.now() + DURACION_MS;
+    const caduca = Math.floor((Date.now() + DURACION_MS) / 1000);
     res.cookie(COOKIE, `${caduca}.${firmar(caduca)}`, {
       httpOnly: true,
       sameSite: 'lax',
@@ -126,7 +131,7 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
     res.json({ ok: true });
   }
 
-  return { guardia, login, logout, ponerSesion };
+  return { guardia, login, logout, ponerSesion, sesionValida };
 }
 
 module.exports = { crearAcceso, COOKIE };

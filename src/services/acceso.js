@@ -64,8 +64,20 @@ function usuario() {
  */
 function secreto() {
   const base = delEntorno() ? config.security.adminPassword : guardado?.hash || '';
-  return crypto.createHash('sha256').update(`clipscout-sesion:${base}`).digest();
+  return claveFirma(usuario(), base);
 }
+
+/**
+ * Igual que clipkeeper y clonbuster: con el mismo usuario y la misma contraseña, la sesión
+ * abierta en una app vale en las tres. Token: «<caduca en segundos>.<hmac-sha256 hex>».
+ */
+const claveFirma = (u, hash) =>
+  crypto
+    .createHash('sha256')
+    .update(`clipgeist-sesion|${String(u).toLowerCase()}|${hash}`)
+    .digest();
+const firmarSesion = (u, hash, caduca) =>
+  `${caduca}.${crypto.createHmac('sha256', claveFirma(u, hash)).update(String(caduca)).digest('hex')}`;
 
 // Verificar con scrypt cuesta ~50 ms: con HTTP Basic sería en CADA petición. Se recuerda el
 // resultado (por huella, nunca la contraseña) hasta que cambie lo guardado.
@@ -150,6 +162,7 @@ module.exports = {
   activo,
   usuario,
   secreto,
+  firmarSesion,
   verificar,
   estado,
   configurar,

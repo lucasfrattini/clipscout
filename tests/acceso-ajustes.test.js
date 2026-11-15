@@ -60,7 +60,7 @@ test('con contraseña: login, sesión, Basic, X-Api-Key, cambio y quitarla', asy
   });
   assert.equal(puesta.status, 200);
   const sesion1 = cookieDe(puesta);
-  assert.match(sesion1, /^clipscout_sesion=/, 'quien la pone sigue dentro');
+  assert.match(sesion1, /^clipgeist_sesion=/, 'quien la pone sigue dentro');
   assert.doesNotMatch(fs.readFileSync(process.env.CREW_PATH, 'utf8'), /playa-larga-1/);
 
   // Sin nada: 401 (API) o a /login (navegador)
