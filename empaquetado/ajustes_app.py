@@ -42,7 +42,8 @@ def arrancar(datos, host, puerto, programa, **_):
     global _proceso
     node = programa / "node" / ("node.exe" if sys.platform == "win32" else "node")
     env = {**os.environ, "NODE_ENV": "production", "PORT": str(puerto), "HOST": host,
-           "CREW_PATH": str(datos / "crew.json"), "DATA_DIR": str(datos),
+           "CREW_PATH": str(datos / "crew.json"), "PROFILES_PATH": str(datos / "profiles.json"),
+           "DATA_DIR": str(datos),
            "BROWSER_USER_DATA_DIR": str(datos / "navegador"), "PUPPETEER_SKIP_DOWNLOAD": "true"}
     nav = navegador()
     if nav:

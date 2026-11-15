@@ -42,14 +42,33 @@
             data-i18n-attr="aria-label"
             aria-label="Herramientas"
           >
-            <button class="tab" data-view="buscar" type="button" aria-current="page">
+            <button
+              class="tab"
+              data-view="buscar"
+              type="button"
+              data-i18n="tip.buscar"
+              data-i18n-attr="title"
+              aria-current="page"
+            >
               <span class="tab__label" data-i18n="nav.buscar">Buscar</span>
             </button>
-            <button class="tab" data-view="explorer" type="button">
+            <button
+              class="tab"
+              data-view="explorer"
+              type="button"
+              data-i18n="tip.explorador"
+              data-i18n-attr="title"
+            >
               <span class="tab__label" data-i18n="nav.explorador">Avanzado</span>
             </button>
             <!-- «Vídeos» ya no va en el menú: pegar un enlace en Buscar hace lo mismo. #/video sigue. -->
-            <button class="tab" data-view="ajustes" type="button">
+            <button
+              class="tab"
+              data-view="ajustes"
+              type="button"
+              data-i18n="tip.ajustes"
+              data-i18n-attr="title"
+            >
               <span class="tab__label" data-i18n="nav.ajustes">Ajustes</span>
             </button>
           </nav>
@@ -63,6 +82,15 @@
               data-i18n-attr="aria-label"
               aria-label="Apps de Clipgeist"
             ></nav>
+            <button
+              class="cc-ayuda"
+              id="guia"
+              type="button"
+              data-i18n="guia.ayuda"
+              data-i18n-attr="title,aria-label"
+            >
+              ?
+            </button>
           </div>
         </div>
       </header>
@@ -91,6 +119,7 @@
 
     <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
 
+    <script src="/js/guia.js"></script>
     <script type="module" src="/js/app.js"></script>
   </body>
 </html>

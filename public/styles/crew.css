@@ -437,3 +437,187 @@ a.cc-app:hover img {
     overflow-x: auto;
   }
 }
+
+/* ── Guía de bienvenida (guia.js / Guia.tsx) y botón «?» de la cabecera ── */
+.cc-ayuda {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: transparent;
+  color: #fff;
+  font: 700 0.95rem/1 var(--cc-letra);
+  cursor: pointer;
+  flex: none;
+}
+.cc-ayuda:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.cc-guia-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(5, 10, 25, 0.55);
+  backdrop-filter: blur(3px);
+}
+.cc-guia {
+  width: min(560px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: var(--cc-carta);
+  color: var(--cc-texto);
+  border-radius: 18px;
+  padding: 26px;
+  box-shadow: var(--cc-sombra-alta);
+  font-family: var(--cc-letra);
+}
+.cc-guia-cab {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.cc-guia-cab img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  flex: none;
+}
+.cc-guia-eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cc-acento);
+}
+.cc-guia h2 {
+  margin: 2px 0 0;
+  font-size: 1.3rem;
+  line-height: 1.25;
+}
+.cc-guia-lead {
+  margin: 16px 0;
+  color: var(--cc-tenue);
+  line-height: 1.55;
+}
+.cc-guia-puntos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  counter-reset: guia;
+}
+.cc-guia-puntos li {
+  counter-increment: guia;
+  position: relative;
+  padding-left: 42px;
+  color: var(--cc-tenue);
+  line-height: 1.5;
+}
+.cc-guia-puntos li::before {
+  content: counter(guia);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  background: var(--cc-acento-suave);
+  color: var(--cc-acento);
+}
+.cc-guia-puntos b {
+  display: block;
+  color: var(--cc-texto);
+}
+.cc-guia-apps {
+  display: grid;
+  gap: 8px;
+}
+.cc-guia-app {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--cc-borde);
+  border-radius: var(--cc-radio);
+  color: var(--cc-texto);
+  text-decoration: none;
+}
+a.cc-guia-app:hover {
+  border-color: var(--cc-acento);
+}
+.cc-guia-app img {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
+.cc-guia-estado {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--cc-borde);
+  color: var(--cc-tenue);
+}
+.cc-guia-estado.ok {
+  background: var(--cc-ok-suave);
+  color: var(--cc-ok);
+}
+.cc-guia-nota {
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+}
+.cc-guia-nota a {
+  color: var(--cc-acento);
+}
+.cc-guia-pasos {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 22px;
+}
+.cc-guia-pasos i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--cc-borde-fuerte);
+}
+.cc-guia-pasos i.on {
+  background: var(--cc-acento);
+  width: 22px;
+  border-radius: 99px;
+}
+.cc-guia-botones {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+}
+.cc-guia-btn {
+  border: 1px solid var(--cc-borde-fuerte);
+  background: transparent;
+  color: var(--cc-texto);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font: 600 0.92rem var(--cc-letra);
+  cursor: pointer;
+}
+.cc-guia-btn.prim {
+  background: var(--cc-acento);
+  border-color: var(--cc-acento);
+  color: var(--cc-acento-texto);
+}
+.cc-guia-accion {
+  width: 100%;
+  padding: 14px;
+  font-size: 1rem;
+}

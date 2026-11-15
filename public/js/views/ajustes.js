@@ -1569,8 +1569,8 @@ export function initCrewCabecera(contenedor) {
     );
   };
   window.addEventListener(EVENTO, pintar);
-  pintar();
   botonSalirCabecera(contenedor.parentElement);
+  return pintar();
 }
 
 /**

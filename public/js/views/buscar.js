@@ -131,7 +131,7 @@ export function createBuscarView(root) {
   // Alta de sitios con solo su dirección: clipscout la configura y la prueba.
   const agregar = el('button', {
     className: 'button button--secondary button--small',
-    attrs: { type: 'button' },
+    attrs: { type: 'button', id: 'agregar-sitios' },
     on: { click: () => abrirAlta({ termino: entrada.value.trim() }) },
   });
   async function abrirAlta({ dominios = [], termino = '' } = {}) {

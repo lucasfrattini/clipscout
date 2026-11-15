@@ -480,6 +480,39 @@ export const es = {
   'video.progreso.via.encontrados.uno': 'encontró 1 vídeo',
   'video.progreso.via.encontrados.varios': 'encontró {n} vídeos',
 
+  /* ── Guía de bienvenida y ayudas del menú ─────────────────────── */
+  'tip.buscar': 'Busca en todos tus sitios a la vez, o pega un enlace para sacar sus vídeos',
+  'tip.explorador': 'Explorar páginas a mano, con filtros y opciones avanzadas',
+  'tip.ajustes': 'Tus sitios, JDownloader, conexiones con las otras apps y seguridad',
+  'guia.ayuda': 'Guía rápida',
+  'guia.titulo': 'Bienvenido a clipscout',
+  'guia.lead':
+    'Busca vídeos en todas tus webs a la vez y mándalos a descargar, sin abrir diez pestañas.',
+  'guia.p1b': 'Agrega tus sitios',
+  'guia.p1':
+    'Pega la dirección de una web y clipscout aprende a buscar en ella. No trae ninguna: eliges tú.',
+  'guia.p2b': 'Busca',
+  'guia.p2':
+    'Escribe un nombre y busca en todos tus sitios a la vez. O pega un enlace para sacar los vídeos de esa página.',
+  'guia.p3b': 'Descarga',
+  'guia.p3':
+    'Marca los que quieras y envíalos a JDownloader (se configura en Ajustes). Te avisa de lo que ya tienes.',
+  'guia.accionTitulo': 'Agrega tu primer sitio',
+  'guia.accionTexto':
+    'Pega la dirección de una web donde sueles buscar vídeos. clipscout la prueba y te dice si funciona.',
+  'guia.accionBoton': 'Agregar un sitio',
+  'guia.despues': 'Lo haré después',
+  'guia.appsTitulo': 'Las otras apps de Clipgeist',
+  'guia.appsTexto':
+    'Los fantasmas de arriba a la derecha son las otras dos apps. En color, están conectadas y basta un clic para ir a ellas; en gris, no están instaladas o falta conectarlas en Ajustes → Conexiones.',
+  'guia.descargar': 'Descargar las otras apps en clipgeist.com →',
+  'guia.conectada': 'Conectada',
+  'guia.noConectada': 'Sin conectar',
+  'guia.siguiente': 'Siguiente',
+  'guia.atras': 'Atrás',
+  'guia.listo': 'Empezar',
+  'guia.cerrar': 'Saltar',
+
   /* ── Ajustes y Clipgeist ───────────────────────────────────────── */
   'nav.ajustes': 'Ajustes',
   'aj.tab.sitios': 'Sitios',

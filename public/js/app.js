@@ -153,12 +153,49 @@ async function main() {
   };
 
   initRouter(views);
-  initCrewCabecera(document.getElementById('crew-apps'));
+  await initCrewCabecera(document.getElementById('crew-apps'));
+  document.getElementById('guia').addEventListener('click', mostrarGuia);
+  if (!window.guiaVista('clipscout')) mostrarGuia();
 
   // Abortar los streams en curso al cerrar la pestaña, para que el servidor
   // no siga scrapeando en vano.
   window.addEventListener('beforeunload', () => {
     for (const view of Object.values(views)) view.teardown?.();
+  });
+}
+
+/** Guía de bienvenida (public/js/guia.js): la primera vez sola, luego con el «?» de la cabecera. */
+function mostrarGuia() {
+  const k = c => t(`guia.${c}`);
+  window.abrirGuia({
+    app: 'clipscout',
+    apps: '#crew-apps',
+    accion: () => {
+      location.hash = '#/buscar';
+      setTimeout(() => document.getElementById('agregar-sitios')?.click(), 50);
+    },
+    textos: {
+      titulo: k('titulo'),
+      lead: k('lead'),
+      puntos: [
+        [k('p1b'), k('p1')],
+        [k('p2b'), k('p2')],
+        [k('p3b'), k('p3')],
+      ],
+      accionTitulo: k('accionTitulo'),
+      accionTexto: k('accionTexto'),
+      accionBoton: k('accionBoton'),
+      despues: k('despues'),
+      appsTitulo: k('appsTitulo'),
+      appsTexto: k('appsTexto'),
+      descargar: k('descargar'),
+      conectada: k('conectada'),
+      noConectada: k('noConectada'),
+      siguiente: k('siguiente'),
+      atras: k('atras'),
+      listo: k('listo'),
+      cerrar: k('cerrar'),
+    },
   });
 }
 

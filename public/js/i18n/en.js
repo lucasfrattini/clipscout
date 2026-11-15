@@ -479,6 +479,39 @@ export const en = {
   'video.progreso.via.encontrados.uno': 'found 1 video',
   'video.progreso.via.encontrados.varios': 'found {n} videos',
 
+  /* ── Guía de bienvenida y ayudas del menú ─────────────────────── */
+  'tip.buscar': 'Search all your sites at once, or paste a link to pull its videos',
+  'tip.explorador': 'Explore pages by hand, with filters and advanced options',
+  'tip.ajustes': 'Your sites, JDownloader, connections to the other apps and security',
+  'guia.ayuda': 'Quick guide',
+  'guia.titulo': 'Welcome to clipscout',
+  'guia.lead':
+    'Search for videos on all your sites at once and send them to download, without opening ten tabs.',
+  'guia.p1b': 'Add your sites',
+  'guia.p1':
+    "Paste a site's address and clipscout learns how to search it. It ships with none: you choose.",
+  'guia.p2b': 'Search',
+  'guia.p2':
+    'Type a name and search all your sites at once. Or paste a link to pull the videos from that page.',
+  'guia.p3b': 'Download',
+  'guia.p3':
+    'Pick the ones you want and send them to JDownloader (set it up in Settings). It tells you what you already have.',
+  'guia.accionTitulo': 'Add your first site',
+  'guia.accionTexto':
+    'Paste the address of a site where you usually look for videos. clipscout tests it and tells you whether it works.',
+  'guia.accionBoton': 'Add a site',
+  'guia.despues': 'Later',
+  'guia.appsTitulo': 'The other Clipgeist apps',
+  'guia.appsTexto':
+    'The ghosts at the top right are the other two apps. In color, they are connected and one click takes you there; in grey, they are not installed or still need connecting in Settings → Connections.',
+  'guia.descargar': 'Get the other apps at clipgeist.com →',
+  'guia.conectada': 'Connected',
+  'guia.noConectada': 'Not connected',
+  'guia.siguiente': 'Next',
+  'guia.atras': 'Back',
+  'guia.listo': 'Get started',
+  'guia.cerrar': 'Skip',
+
   /* ── Ajustes y Clipgeist ───────────────────────────────────────── */
   'nav.ajustes': 'Settings',
   'aj.tab.sitios': 'Sites',
