@@ -3408,3 +3408,46 @@ a {
   height: 100%;
   background: #000;
 }
+
+/* ── Buscar: filtros de la tarjeta de resultados ─────────────────────── */
+.buscar__filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 8px 0;
+}
+.buscar__filtro {
+  width: 12rem;
+  padding: 4px 8px;
+}
+.buscar__ocultos-fila {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--c-text-muted);
+  font-size: 0.85rem;
+}
+.buscar__tarjeta--oculta {
+  opacity: 0.55;
+}
+.buscar__motivo {
+  position: absolute;
+  z-index: 2;
+  left: 6px;
+  top: 6px;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--c-danger, #b42318);
+  color: #fff;
+  font-size: 0.75rem;
+}
+@media (max-width: 640px) {
+  .buscar__filtro {
+    width: 100%;
+  }
+  .buscar__filtros .buscar__opcion {
+    white-space: normal;
+    flex-wrap: wrap;
+  }
+}

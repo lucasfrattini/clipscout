@@ -62,6 +62,7 @@ export function createAjustesView(raiz) {
       tarjetaConexiones(),
       tarjetaJd(),
       tarjetaBusqueda(),
+      tarjetaFiltros(),
       tarjetaProgramadas(),
       ...(protegido ? [botonSalir()] : [])
     );
@@ -677,6 +678,63 @@ export function createAjustesView(raiz) {
           children: [
             el('h3', { className: 'card__title', text: t('aj.web.titulo') }),
             el('p', { className: 'card__hint', text: t('aj.web.hint') }),
+          ],
+        }),
+        form,
+      ],
+    });
+  }
+
+  /* ── Filtros globales ──────────────────────────────────────────────── */
+
+  function tarjetaFiltros() {
+    const bloqueadas = el('textarea', {
+      className: 'input',
+      attrs: { rows: 3, spellcheck: 'false', placeholder: t('buscar.filtro.excluir.ej') },
+    });
+    ajustes
+      .filtros()
+      .then(d => {
+        bloqueadas.value = d.bloqueadas || '';
+      })
+      .catch(() => {});
+    const form = el('form', {
+      className: 'card__body ajustes-form',
+      children: [
+        campo(t('aj.filtros.bloqueadas'), bloqueadas, t('aj.filtros.bloqueadas.hint')),
+        el('div', {
+          className: 'ajustes-acciones',
+          children: [
+            el('button', {
+              className: 'button button--small',
+              attrs: { type: 'submit' },
+              text: t('aj.guardar'),
+            }),
+          ],
+        }),
+      ],
+      on: {
+        submit: async e => {
+          e.preventDefault();
+          try {
+            const d = await ajustes.guardarFiltros({ bloqueadas: bloqueadas.value });
+            bloqueadas.value = d.bloqueadas;
+            toast(t('aj.filtros.guardado'));
+          } catch (error) {
+            toast(error.message, 'error', 6000);
+          }
+        },
+      },
+    });
+    return el('section', {
+      className: 'card',
+      attrs: { id: 'ajustes-filtros' },
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.filtros.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.filtros.hint') }),
           ],
         }),
         form,

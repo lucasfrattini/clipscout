@@ -4,6 +4,7 @@ import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
 import { chooseDialog } from '../components/dialog.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
+import { palabras, contieneAlguna, textoDe } from '../filtros.js';
 
 /** El «sitio» de lo encontrado en toda la web (no es una configuración guardada). */
 const ID_WEB = -1;
@@ -176,12 +177,15 @@ export function createBuscarView(root) {
   const progreso = el('ul', { className: 'buscar__progreso', attrs: { 'aria-live': 'polite' } });
   const zonaSugeridos = el('div', { className: 'buscar__sugeridos', attrs: { hidden: '' } });
   const barra = el('div', { className: 'buscar__barra' });
+  // Los filtros van en su propia fila y NO se reconstruyen al repintar: la rejilla se repinta con
+  // cada tanda de resultados y un campo rehecho perdería el foco a mitad de escribir.
+  const zonaFiltros = el('div', { className: 'buscar__filtros', attrs: { hidden: '' } });
   const rejilla = el('div', { className: 'buscar__rejilla' });
   const vacio = el('p', { className: 'buscar__vacio' });
   const zonaResultados = el('section', {
     className: 'buscar__resultados',
     attrs: { hidden: '' },
-    children: [progreso, zonaSugeridos, pestanas, barra, vacio, rejilla],
+    children: [progreso, zonaSugeridos, pestanas, zonaFiltros, barra, vacio, rejilla],
   });
 
   const titulo = el('h2', { className: 'buscar__titulo', attrs: { id: 'buscar-heading' } });
@@ -195,6 +199,33 @@ export function createBuscarView(root) {
   let copias = new Map();
   let ocultarRepetidos = true;
   let minDuracion = 0; // minutos; 0 = cualquiera
+  // Filtros de texto e idioma de la tarjeta de resultados. Deciden qué se MUESTRA de lo encontrado,
+  // nunca qué se busca: lo oculto se cuenta y se puede ver («Ver ocultos»).
+  let contener = []; // alguna de estas frases (ya normalizadas)
+  let excluir = []; // ninguna de estas
+  let idiomaFiltro = ''; // '' = cualquiera; un resultado «dudoso» no se oculta nunca
+  let verOcultos = false;
+  const textos = new WeakMap(); // resultado → texto normalizado (se repinta con cada tanda)
+  const textoNormal = r => {
+    if (!textos.has(r)) textos.set(r, textoDe(r));
+    return textos.get(r);
+  };
+  /** Por qué un resultado no se muestra (o null). El orden es el de las explicaciones. */
+  function motivoOculto(r) {
+    if (r.bloqueada) return 'bloqueada';
+    if (excluir.length && contieneAlguna(textoNormal(r), excluir)) return 'excluir';
+    if (contener.length && !contieneAlguna(textoNormal(r), contener)) return 'contener';
+    if (idiomaFiltro && r.idioma && r.idioma !== 'dudoso' && r.idioma !== idiomaFiltro) {
+      return 'idioma';
+    }
+    if (
+      minDuracion &&
+      !(Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60)
+    ) {
+      return 'duracion';
+    }
+    return null;
+  }
   const descartados = new Set(); // páginas quitadas a mano de esta búsqueda
   // El vídeo que se está reproduciendo en su tarjeta: { enlace, tarjeta, video }. Mientras dura la
   // búsqueda la rejilla se repinta entera con cada tanda de resultados; esa tarjeta se REUTILIZA y
@@ -236,17 +267,14 @@ export function createBuscarView(root) {
     return n;
   };
   let cuentaPagina = new Map(); // resultados por página, para el «+N» de cada tarjeta
-  const visibles = ({ plegar = ocultarRepetidos } = {}) => {
+  const enPestana = r =>
+    (pestana === 'todos' || r.sitio === pestana) && !descartados.has(r.sourceUrl || r.url);
+  /** Lo que se ve. `conOcultos`: también lo que esconden los filtros (marcado como tal). */
+  const visibles = ({ plegar = ocultarRepetidos, conOcultos = false } = {}) => {
     const vistas = new Set();
     return resultados.filter(r => {
-      if (pestana !== 'todos' && r.sitio !== pestana) return false;
-      if (descartados.has(r.sourceUrl || r.url)) return false;
-      if (
-        minDuracion &&
-        !(Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60)
-      ) {
-        return false;
-      }
+      if (!enPestana(r)) return false;
+      if (!conOcultos && motivoOculto(r)) return false;
       if (!plegar) return true;
       if (esCopia(r) || vistas.has(clavePagina(r))) return false;
       vistas.add(clavePagina(r));
@@ -255,11 +283,14 @@ export function createBuscarView(root) {
   };
   const jd = createJdEnvio({ visibles: () => visibles().map(r => r.sourceUrl || r.url) });
   // La misma página (un álbum con varios vídeos) se manda una sola vez: JDownloader ya la abre entera.
-  const descargar = links =>
-    jd.enviar(
-      [...new Set(links)],
-      destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija }
-    );
+  const descargar = links => {
+    const unicos = [...new Set(links)];
+    const titulo = new Map(resultados.map(r => [r.sourceUrl || r.url, r.title || '']));
+    return jd.enviar(unicos, {
+      ...(destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija }),
+      titulos: unicos.map(l => titulo.get(l) || ''),
+    });
+  };
 
   const filtroRepetidos = el('input', { attrs: { type: 'checkbox', checked: true } });
   filtroRepetidos.addEventListener('change', () => {
@@ -280,6 +311,62 @@ export function createBuscarView(root) {
   duracion.addEventListener('change', () => {
     minDuracion = Number(duracion.value);
     pintarResultados();
+  });
+
+  const campoFiltro = (clave, alCambiar) => {
+    const input = el('input', {
+      className: 'input buscar__filtro',
+      attrs: { type: 'search', autocomplete: 'off', spellcheck: 'false' },
+    });
+    atributo(input, 'placeholder', `${clave}.ej`);
+    atributo(input, 'aria-label', clave);
+    input.addEventListener('input', () => {
+      alCambiar(palabras(input.value));
+      pintarResultados();
+    });
+    const rotulo = el('span');
+    texto(rotulo, clave);
+    return el('label', { className: 'buscar__opcion', children: [rotulo, input] });
+  };
+  const filtroContener = campoFiltro('buscar.filtro.contener', v => (contener = v));
+  const filtroExcluir = campoFiltro('buscar.filtro.excluir', v => (excluir = v));
+  const idioma = el('select', { className: 'input buscar__paginas' });
+  idioma.addEventListener('change', () => {
+    idiomaFiltro = idioma.value;
+    pintarResultados();
+  });
+  const textoIdioma = el('span');
+  const etiquetaIdioma = el('label', {
+    className: 'buscar__opcion',
+    attrs: { title: '' },
+    children: [textoIdioma, idioma],
+  });
+  function pintarIdiomas() {
+    const actual = idioma.value || idiomaFiltro;
+    clear(idioma);
+    for (const v of ['', 'es', 'en', 'pt', 'fr', 'de', 'it']) {
+      idioma.append(
+        el('option', {
+          attrs: { value: v },
+          text: t(v ? `buscar.idioma.${v}` : 'buscar.idioma.cualquiera'),
+        })
+      );
+    }
+    idioma.value = actual;
+    textoIdioma.textContent = t('buscar.idioma');
+    etiquetaIdioma.title = t('buscar.idioma.titulo');
+  }
+  // «Ver ocultos (N)»: lo que esconden los filtros se puede mirar sin quitar ninguno.
+  const resumenOcultos = el('span', { className: 'buscar__ocultos' });
+  const botonOcultos = el('button', {
+    className: 'button button--ghost button--small',
+    attrs: { type: 'button' },
+    on: {
+      click: () => {
+        verOcultos = !verOcultos;
+        pintarResultados();
+      },
+    },
   });
   // «Descargar en»: un botón que abre la ventana de carpeta (qué es → nombre), no un desplegable.
   const destino = el('button', {
@@ -390,6 +477,7 @@ export function createBuscarView(root) {
     }
     duracion.value = minActual;
     pintarDestinos();
+    pintarIdiomas();
     agregar.textContent = t('buscar.agregarSitios');
     textoWeb.textContent = t('buscar.web');
     etiquetaWeb.title = t('buscar.web.titulo');
@@ -762,9 +850,19 @@ export function createBuscarView(root) {
         })
       );
     }
+    const oculto = motivoOculto(r);
     return el('article', {
-      className: `buscar__tarjeta${tengo ? ' buscar__tarjeta--tengo' : ''}`,
+      className: `buscar__tarjeta${tengo ? ' buscar__tarjeta--tengo' : ''}${oculto ? ' buscar__tarjeta--oculta' : ''}`,
       children: [
+        oculto
+          ? el('span', {
+              className: 'buscar__motivo',
+              text:
+                oculto === 'bloqueada'
+                  ? t('buscar.oculto.bloqueada.palabra', { palabra: r.bloqueada })
+                  : t(`buscar.oculto.${oculto}`),
+            })
+          : null,
         el('a', {
           className: 'buscar__imagen',
           attrs: { href: enlace, target: '_blank', rel: 'noopener noreferrer' },
@@ -964,9 +1062,7 @@ export function createBuscarView(root) {
         barra.append(etiquetaDestino, descargarTodo);
       }
     }
-    if (resultados.length > 0) {
-      barra.append(etiquetaDuracion, etiquetaRepetidos);
-    }
+    pintarFiltros();
 
     const e = pestana === 'todos' ? null : estado.get(pestana);
     vacio.hidden = lista.length > 0;
@@ -979,7 +1075,44 @@ export function createBuscarView(root) {
 
     clear(rejilla);
     cuentaPagina = porPagina();
-    for (const r of lista) rejilla.append(tarjeta(r));
+    for (const r of verOcultos ? visibles({ conOcultos: true }) : lista) {
+      rejilla.append(tarjeta(r));
+    }
+  }
+
+  /** Cuántos esconde cada filtro, en la pestaña que se mira (sin contar los quitados a mano). */
+  function contarOcultos() {
+    const n = new Map();
+    for (const r of resultados) {
+      if (!enPestana(r)) continue;
+      const m = motivoOculto(r);
+      if (m) n.set(m, (n.get(m) || 0) + 1);
+    }
+    return n;
+  }
+
+  function pintarFiltros() {
+    zonaFiltros.hidden = resultados.length === 0;
+    if (zonaFiltros.hidden) return;
+    if (!zonaFiltros.firstChild) {
+      zonaFiltros.append(
+        filtroContener,
+        filtroExcluir,
+        etiquetaIdioma,
+        etiquetaDuracion,
+        etiquetaRepetidos,
+        el('span', { className: 'buscar__ocultos-fila', children: [resumenOcultos, botonOcultos] })
+      );
+    }
+    const ocultos = contarOcultos();
+    const total = [...ocultos.values()].reduce((a, b) => a + b, 0);
+    resumenOcultos.textContent = total
+      ? `${tp('buscar.ocultos', total)} (${[...ocultos]
+          .map(([m, n]) => t(`buscar.oculto.${m}.n`, { n }))
+          .join(', ')})`
+      : '';
+    botonOcultos.hidden = total === 0 && !verOcultos;
+    botonOcultos.textContent = t(verOcultos ? 'buscar.ocultos.esconder' : 'buscar.ocultos.ver');
   }
 
   function pintarSugeridos() {

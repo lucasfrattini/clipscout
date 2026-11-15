@@ -9,6 +9,7 @@ const jd = require('../services/jdownloader');
 const { buscarEnTodos } = require('../services/busqueda');
 const ajustesBusqueda = require('../services/ajustesBusqueda');
 const programadas = require('../services/programadas');
+const filtrosGlobales = require('../services/filtrosGlobales');
 
 /**
  * Rutas de clip crew.
@@ -219,6 +220,21 @@ router.post(
     const actual = await ajustesBusqueda.leer();
     return ajustesBusqueda.probar(b.searxngUrl || actual.searxngUrl, b.motores ?? actual.motores);
   })
+);
+
+/* ── Filtros globales (palabras siempre bloqueadas) ─────────────────── */
+
+router.get(
+  '/ajustes/filtros',
+  manejar(async () => {
+    await filtrosGlobales.cargar();
+    return filtrosGlobales.leer();
+  })
+);
+
+router.put(
+  '/ajustes/filtros',
+  manejar(req => filtrosGlobales.guardar(req.body || {}))
 );
 
 /* ── JDownloader (API local) ────────────────────────────────────────── */

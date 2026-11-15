@@ -19,6 +19,11 @@ require('./src/services/ajustesBusqueda')
   .cargar()
   .catch(error => logger.warn('No se pudieron cargar los ajustes de búsqueda', error.message));
 
+// Palabras siempre bloqueadas (Ajustes): se tienen en memoria para no leer el fichero por tanda.
+require('./src/services/filtrosGlobales')
+  .cargar()
+  .catch(error => logger.warn('No se pudieron cargar los filtros', error.message));
+
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();
 

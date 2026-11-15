@@ -38,7 +38,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
   }
 
   /** `carpeta` fijada de antemano (p. ej. «Descargar en» del buscador): no se pregunta. */
-  async function enviar(links, { carpeta, regla = null } = {}) {
+  async function enviar(links, { carpeta, regla = null, titulos = [] } = {}) {
     if (links.length === 0) return;
     const elegido = carpeta !== undefined ? { carpeta, regla } : await elegirCarpeta();
     if (elegido === null) return;
@@ -46,6 +46,9 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
     try {
       const r = await ajustes.enviarJd({
         links,
+        // Los títulos viajan para que las palabras bloqueadas (Ajustes) se apliquen también a
+        // ellos en el servidor, no solo a la dirección.
+        titulos,
         carpeta: ultima,
         origen: origen(),
         regla: elegido.regla,
@@ -57,6 +60,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
         'success',
         5000
       );
+      if (r.bloqueados) toast(t('jd.bloqueados', { n: r.bloqueados }), 'error', 6000);
       if (r.regla && !r.regla.ok) {
         toast(t('jd.reglaError', { error: r.regla.error }), 'error', 6000);
       }

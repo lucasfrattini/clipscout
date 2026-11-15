@@ -246,6 +246,9 @@ export const ajustes = {
     request('/ajustes/jdownloader/probar', { method: 'POST', body: JSON.stringify({ url }) }),
   enviarJd: datos =>
     request('/ajustes/jdownloader/enviar', { method: 'POST', body: JSON.stringify(datos) }),
+  filtros: () => request('/ajustes/filtros'),
+  guardarFiltros: datos =>
+    request('/ajustes/filtros', { method: 'PUT', body: JSON.stringify(datos) }),
   programadas: () => request('/ajustes/programadas'),
   guardarProgramada: datos =>
     request('/ajustes/programadas', { method: 'POST', body: JSON.stringify(datos) }),

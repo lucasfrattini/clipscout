@@ -3,6 +3,8 @@
 const config = require('../config');
 const logger = require('../lib/logger');
 const crew = require('./crew');
+const filtrosGlobales = require('./filtrosGlobales');
+const { bloqueadaPor } = require('../lib/filtros');
 
 /**
  * Enviar enlaces a JDownloader 2 por su API local («Deprecated API», puerto
@@ -104,14 +106,34 @@ function limpiarSubcarpeta(texto) {
  * de JDownloader (p. ej. el nombre de la actriz); `origen` es la página de
  * donde salieron, para que JDownloader la use como referencia.
  */
-async function enviar({ links, carpeta = '', paquete = '', origen = '', regla = null } = {}) {
+async function enviar({
+  links,
+  titulos = [],
+  carpeta = '',
+  paquete = '',
+  origen = '',
+  regla = null,
+} = {}) {
   const { url, autostart = true, biblioteca = null } = await ajustes();
   if (!url) throw new ErrorJd('JDownloader no está configurado (pestaña Ajustes).', 409);
-  const lista = (Array.isArray(links) ? links : [])
-    .map(l => String(l).trim())
-    .filter(l => /^https?:\/\//i.test(l))
+  const validos = (Array.isArray(links) ? links : [])
+    .map((l, i) => ({ link: String(l).trim(), title: Array.isArray(titulos) ? titulos[i] : '' }))
+    .filter(e => /^https?:\/\//i.test(e.link))
     .slice(0, 500);
-  if (lista.length === 0) throw new ErrorJd('No hay enlaces válidos para enviar.');
+  // Palabras siempre bloqueadas (Ajustes): no salen hacia JDownloader por ningún camino, ni
+  // siquiera si la pantalla las enseñaba. Se dice cuántas se quitaron: nada en silencio.
+  const prohibidas = filtrosGlobales.bloqueadas();
+  const lista = validos
+    .filter(e => !bloqueadaPor({ title: e.title, url: e.link }, prohibidas))
+    .map(e => e.link);
+  const bloqueados = validos.length - lista.length;
+  if (lista.length === 0) {
+    throw new ErrorJd(
+      bloqueados
+        ? `No se envió nada: los ${bloqueados} enlaces tienen palabras bloqueadas (Ajustes).`
+        : 'No hay enlaces válidos para enviar.'
+    );
+  }
   // Un envío = UN paquete con nombre propio. Sin nombre, JDownloader arma un paquete por fichero
   // (y, con «crear subcarpeta por paquete» activo, una carpeta por fichero). Con nombre y
   // `overwritePackagizerRules`, todo va junto y a la carpeta exacta, sin carpetas en medio.
@@ -164,6 +186,7 @@ async function enviar({ links, carpeta = '', paquete = '', origen = '', regla = 
     ok: true,
     regla: reglaGuardada,
     enviados: lista.length,
+    bloqueados,
     carpeta: consulta.destinationFolder || null,
     paquete: consulta.packageName,
     trabajo,

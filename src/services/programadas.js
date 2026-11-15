@@ -6,6 +6,8 @@ const logger = require('../lib/logger');
 const crew = require('./crew');
 const fondo = require('./busquedasFondo');
 const jd = require('./jdownloader');
+const filtrosGlobales = require('./filtrosGlobales');
+const { palabras, textoDe, contieneAlguna, bloqueadaPor } = require('../lib/filtros');
 
 /**
  * Búsquedas programadas: una búsqueda guardada que se repite sola cada N días y manda a
@@ -26,23 +28,6 @@ const MAX_ENVIADOS = 5000; // enlaces recordados por búsqueda
 const MAX_PROGRAMADAS = 100;
 
 let enCurso = null; // id de la programada que se está ejecutando (una a la vez)
-
-/** Sin tildes y en minúsculas, con guiones y guiones bajos como espacios: «Año-Nuevo» → «ano nuevo». */
-function normalizar(texto) {
-  return String(texto || '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[-_]+/g, ' ')
-    .toLowerCase();
-}
-
-/** «uno, dos tres» → ['uno', 'dos tres']: se separa por comas; cada trozo es una frase. */
-function palabras(texto) {
-  return String(texto || '')
-    .split(',')
-    .map(p => normalizar(p).trim())
-    .filter(Boolean);
-}
 
 function limpiar(entrada = {}, anterior = {}) {
   const texto = (v, max = 200) =>
@@ -104,13 +89,20 @@ async function quitar(id) {
  * Qué resultados se mandan. Pura, para poder probarla: no sabe nada de red.
  * Devuelve los elegidos (un elemento por ficha) y cuántos se descartaron y por qué.
  */
-function filtrar(items, prog, yaEnviados = new Set()) {
+function filtrar(items, prog, yaEnviados = new Set(), bloqueadas = filtrosGlobales.bloqueadas()) {
   const contener = palabras(prog.contener);
   const excluir = palabras(prog.excluir);
   const minimo = (prog.minutosMinimo || 0) * 60;
   const vistos = new Set();
   const elegidos = [];
-  const descartes = { repetido: 0, enviado: 0, duracion: 0, contener: 0, excluir: 0 };
+  const descartes = {
+    repetido: 0,
+    enviado: 0,
+    duracion: 0,
+    contener: 0,
+    excluir: 0,
+    bloqueada: 0,
+  };
   for (const it of items) {
     const link = it?.sourceUrl || it?.url;
     if (!link || vistos.has(link)) {
@@ -127,12 +119,18 @@ function filtrar(items, prog, yaEnviados = new Set()) {
       descartes.duracion += 1;
       continue;
     }
-    const texto = normalizar(`${it.title || ''} ${link}`);
-    if (excluir.some(p => texto.includes(p))) {
+    // Las palabras bloqueadas de Ajustes mandan sobre todo lo demás: se cuentan aparte para que
+    // el resumen diga por qué no se mandó.
+    if (bloqueadaPor(it, bloqueadas)) {
+      descartes.bloqueada += 1;
+      continue;
+    }
+    const texto = textoDe({ ...it, sourceUrl: link });
+    if (contieneAlguna(texto, excluir)) {
       descartes.excluir += 1;
       continue;
     }
-    if (contener.length && !contener.some(p => texto.includes(p))) {
+    if (contener.length && !contieneAlguna(texto, contener)) {
       descartes.contener += 1;
       continue;
     }

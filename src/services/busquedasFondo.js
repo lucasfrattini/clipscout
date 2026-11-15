@@ -5,6 +5,8 @@ const crypto = require('node:crypto');
 const config = require('../config');
 const logger = require('../lib/logger');
 const { buscarEnTodos, buscarEnlace } = require('./busqueda');
+const filtrosGlobales = require('./filtrosGlobales');
+const { idiomaProbable, bloqueadaPor } = require('../lib/filtros');
 
 /**
  * Búsquedas que siguen aunque nadie mire.
@@ -34,7 +36,24 @@ setInterval(purgar, 60_000).unref?.();
 
 const activas = () => [...busquedas.values()].filter(b => !b.terminadaEn).length;
 
-function publicar(b, evento) {
+/**
+ * Marcas de cada resultado que la pantalla usa para filtrar: idioma probable y palabra bloqueada.
+ * Se calculan aquí, una vez, para que Buscar, las programadas y quien se reenganche vean lo mismo.
+ * Nada se quita: un resultado bloqueado llega marcado y la pantalla lo cuenta.
+ */
+function marcar(items) {
+  const prohibidas = filtrosGlobales.bloqueadas();
+  return (items || []).map(it => {
+    const bloqueada = bloqueadaPor(it, prohibidas);
+    return { ...it, idioma: idiomaProbable(it), ...(bloqueada ? { bloqueada } : {}) };
+  });
+}
+
+function publicar(b, eventoOriginal) {
+  const evento =
+    eventoOriginal.type === 'resultados'
+      ? { ...eventoOriginal, items: marcar(eventoOriginal.items) }
+      : eventoOriginal;
   const conNumero = { ...evento, seq: b.eventos.length };
   b.eventos.push(conNumero);
   for (const oyente of b.oyentes) {
@@ -114,4 +133,4 @@ function actual() {
   return b ? { id: b.id, q: b.q, terminada: Boolean(b.terminadaEn) } : null;
 }
 
-module.exports = { iniciar, suscribir, parar, actual };
+module.exports = { iniciar, suscribir, parar, actual, marcar };
