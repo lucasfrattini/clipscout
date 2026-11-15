@@ -590,7 +590,35 @@ export const es = {
   'aj.prog.quitarConfirmar': 'Deja de repetirse. Lo que ya se descargó no se toca.',
   'aj.jd.titulo': 'JDownloader',
   'aj.jd.hint':
-    'Manda los vídeos encontrados a JDownloader 2 por su API local. En JDownloader: Ajustes avanzados → «RemoteAPI: Deprecated API enabled» activado y «… localhost only» desactivado; publica el puerto 3128.',
+    'Manda los vídeos encontrados a JDownloader 2 por su API local. Si es la primera vez, abre «Cómo se configura» abajo.',
+  'aj.jd.guia': 'Cómo se configura JDownloader',
+  'aj.jd.guia.que.titulo': 'Qué hace.',
+  'aj.jd.guia.que':
+    'clipscout no descarga nada: le pasa los enlaces a JDownloader 2 (gratuito, jdownloader.org), que los baja con sus reintentos, pausas y límites de velocidad.',
+  'aj.jd.guia.instalar.titulo': 'Instálalo.',
+  'aj.jd.guia.instalar':
+    'Sirve la versión de escritorio o la de Docker (por ejemplo la imagen jlesage/jdownloader-2). Haz que descargue en una carpeta que clipkeeper también vea, si lo usas.',
+  'aj.jd.guia.api.titulo': 'Activa su API local.',
+  'aj.jd.guia.api':
+    'En JDownloader: Ajustes → Ajustes avanzados, busca «deprecatedapi». Activa «RemoteAPI: Deprecated API enabled» y desactiva «Deprecated API localhost only». El puerto por defecto es el 3128. Reinicia JDownloader.',
+  'aj.jd.guia.docker.titulo': 'En Docker, publica el puerto.',
+  'aj.jd.guia.docker':
+    'Añade el 3128 a los puertos del contenedor (ports: "3128:3128"). Sin esto la API existe pero nadie puede llegar a ella.',
+  'aj.jd.guia.conectar.titulo': 'Conéctalo aquí.',
+  'aj.jd.guia.conectar':
+    'Escribe arriba http://<ip-de-jdownloader>:3128 y pulsa Probar: debe responder con su versión y su carpeta de descargas. Luego Guardar.',
+  'aj.jd.guia.carpetas.titulo': 'Carpetas.',
+  'aj.jd.guia.carpetas':
+    'La carpeta de descargas de JDownloader es la raíz; al enviar eliges una subcarpeta (una por categoría o por persona, sin anidar). Si eliges arriba la biblioteca de clipkeeper que es esa misma carpeta, sus subcarpetas salen como destino y lo que llegue hereda sus personas y etiquetas.',
+  'aj.jd.guia.despues.titulo': 'Después de enviar.',
+  'aj.jd.guia.despues':
+    '«Lo mandado a JDownloader» sigue cada paquete. Si un enlace falla, clipscout lo reintenta una vez con el fichero directo (se puede activar por sitio). Al terminar un paquete avisa a clipkeeper para que lo catalogue enseguida.',
+  'aj.jd.guia.seguridad.titulo': 'Seguridad.',
+  'aj.jd.guia.seguridad':
+    'Esa API no tiene contraseña: cualquiera que llegue al puerto puede añadir descargas. Déjala solo en tu red local; nunca la abras a internet.',
+  'aj.jd.guia.red.titulo': 'Por dónde sale.',
+  'aj.jd.guia.red':
+    'Las descargas salen por la conexión de JDownloader, no por la de clipscout. Si quieres que vayan por una VPN, pon a JDownloader detrás de ella; clipscout no lo decide.',
   'aj.jd.url': 'URL de la API de JDownloader',
   'aj.jd.url.hint': 'Normalmente http://<ip-de-jdownloader>:3128. Déjala vacía para desactivarlo.',
   'aj.jd.autostart':

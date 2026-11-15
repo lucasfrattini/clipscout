@@ -409,6 +409,40 @@ export function createAjustesView(raiz) {
           ],
         }),
         form,
+        el('div', { className: 'card__body', children: [guiaJd()] }),
+      ],
+    });
+  }
+
+  /** Cómo se monta JDownloader, paso a paso (plegado: solo lo abre quien lo necesita). */
+  function guiaJd() {
+    const PASOS = [
+      'que',
+      'instalar',
+      'api',
+      'docker',
+      'conectar',
+      'carpetas',
+      'despues',
+      'seguridad',
+      'red',
+    ];
+    return el('details', {
+      className: 'disclosure ajustes-guia',
+      children: [
+        el('summary', { className: 'disclosure__summary', text: t('aj.jd.guia') }),
+        el('ol', {
+          className: 'disclosure__content ajustes-guia__pasos',
+          children: PASOS.map(p =>
+            el('li', {
+              children: [
+                el('strong', { text: t(`aj.jd.guia.${p}.titulo`) }),
+                ' ',
+                t(`aj.jd.guia.${p}`),
+              ],
+            })
+          ),
+        }),
       ],
     });
   }

@@ -588,7 +588,35 @@ export const en = {
   'aj.prog.quitarConfirmar': 'It stops repeating. What was already downloaded is not touched.',
   'aj.jd.titulo': 'JDownloader',
   'aj.jd.hint':
-    'Send found videos to JDownloader 2 through its local API. In JDownloader: Advanced settings → enable «RemoteAPI: Deprecated API enabled» and disable «… localhost only»; publish port 3128.',
+    'Sends the videos it finds to JDownloader 2 through its local API. First time? Open “How to set it up” below.',
+  'aj.jd.guia': 'How to set up JDownloader',
+  'aj.jd.guia.que.titulo': 'What it does.',
+  'aj.jd.guia.que':
+    'clipscout downloads nothing itself: it hands the links to JDownloader 2 (free, jdownloader.org), which fetches them with its own retries, pauses and speed limits.',
+  'aj.jd.guia.instalar.titulo': 'Install it.',
+  'aj.jd.guia.instalar':
+    'The desktop version or the Docker one both work (for example the jlesage/jdownloader-2 image). Make it download into a folder clipkeeper can also see, if you use it.',
+  'aj.jd.guia.api.titulo': 'Turn on its local API.',
+  'aj.jd.guia.api':
+    'In JDownloader: Settings → Advanced Settings, search for “deprecatedapi”. Enable “RemoteAPI: Deprecated API enabled” and disable “Deprecated API localhost only”. The default port is 3128. Restart JDownloader.',
+  'aj.jd.guia.docker.titulo': 'With Docker, publish the port.',
+  'aj.jd.guia.docker':
+    'Add 3128 to the container ports (ports: "3128:3128"). Without it the API exists but nothing can reach it.',
+  'aj.jd.guia.conectar.titulo': 'Connect it here.',
+  'aj.jd.guia.conectar':
+    'Type http://<jdownloader-ip>:3128 above and press Test: it should answer with its version and download folder. Then Save.',
+  'aj.jd.guia.carpetas.titulo': 'Folders.',
+  'aj.jd.guia.carpetas':
+    'JDownloader’s download folder is the root; when sending you pick a subfolder (one per category or person, not nested). If you pick above the clipkeeper library that is that same folder, its subfolders show up as destinations and whatever arrives inherits their people and tags.',
+  'aj.jd.guia.despues.titulo': 'After sending.',
+  'aj.jd.guia.despues':
+    '“Sent to JDownloader” follows each package. If a link fails, clipscout retries it once with the direct file (can be turned on per site). When a package finishes it tells clipkeeper so it is catalogued right away.',
+  'aj.jd.guia.seguridad.titulo': 'Security.',
+  'aj.jd.guia.seguridad':
+    'That API has no password: anyone who reaches the port can add downloads. Keep it on your local network only; never expose it to the internet.',
+  'aj.jd.guia.red.titulo': 'Which connection it uses.',
+  'aj.jd.guia.red':
+    'Downloads go out through JDownloader’s connection, not clipscout’s. If you want them to go through a VPN, put JDownloader behind it; clipscout does not decide that.',
   'aj.jd.url': 'JDownloader API URL',
   'aj.jd.url.hint': 'Usually http://<jdownloader-ip>:3128. Leave it empty to turn it off.',
   'aj.jd.autostart':
