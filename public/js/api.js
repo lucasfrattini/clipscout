@@ -228,11 +228,13 @@ export const ajustes = {
     request('/ajustes/conexiones', { method: 'POST', body: JSON.stringify(datos) }),
   estado: id => request(`/ajustes/conexiones/${id}/estado`),
   quitar: id => request(`/ajustes/conexiones/${id}`, { method: 'DELETE' }),
-  yaLoTengo: (titulos, duraciones, persona = '') =>
+  yaLoTengo: (titulos, duraciones, persona = '', { enlaces = [], contar = false } = {}) =>
     request('/ajustes/ya-lo-tengo', {
       method: 'POST',
-      body: JSON.stringify({ titulos, duraciones, persona }),
+      body: JSON.stringify({ titulos, duraciones, persona, enlaces, contar }),
+      // `contar`: false, o el id de la búsqueda (el servidor cuenta cada búsqueda una vez)
     }),
+  ponerACeroEstadisticas: () => request('/ajustes/sitios/estadisticas', { method: 'DELETE' }),
   jdownloader: () => request('/ajustes/jdownloader'),
   busqueda: () => request('/ajustes/busqueda'),
   guardarBusqueda: datos =>

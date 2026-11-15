@@ -12,6 +12,7 @@ const programadas = require('../services/programadas');
 const filtrosGlobales = require('../services/filtrosGlobales');
 const directo = require('../services/directo');
 const paquetesJd = require('../services/paquetesJd');
+const estadisticas = require('../services/estadisticas');
 const { listarSitios } = require('../services/busqueda');
 const { hostDe } = require('../services/web');
 
@@ -28,6 +29,9 @@ const { hostDe } = require('../services/web');
  */
 
 const router = express.Router();
+
+/** Búsquedas cuyo «ya lo tenías» ya se contó (volver a mirarlas no suma otra vez). */
+const contadas = new Set();
 
 /** Envuelve un manejador async y traduce los errores al formato del protocolo. */
 const manejar = fn => async (req, res) => {
@@ -92,6 +96,8 @@ protocolo.get(
       await buscarEnTodos(
         { q, paginas: 1, web: false, enlaces: config.busqueda.imagenesPorSitio },
         {
+          // Una búsqueda de fotos para clipkeeper no cuenta en el rendimiento de los sitios.
+          contar: false,
           signal: controller.signal,
           emit: ev => {
             if (ev.type !== 'resultados') return;
@@ -192,16 +198,34 @@ router.post(
 
 router.post(
   '/ajustes/ya-lo-tengo',
-  manejar(req => {
-    const { titulos = [], duraciones = [], persona = '' } = req.body || {};
+  manejar(async req => {
+    const {
+      titulos = [],
+      duraciones = [],
+      persona = '',
+      enlaces = [],
+      contar = false,
+    } = req.body || {};
     if (!Array.isArray(titulos) || titulos.length > 200) {
       throw new crew.ErrorCrew('Se esperaba una lista de hasta 200 títulos.');
     }
-    return crew.buscarEnClipkeeper(
+    const r = await crew.buscarEnClipkeeper(
       titulos.map(x => String(x).slice(0, 300)),
       Array.isArray(duraciones) ? duraciones.slice(0, 200) : [],
       String(persona || '').slice(0, 200)
     );
+    // «Ya lo tenías», por sitio. Solo cuando la pantalla lo pide con el id de la búsqueda, y una
+    // vez por búsqueda: si no, cada pulsación del botón o cada vez que se vuelve a mirar sumaría.
+    if (typeof contar === 'string' && contar && !contadas.has(contar) && Array.isArray(enlaces)) {
+      contadas.add(contar);
+      if (contadas.size > 500) contadas.delete(contadas.values().next().value);
+      (r.resultados || []).forEach((res, i) => {
+        if (res?.coincidencias?.length && typeof enlaces[i] === 'string') {
+          estadisticas.sumarEnlace(enlaces[i], { yaLoTenias: 1 });
+        }
+      });
+    }
+    return r;
   })
 );
 
@@ -249,6 +273,7 @@ router.get(
   manejar(async () => {
     const opciones = await directo.opcionesSitios();
     const sitios = await listarSitios();
+    const cifras = await estadisticas.leer();
     return {
       sitios: sitios.map(s => {
         const dominio = hostDe(s.perfil.config.searchUrl || '');
@@ -257,9 +282,18 @@ router.get(
           nombre: s.nombre,
           dominio,
           jdDirecto: directo.esDirecto(`https://${dominio}/`, opciones),
+          estadisticas: cifras[dominio] || null,
         };
       }),
     };
+  })
+);
+
+router.delete(
+  '/ajustes/sitios/estadisticas',
+  manejar(async () => {
+    await estadisticas.ponerACero();
+    return { ok: true };
   })
 );
 

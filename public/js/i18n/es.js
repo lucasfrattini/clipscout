@@ -830,7 +830,8 @@ export const es = {
   'buscar.album.ver': 'Ver los {n}',
   'buscar.album.plegar': 'Plegar álbum',
   'aj.sitios.titulo': 'Sitios',
-  'aj.sitios.hint': 'Opciones de cada sitio guardado.',
+  'aj.sitios.hint':
+    'Opciones de cada sitio guardado, y lo que aporta: búsquedas, resultados, cuántos con duración, bloqueos, enviados a JDownloader, los que ya tenías y los que JDownloader no pudo bajar.',
   'aj.sitios.vacio': 'Todavía no hay sitios guardados.',
   'aj.sitios.directo': 'Mandar a JDownloader el fichero directo',
   'aj.sitios.directo.hint':
@@ -862,4 +863,21 @@ export const es = {
   'aj.paq.estado.bajando': 'bajando',
   'aj.paq.estado.terminado': 'terminado',
   'aj.paq.estado.error': 'error',
+  'aj.sitios.sinDatos': 'Sin datos todavía.',
+  'aj.sitios.busquedas.uno': '1 búsqueda',
+  'aj.sitios.busquedas.varios': '{n} búsquedas',
+  'aj.sitios.resultados.uno': '1 resultado',
+  'aj.sitios.resultados.varios': '{n} resultados',
+  'aj.sitios.conDuracion': '{n} % con duración',
+  'aj.sitios.bloqueos.uno': '1 bloqueo',
+  'aj.sitios.bloqueos.varios': '{n} bloqueos',
+  'aj.sitios.enviados.uno': '1 enviado a JDownloader',
+  'aj.sitios.enviados.varios': '{n} enviados a JDownloader',
+  'aj.sitios.yaLoTenias.uno': '1 que ya tenías',
+  'aj.sitios.yaLoTenias.varios': '{n} que ya tenías',
+  'aj.sitios.fallidos.uno': '1 fallido en JDownloader',
+  'aj.sitios.fallidos.varios': '{n} fallidos en JDownloader',
+  'aj.sitios.cero': 'Poner las cifras a cero',
+  'aj.sitios.ceroConfirmar':
+    'Borra las cifras de todos los sitios. Los sitios y sus opciones no se tocan.',
 };

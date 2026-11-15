@@ -170,7 +170,11 @@ async function sustituir(jdUrl, p, caidos, { forzar = false, autostart = true } 
     } catch (error) {
       logger.warn(`Fichero directo de ${ficha}: ${error.message}`);
     }
-    if (!p.sustituidas.includes(ficha)) p.sustituidas.push(ficha);
+    if (!p.sustituidas.includes(ficha)) {
+      p.sustituidas.push(ficha);
+      // La primera vez que JDownloader no puede con ella: cuenta como fallo de ese sitio.
+      require('./estadisticas').sumarEnlace(ficha, { fallidosJd: 1 });
+    }
     if (ficheros.length === 0) {
       if (!p.sinDirecto.includes(ficha)) p.sinDirecto.push(ficha);
       continue;

@@ -3566,3 +3566,8 @@ a {
   flex: 1 1 14rem;
   min-width: 0;
 }
+.ajustes-sitios__cifras {
+  flex-basis: 100%;
+  color: var(--c-text-muted);
+  font-size: 0.85rem;
+}

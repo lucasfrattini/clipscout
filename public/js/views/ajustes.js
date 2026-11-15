@@ -851,11 +851,30 @@ export function createAjustesView(raiz) {
               toast(error.message, 'error', 6000);
             }
           });
+          const e = s.estadisticas || {};
+          const cifras = s.estadisticas
+            ? [
+                tp('aj.sitios.busquedas', e.busquedas || 0),
+                tp('aj.sitios.resultados', e.resultados || 0),
+                e.resultados
+                  ? t('aj.sitios.conDuracion', {
+                      n: Math.round((100 * (e.conDuracion || 0)) / e.resultados),
+                    })
+                  : null,
+                e.bloqueos ? tp('aj.sitios.bloqueos', e.bloqueos) : null,
+                tp('aj.sitios.enviados', e.enviadosJd || 0),
+                e.yaLoTenias ? tp('aj.sitios.yaLoTenias', e.yaLoTenias) : null,
+                e.fallidosJd ? tp('aj.sitios.fallidos', e.fallidosJd) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : t('aj.sitios.sinDatos');
           return el('li', {
             className: 'ajustes-sitios__fila',
             children: [
               el('strong', { text: s.nombre }),
               el('span', { className: 'field__hint', text: s.dominio }),
+              el('span', { className: 'ajustes-sitios__cifras', text: cifras }),
               el('label', {
                 className: 'ajustes-casilla',
                 attrs: { title: t('aj.sitios.directo.hint') },
@@ -878,7 +897,37 @@ export function createAjustesView(raiz) {
             el('p', { className: 'card__hint', text: t('aj.sitios.hint') }),
           ],
         }),
-        el('div', { className: 'card__body', children: [lista] }),
+        el('div', {
+          className: 'card__body',
+          children: [
+            lista,
+            el('div', {
+              className: 'ajustes-acciones',
+              children: [
+                el('button', {
+                  className: 'button button--small button--secondary ajustes-peligro',
+                  attrs: { type: 'button' },
+                  text: t('aj.sitios.cero'),
+                  on: {
+                    click: async () => {
+                      if (
+                        !(await confirmDialog({
+                          titleKey: 'aj.sitios.cero',
+                          bodyKey: 'aj.sitios.ceroConfirmar',
+                          variant: 'danger',
+                        }))
+                      ) {
+                        return;
+                      }
+                      await ajustes.ponerACeroEstadisticas();
+                      cargarSitios();
+                    },
+                  },
+                }),
+              ],
+            }),
+          ],
+        }),
       ],
     });
   }

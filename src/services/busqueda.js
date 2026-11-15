@@ -10,6 +10,7 @@ const { groupDuplicates } = require('../lib/dedupe');
 const { parseClockDuration } = require('../lib/media');
 const { detectConfig } = require('./detector');
 const { extractVideos } = require('./video');
+const estadisticas = require('./estadisticas');
 
 /**
  * Búsqueda en TODOS los sitios guardados a la vez.
@@ -117,7 +118,7 @@ async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems }) {
  */
 async function buscarEnTodos(
   { q, sitios = null, paginas = null, web = false, enlaces = null, abierta = false },
-  { signal, emit = () => {}, itemsPrevios = [] } = {}
+  { signal, emit = () => {}, itemsPrevios = [], contar = true } = {}
 ) {
   const conWeb = web === true && Boolean(config.busqueda.searxngUrl);
   const porSitio = Math.min(
@@ -146,6 +147,10 @@ async function buscarEnTodos(
     const c = sitio.perfil.config;
     emit({ type: 'sitio_inicio', sitio: sitio.id });
     let total = 0;
+    let conDuracion = 0;
+    // Rendimiento por sitio (Ajustes → Sitios): qué aporta cada uno.
+    const dominio = hostDe(c.searchUrl || '');
+    const apuntar = cuentas => contar && estadisticas.sumar(dominio, { busquedas: 1, ...cuentas });
     const vistos = new Set(); // fichas ya revisadas (para no repetirlas en la búsqueda web)
     const reenviar =
       ({ web: esWeb = false } = {}) =>
@@ -155,6 +160,7 @@ async function buscarEnTodos(
             .filter(Boolean)
             .map(it => (esWeb ? { ...it, web: true } : it));
           total += items.length;
+          conDuracion += items.filter(it => Number.isFinite(it.durationSeconds)).length;
           todosLosItems.push(...items);
           emit({ type: 'resultados', sitio: sitio.id, items });
         } else if (evento.type === 'phase1_complete') {
@@ -229,9 +235,11 @@ async function buscarEnTodos(
         }
       }
       emit({ type: 'sitio_fin', sitio: sitio.id, total, bloqueo, recortado });
+      apuntar({ resultados: total, conDuracion, bloqueos: bloqueo ? 1 : 0 });
       return { id: sitio.id, total };
     } catch (error) {
       emit({ type: 'sitio_fin', sitio: sitio.id, total, error: error.message });
+      apuntar({ resultados: total, conDuracion });
       return { id: sitio.id, total, error: error.message };
     }
   });

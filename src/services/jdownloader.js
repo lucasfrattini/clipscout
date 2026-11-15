@@ -155,6 +155,9 @@ async function enviar({
   const normales = [];
   for (const l of lista) (directo.esDirecto(l, opciones) ? directas : normales).push(l);
 
+  const estadisticas = require('./estadisticas');
+  for (const l of lista) estadisticas.sumarEnlace(l, { enviadosJd: 1 });
+
   let trabajo = null;
   if (normales.length > 0) {
     trabajo = await anadir(url, { links: normales, paquete: nombre, destino, origen, autostart });

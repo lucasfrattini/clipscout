@@ -29,6 +29,7 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | JD-4   | Lo que JDownloader da por caído se sustituye por el fichero directo (fresco, con la ficha de origen).            | `jd-directo.test.js`                         |
 | JD-5   | Ajustes muestra los paquetes mandados y su estado; reintentar fallidos y vaciar el capturador (confirmando).     | `jd-directo.test.js`, manual                 |
 | JD-6   | Un paquete que JDownloader termina hace que clipkeeper escanee su carpeta (una vez; sin clipkeeper, nada).       | `jd-clipkeeper.test.js`                      |
+| SIT-1  | Estadísticas por sitio persistentes (búsquedas, resultados, con duración, bloqueos, JD, ya lo tenías).           | `estadisticas.test.js`                       |
 | FIL-1  | Las palabras siempre bloqueadas se aplican a Buscar, a las programadas y a todo envío a JD.                      | `filtros.test.js`                            |
 | JD-1   | Enviar a JDownloader pregunta tipo y nombre de la carpeta, salvo destino fijado.                                 | manual                                       |
 | JD-2   | La ventana DEBE proponer carpetas existentes y personas o etiquetas del catálogo sin carpeta propia.             | `carpetas.test.js`                           |

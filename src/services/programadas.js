@@ -7,6 +7,7 @@ const crew = require('./crew');
 const fondo = require('./busquedasFondo');
 const jd = require('./jdownloader');
 const filtrosGlobales = require('./filtrosGlobales');
+const estadisticas = require('./estadisticas');
 const { palabras, textoDe, contieneAlguna, bloqueadaPor } = require('../lib/filtros');
 
 /**
@@ -191,8 +192,10 @@ async function quitarLoQueTengo(elegidos, persona) {
       .catch(() => ({ resultados: [] }));
     const res = r.resultados || [];
     tanda.forEach((e, j) => {
-      if (res.length === tanda.length && res[j]?.coincidencias?.length) tengo += 1;
-      else quedan.push(e);
+      if (res.length === tanda.length && res[j]?.coincidencias?.length) {
+        tengo += 1;
+        estadisticas.sumarEnlace(e.link, { yaLoTenias: 1 });
+      } else quedan.push(e);
     });
   }
   return { quedan, tengo };

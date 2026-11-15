@@ -1063,7 +1063,13 @@ export function createBuscarView(root) {
         const parte = await ajustes.yaLoTengo(
           tanda.map(x => x.title || nombreDeUrl(x.url) || ''),
           tanda.map(x => (Number.isFinite(x.durationSeconds) ? x.durationSeconds : null)),
-          persona
+          persona,
+          // Para el rendimiento por sitio: la comprobación automática al terminar cuenta (el
+          // servidor la cuenta una sola vez por búsqueda); el botón, no.
+          {
+            enlaces: tanda.map(x => x.sourceUrl || x.url),
+            contar: avisar || !trabajoVisto ? false : `${trabajoVisto}#${i}`,
+          }
         );
         if (!parte.conectado || parte.error) {
           Object.assign(r, { conectado: parte.conectado, error: parte.error });
