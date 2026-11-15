@@ -11,6 +11,7 @@ const ajustesBusqueda = require('../services/ajustesBusqueda');
 const programadas = require('../services/programadas');
 const filtrosGlobales = require('../services/filtrosGlobales');
 const directo = require('../services/directo');
+const paquetesJd = require('../services/paquetesJd');
 const { listarSitios } = require('../services/busqueda');
 const { hostDe } = require('../services/web');
 
@@ -289,6 +290,49 @@ router.put(
 router.post(
   '/ajustes/jdownloader/probar',
   manejar(async req => jd.probar((req.body || {}).url || (await jd.ajustes()).url))
+);
+
+/** Los paquetes que mandó clipscout y su estado. `?revisar=1` pregunta antes a JDownloader. */
+router.get(
+  '/ajustes/jdownloader/paquetes',
+  manejar(async req => {
+    let error = null;
+    if (req.query.revisar === '1') {
+      await paquetesJd.revisar().catch(e => {
+        error = e.message;
+      });
+    }
+    const paquetes = (await paquetesJd.listar()).map(p => ({
+      id: p.id,
+      nombre: p.nombre,
+      carpeta: p.carpeta,
+      estado: p.estado,
+      contadores: p.contadores,
+      creado: p.creado,
+      terminadoEn: p.terminadoEn || null,
+      fichas: p.fichas.length,
+      directos: p.sustituidas.filter(f => !p.sinDirecto.includes(f)).length,
+      sinDirecto: p.sinDirecto.length,
+      escaneado: p.escaneado || null,
+    }));
+    return { paquetes, error };
+  })
+);
+
+/** Reintentar lo caído de un paquete: fichero directo fresco, aunque ya se hubiera intentado. */
+router.post(
+  '/ajustes/jdownloader/paquetes/:id/reintentar',
+  manejar(async req => {
+    const r = await paquetesJd.revisar({ soloId: req.params.id, forzar: true });
+    if (r.revisados === 0) throw new crew.ErrorCrew('No existe ese paquete.', 404);
+    paquetesJd.arrancar();
+    return r;
+  })
+);
+
+router.post(
+  '/ajustes/jdownloader/vaciar-capturador',
+  manejar(() => jd.vaciarCapturador())
 );
 
 router.get(

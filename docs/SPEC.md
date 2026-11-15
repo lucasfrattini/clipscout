@@ -27,6 +27,7 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | BUS-8  | Un resultado sin duración se completa después con una petición HTTP ligera a su ficha (evento `duracion`).       | `duraciones.test.js`                         |
 | BUS-9  | Un álbum (ficha con varios ficheros) se pliega en un resultado con contador y se despliega; filtros por fichero. | `albumes.test.js`                            |
 | JD-4   | Lo que JDownloader da por caído se sustituye por el fichero directo (fresco, con la ficha de origen).            | `jd-directo.test.js`                         |
+| JD-5   | Ajustes muestra los paquetes mandados y su estado; reintentar fallidos y vaciar el capturador (confirmando).     | `jd-directo.test.js`, manual                 |
 | FIL-1  | Las palabras siempre bloqueadas se aplican a Buscar, a las programadas y a todo envío a JD.                      | `filtros.test.js`                            |
 | JD-1   | Enviar a JDownloader pregunta tipo y nombre de la carpeta, salvo destino fijado.                                 | manual                                       |
 | JD-2   | La ventana DEBE proponer carpetas existentes y personas o etiquetas del catálogo sin carpeta propia.             | `carpetas.test.js`                           |

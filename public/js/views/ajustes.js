@@ -8,7 +8,7 @@
 import { ajustes } from '../api.js';
 import { confirmDialog } from '../components/dialog.js';
 import { el, toast } from '../dom.js';
-import { alCambiarIdioma, cambiarIdioma, idiomaActual, IDIOMAS, t } from '../i18n/index.js';
+import { alCambiarIdioma, cambiarIdioma, idiomaActual, IDIOMAS, t, tp } from '../i18n/index.js';
 import { cambiarTema, temaGuardado, TEMAS } from '../tema.js';
 
 const APPS = ['clipkeeper', 'clonbuster', 'clipscout'];
@@ -61,6 +61,7 @@ export function createAjustesView(raiz) {
       tarjetaClave(),
       tarjetaConexiones(),
       tarjetaJd(),
+      tarjetaPaquetes(),
       tarjetaSitios(),
       tarjetaBusqueda(),
       tarjetaFiltros(),
@@ -682,6 +683,141 @@ export function createAjustesView(raiz) {
           ],
         }),
         form,
+      ],
+    });
+  }
+
+  /* ── Lo mandado a JDownloader ──────────────────────────────────────── */
+
+  function tarjetaPaquetes() {
+    const lista = el('ul', { className: 'ajustes-paquetes' });
+    const aviso = el('p', { className: 'field__hint' });
+    const fecha = ms => new Date(ms).toLocaleString();
+    async function cargarPaquetes(revisar = false) {
+      let datos;
+      try {
+        datos = await ajustes.paquetesJd(revisar);
+      } catch (error) {
+        aviso.textContent = error.message;
+        return;
+      }
+      aviso.textContent = datos.error ? t('aj.paq.sinJd', { error: datos.error }) : '';
+      if (!datos.paquetes.length) {
+        lista.replaceChildren(el('li', { className: 'field__hint', text: t('aj.paq.vacio') }));
+        return;
+      }
+      lista.replaceChildren(
+        ...datos.paquetes.slice(0, 50).map(p => {
+          const c = p.contadores;
+          const detalle = [
+            p.carpeta || t('aj.prog.sinCarpeta'),
+            fecha(p.creado),
+            c ? t('aj.paq.cuenta', { hechos: c.terminados, total: c.total }) : null,
+            c?.fallidos ? tp('aj.paq.caidos', c.fallidos) : null,
+            p.directos ? tp('aj.paq.directos', p.directos) : null,
+            p.sinDirecto ? tp('aj.paq.sinDirecto', p.sinDirecto) : null,
+            p.escaneado ? t('aj.paq.escaneado') : null,
+          ].filter(Boolean);
+          const acciones = [];
+          if (p.estado === 'error' || c?.fallidos) {
+            acciones.push(
+              el('button', {
+                className: 'button button--small button--secondary',
+                attrs: { type: 'button' },
+                text: t('aj.paq.reintentar'),
+                on: {
+                  click: async () => {
+                    try {
+                      const r = await ajustes.reintentarPaquete(p.id);
+                      toast(tp('aj.paq.reintentado', r.sustituidas || 0));
+                      cargarPaquetes();
+                    } catch (error) {
+                      toast(error.message, 'error', 6000);
+                    }
+                  },
+                },
+              })
+            );
+          }
+          return el('li', {
+            className: `ajustes-paquetes__fila ajustes-paquetes__fila--${p.estado}`,
+            children: [
+              el('span', {
+                className: `ajustes-paquetes__estado ajustes-paquetes__estado--${p.estado}`,
+                text: t(`aj.paq.estado.${p.estado}`),
+              }),
+              el('div', {
+                className: 'programadas__texto',
+                children: [
+                  el('strong', { text: p.nombre }),
+                  el('span', { className: 'field__hint', text: detalle.join(' · ') }),
+                ],
+              }),
+              el('div', { className: 'ajustes-acciones', children: acciones }),
+            ],
+          });
+        })
+      );
+    }
+    cargarPaquetes(true);
+    // Mientras se ve, se refresca solo (lo que guarda el servidor; él ya pregunta a JDownloader).
+    const reloj = setInterval(() => {
+      if (!lista.isConnected) return clearInterval(reloj);
+      if (document.visibilityState !== 'hidden') cargarPaquetes();
+    }, 10000);
+    const boton = (clave, onClick, extra = 'button--secondary') =>
+      el('button', {
+        className: `button button--small ${extra}`,
+        attrs: { type: 'button' },
+        text: t(clave),
+        on: { click: onClick },
+      });
+    return el('section', {
+      className: 'card',
+      attrs: { id: 'ajustes-paquetes' },
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.paq.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.paq.hint') }),
+          ],
+        }),
+        el('div', {
+          className: 'card__body',
+          children: [
+            el('div', {
+              className: 'ajustes-acciones',
+              children: [
+                boton('aj.paq.actualizar', () => cargarPaquetes(true)),
+                boton(
+                  'aj.paq.vaciar',
+                  async () => {
+                    if (
+                      !(await confirmDialog({
+                        titleKey: 'aj.paq.vaciar',
+                        bodyKey: 'aj.paq.vaciarConfirmar',
+                        variant: 'danger',
+                      }))
+                    ) {
+                      return;
+                    }
+                    try {
+                      await ajustes.vaciarCapturador();
+                      toast(t('aj.paq.vaciado'));
+                      cargarPaquetes(true);
+                    } catch (error) {
+                      toast(error.message, 'error', 6000);
+                    }
+                  },
+                  'button--secondary ajustes-peligro'
+                ),
+              ],
+            }),
+            aviso,
+            lista,
+          ],
+        }),
       ],
     });
   }

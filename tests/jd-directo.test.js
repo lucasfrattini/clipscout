@@ -35,6 +35,7 @@ const sitio = http.createServer((req, res) => {
 const anadidos = [];
 const quitados = [];
 const quitadosCapturador = [];
+let limpiado = 0;
 let enlacesDescarga = [];
 let enlacesCapturador = [];
 const jdFalso = http.createServer((req, res) => {
@@ -63,6 +64,10 @@ const jdFalso = http.createServer((req, res) => {
   }
   if (ruta === '/linkgrabberv2/removeLinks') {
     quitadosCapturador.push(params[0]);
+    return responder(null);
+  }
+  if (ruta === '/linkgrabberv2/clearList') {
+    limpiado += 1;
     return responder(null);
   }
   return responder([]);
@@ -170,4 +175,34 @@ test('sitio marcado «fichero directo»: se manda el fichero desde el principio'
   assert.equal(anadidos.at(-1).links, `${base}/m/1.mp4`);
   assert.equal(anadidos.at(-1).sourceUrl, ficha);
   await directo.guardarOpcionesSitio('127.0.0.1', { jdDirecto: false });
+});
+
+test('panel: lista con estado, reintentar y vaciar el capturador (con el JD falso)', async t => {
+  const { createApp } = require('../src/app');
+  const app = createApp().listen(0, '127.0.0.1');
+  await new Promise(r => app.once('listening', r));
+  t.after(() => app.close());
+  const api = `http://127.0.0.1:${app.address().port}/api/ajustes/jdownloader`;
+  const ficha = `${base}/v/1`;
+  await jd.enviar({ links: [ficha], carpeta: 'Viajes', paquete: 'Playa' });
+  enlacesDescarga = [{ uuid: 100, packageUUID: 10, url: ficha, status: 'Server error 404' }];
+
+  const lista = await (await fetch(`${api}/paquetes?revisar=1`)).json();
+  const p = lista.paquetes[0];
+  assert.equal(p.nombre, 'Playa');
+  assert.equal(p.directos, 1, 'la revisión ya mandó el fichero directo');
+  assert.equal(p.estado, 'error');
+
+  const antes = anadidos.length;
+  const r = await fetch(`${api}/paquetes/${p.id}/reintentar`, { method: 'POST' });
+  assert.equal((await r.json()).sustituidas, 1);
+  assert.equal(anadidos.length, antes + 1);
+  const noExiste = await fetch(`${api}/paquetes/nada/reintentar`, { method: 'POST' });
+  assert.equal(noExiste.status, 404);
+
+  const vaciar = await fetch(`${api}/vaciar-capturador`, { method: 'POST' });
+  assert.deepEqual(await vaciar.json(), { ok: true });
+  assert.equal(limpiado, 1);
+  enlacesDescarga = [];
+  paquetes.parar();
 });

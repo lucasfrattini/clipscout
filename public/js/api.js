@@ -255,6 +255,14 @@ export const ajustes = {
   filtros: () => request('/ajustes/filtros'),
   guardarFiltros: datos =>
     request('/ajustes/filtros', { method: 'PUT', body: JSON.stringify(datos) }),
+  paquetesJd: revisar => request(`/ajustes/jdownloader/paquetes${revisar ? '?revisar=1' : ''}`),
+  reintentarPaquete: id =>
+    request(`/ajustes/jdownloader/paquetes/${encodeURIComponent(id)}/reintentar`, {
+      method: 'POST',
+      body: '{}',
+    }),
+  vaciarCapturador: () =>
+    request('/ajustes/jdownloader/vaciar-capturador', { method: 'POST', body: '{}' }),
   programadas: () => request('/ajustes/programadas'),
   guardarProgramada: datos =>
     request('/ajustes/programadas', { method: 'POST', body: JSON.stringify(datos) }),

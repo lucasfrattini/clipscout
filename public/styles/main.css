@@ -3528,3 +3528,41 @@ a {
   gap: 4px 12px;
   align-items: center;
 }
+
+/* ── Ajustes: paquetes de JDownloader ───────────────────────────────── */
+.ajustes-paquetes {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ajustes-paquetes__fila {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+}
+.ajustes-paquetes__estado {
+  min-width: 6.5rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--c-border);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.ajustes-paquetes__estado--terminado {
+  border-color: var(--c-success);
+  color: var(--c-success);
+}
+.ajustes-paquetes__estado--error {
+  border-color: var(--c-danger, #b42318);
+  color: var(--c-danger, #b42318);
+}
+.ajustes-paquetes__fila .ajustes-acciones {
+  margin-left: auto;
+}
+.ajustes-paquetes__fila > .programadas__texto {
+  flex: 1 1 14rem;
+  min-width: 0;
+}

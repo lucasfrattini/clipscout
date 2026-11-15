@@ -261,6 +261,17 @@ async function mandarDirectos(url, { fichas, paquete, destino, autostart, idPaqu
   }
 }
 
+/**
+ * Vacía el capturador de JDownloader (lo que está analizado pero no pasó a descargas). Es una
+ * acción destructiva sobre JDownloader: la interfaz la pide con confirmación.
+ */
+async function vaciarCapturador() {
+  const { url } = await ajustes();
+  if (!url) throw new ErrorJd('JDownloader no está configurado (pestaña Ajustes).', 409);
+  await llamar(url, '/linkgrabberv2/clearList');
+  return { ok: true };
+}
+
 const esperar = ms => new Promise(resolver => setTimeout(resolver, ms).unref?.());
 
 /**
@@ -290,6 +301,7 @@ async function descargarCuandoEste(url, jobId, { maxMs = 180000, cadaMs = 3000 }
 }
 
 module.exports = {
+  vaciarCapturador,
   llamar,
   anadir,
   ajustes,
