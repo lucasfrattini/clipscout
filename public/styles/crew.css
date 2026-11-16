@@ -458,7 +458,8 @@ a.cc-app:hover img {
   inset: 0;
   z-index: 1000;
   display: grid;
-  place-items: center;
+  place-items: safe center;
+  overflow-y: auto;
   padding: 16px;
   background: rgba(5, 10, 25, 0.55);
   backdrop-filter: blur(3px);
@@ -466,6 +467,8 @@ a.cc-app:hover img {
 .cc-guia {
   width: min(560px, 100%);
   max-height: calc(100vh - 32px);
+  /* iOS: 100vh no descuenta la barra del navegador y la guía quedaba cortada por arriba */
+  max-height: calc(100dvh - 32px);
   overflow: auto;
   background: var(--cc-carta);
   color: var(--cc-texto);
