@@ -11,6 +11,7 @@ const { parseClockDuration } = require('../lib/media');
 const { detectConfig } = require('./detector');
 const { extractVideos } = require('./video');
 const estadisticas = require('./estadisticas');
+const directo = require('./directo');
 
 /**
  * Búsqueda en TODOS los sitios guardados a la vez.
@@ -37,6 +38,18 @@ async function listarSitios() {
   return perfiles
     .map((p, id) => ({ id, nombre: nombreCorto(p.name), perfil: p }))
     .filter(s => hasSearchTemplate(s.perfil.config.searchUrl || ''));
+}
+
+async function sinLosDeFuera(lista) {
+  let opciones = {};
+  try {
+    opciones = await directo.opcionesSitios();
+  } catch {
+    return lista; // sin opciones legibles, como antes: todos
+  }
+  return lista.filter(
+    s => !directo.fueraPorDefecto(hostDe(s.perfil.config.searchUrl || ''), opciones)
+  );
 }
 
 /** Id del «sitio» que agrupa lo encontrado en toda la web (no es una configuración guardada). */
@@ -131,7 +144,9 @@ async function buscarEnTodos(
   // antes: si no, una copia hallada antes y otra después no se verían nunca como repetidas.
   const todosLosItems = [...itemsPrevios];
   const todos = await listarSitios();
-  const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : todos;
+  // Sin elegir sitios (búsquedas de otras apps, varias, programadas): fuera los marcados en
+  // Ajustes como «no buscar por defecto». Eligiéndolos a mano sí se busca en ellos.
+  const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : await sinLosDeFuera(todos);
 
   const conAbierta = abierta === true && Boolean(config.busqueda.searxngUrl);
   emit({

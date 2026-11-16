@@ -27,7 +27,7 @@ async function opcionesSitios() {
   return (await crew.datos()).sitios || {};
 }
 
-/** Cambia las opciones de un dominio. `cambios`: `{ jdDirecto }`. */
+/** Cambia las opciones de un dominio. `cambios`: `{ jdDirecto, fueraPorDefecto }`. */
 async function guardarOpcionesSitio(dominio, cambios = {}) {
   const host = hostDe(`https://${String(dominio || '').replace(/^https?:\/\//, '')}`);
   if (!host) throw new crew.ErrorCrew('Dominio no válido.');
@@ -35,9 +35,18 @@ async function guardarOpcionesSitio(dominio, cambios = {}) {
     d.sitios = d.sitios || {};
     const actual = d.sitios[host] || {};
     if ('jdDirecto' in cambios) actual.jdDirecto = cambios.jdDirecto === true;
+    if ('fueraPorDefecto' in cambios) actual.fueraPorDefecto = cambios.fueraPorDefecto === true;
     d.sitios[host] = actual;
     return { dominio: host, ...actual };
   });
+}
+
+/**
+ * ¿Este sitio queda fuera de las búsquedas que no eligen sitios? Para los que traen sobre todo
+ * resultados que no son lo buscado: se puede seguir buscando en él eligiéndolo a mano.
+ */
+function fueraPorDefecto(dominio, opciones) {
+  return opciones?.[dominio]?.fueraPorDefecto === true;
 }
 
 /** ¿Este enlace es de un sitio marcado «mandar el fichero directo»? (con las opciones ya leídas) */
@@ -80,6 +89,7 @@ module.exports = {
   opcionesSitios,
   guardarOpcionesSitio,
   esDirecto,
+  fueraPorDefecto,
   resolverDirecto,
   perfilDe,
 };

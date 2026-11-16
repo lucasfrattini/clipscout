@@ -925,6 +925,9 @@ export const es = {
   'aj.sitios.hint':
     'Opciones de cada sitio guardado, y lo que aporta: búsquedas, resultados, cuántos con duración, bloqueos, enviados a JDownloader, los que ya tenías y los que JDownloader no pudo bajar.',
   'aj.sitios.vacio': 'Todavía no hay sitios guardados.',
+  'aj.sitios.fuera': 'No buscar por defecto',
+  'aj.sitios.fuera.hint':
+    'Sale apagado en Buscar y las búsquedas que no eligen sitios se lo saltan. Para los que traen sobre todo resultados que no son lo buscado.',
   'aj.sitios.directo': 'Mandar a JDownloader el fichero directo',
   'aj.sitios.directo.hint':
     'En vez de la ficha, el enlace al vídeo (resuelto en el momento, con la ficha como origen). Para los sitios que JDownloader no sabe abrir. Aunque no lo marques, si JDownloader falla con una ficha se intenta así solo.',

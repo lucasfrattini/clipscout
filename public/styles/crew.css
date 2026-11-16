@@ -9,6 +9,14 @@
  * chocar con las de cada app.
  */
 
+/* iPhone (Safari y Chrome, ambos WebKit): al arrastrar hacia abajo para recargar, la página a veces
+   se queda desplazada, con la parte de arriba oculta y sin poder volver a ella hasta recargar. Sin
+   rebote no hay gesto que la descoloque; para recargar, el botón del navegador. */
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 :root {
   --cc-fondo: #f4f6f9;
   --cc-carta: #ffffff;

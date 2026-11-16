@@ -1130,6 +1130,19 @@ export function createAjustesView(raiz) {
               toast(error.message, 'error', 6000);
             }
           });
+          // «No buscar por defecto»: sale apagado en Buscar y las búsquedas que no eligen sitios
+          // (varias, programadas, otras apps) se lo saltan.
+          const fuera = el('input', { attrs: { type: 'checkbox' } });
+          fuera.checked = s.fueraPorDefecto;
+          fuera.addEventListener('change', async () => {
+            try {
+              await ajustes.guardarSitio(s.dominio, { fueraPorDefecto: fuera.checked });
+              toast(t('aj.guardado'));
+            } catch (error) {
+              fuera.checked = !fuera.checked;
+              toast(error.message, 'error', 6000);
+            }
+          });
           const e = s.estadisticas || {};
           const cifras = s.estadisticas
             ? [
@@ -1158,6 +1171,11 @@ export function createAjustesView(raiz) {
                 className: 'ajustes-casilla',
                 attrs: { title: t('aj.sitios.directo.hint') },
                 children: [directo, t('aj.sitios.directo')],
+              }),
+              el('label', {
+                className: 'ajustes-casilla',
+                attrs: { title: t('aj.sitios.fuera.hint') },
+                children: [fuera, t('aj.sitios.fuera')],
               }),
             ],
           });

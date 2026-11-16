@@ -177,6 +177,17 @@ test('sitio marcado «fichero directo»: se manda el fichero desde el principio'
   await directo.guardarOpcionesSitio('127.0.0.1', { jdDirecto: false });
 });
 
+test('sitio «no buscar por defecto»: se guarda aparte y no pisa el fichero directo', async () => {
+  await directo.guardarOpcionesSitio('ejemplo.com', { jdDirecto: true });
+  const r = await directo.guardarOpcionesSitio('ejemplo.com', { fueraPorDefecto: true });
+  assert.deepEqual(r, { dominio: 'ejemplo.com', jdDirecto: true, fueraPorDefecto: true });
+  const opciones = await directo.opcionesSitios();
+  assert.equal(directo.fueraPorDefecto('ejemplo.com', opciones), true);
+  assert.equal(directo.fueraPorDefecto('otro.ejemplo.com', opciones), false);
+  await directo.guardarOpcionesSitio('ejemplo.com', { fueraPorDefecto: false, jdDirecto: false });
+  assert.equal(directo.fueraPorDefecto('ejemplo.com', await directo.opcionesSitios()), false);
+});
+
 test('panel: lista con estado, reintentar y vaciar el capturador (con el JD falso)', async t => {
   const { createApp } = require('../src/app');
   const app = createApp().listen(0, '127.0.0.1');

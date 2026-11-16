@@ -920,6 +920,9 @@ export const en = {
   'aj.sitios.hint':
     "Options for each saved site, and what it brings: searches, results, how many with length, blocks, sent to JDownloader, the ones you already had and the ones JDownloader couldn't download.",
   'aj.sitios.vacio': 'No saved sites yet.',
+  'aj.sitios.fuera': 'Leave out by default',
+  'aj.sitios.fuera.hint':
+    'Starts switched off in Search, and searches that do not pick sites skip it. For sites that mostly return unrelated results.',
   'aj.sitios.directo': 'Send the direct file to JDownloader',
   'aj.sitios.directo.hint':
     "Instead of the page, the link to the video (resolved right then, with the page as referrer). For sites JDownloader can't open. Even unchecked, it's tried automatically when JDownloader fails on a page.",

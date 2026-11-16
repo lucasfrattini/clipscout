@@ -33,6 +33,8 @@ function tipoDeEntrada(texto) {
  */
 
 const CLAVE_SITIOS = 'clipscout:buscar-apagados';
+/** Sitios «no buscar por defecto» ya apagados una vez: si luego se encienden a mano, se respeta. */
+const CLAVE_FUERA = 'clipscout:buscar-fuera-aplicados';
 
 /**
  * Miniaturas que ya fallaron en esta página. La rejilla se rehace con cada tanda de resultados y
@@ -683,11 +685,34 @@ export function createBuscarView(root) {
     if (antes && !chipsSitios.hidden) pintarSitios();
   });
 
+  /** Los marcados en Ajustes como «no buscar por defecto» salen apagados la primera vez. */
+  function aplicarFueraPorDefecto() {
+    let aplicados;
+    try {
+      aplicados = new Set(JSON.parse(localStorage.getItem(CLAVE_FUERA) || '[]'));
+    } catch {
+      aplicados = new Set();
+    }
+    const nuevos = sitios.filter(s => s.porDefecto === false && !aplicados.has(s.nombre));
+    if (nuevos.length === 0) return;
+    for (const s of nuevos) {
+      apagados.add(s.nombre);
+      aplicados.add(s.nombre);
+    }
+    guardarApagados(apagados);
+    try {
+      localStorage.setItem(CLAVE_FUERA, JSON.stringify([...aplicados]));
+    } catch {
+      // sin almacenamiento: se vuelve a apagar en cada visita, que es lo que se quería
+    }
+  }
+
   async function cargarSitios() {
     try {
       const r = await fetch('/api/buscar/sitios').then(x => x.json());
       sitios = r.sitios || [];
       hayWeb = Boolean(r.web);
+      aplicarFueraPorDefecto();
       etiquetaAbierta.hidden = !hayWeb;
     } catch {
       sitios = [];
@@ -799,7 +824,9 @@ export function createBuscarView(root) {
     if (opciones.listado) query.set('listado', '1');
     if (conWeb) query.set('web', '1');
     if (conAbierta) query.set('abierta', '1');
-    if (!esEnlace && elegidos.length < sitios.length) {
+    // Siempre la lista: sin ella el servidor se salta los «no buscar por defecto», y aquí lo que
+    // manda es lo que está encendido en pantalla.
+    if (!esEnlace && elegidos.length > 0) {
       query.set('sitios', elegidos.map(s => s.id).join(','));
     }
     try {
@@ -862,7 +889,7 @@ export function createBuscarView(root) {
           paginas: paginas.value,
           web: web.conWeb,
           abierta: web.conAbierta,
-          ...(elegidos.length < sitios.length ? { sitios: elegidos.map(x => x.id) } : {}),
+          ...(elegidos.length ? { sitios: elegidos.map(x => x.id) } : {}),
         }),
       });
       const r = await resp.json();

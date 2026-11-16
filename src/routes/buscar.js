@@ -6,6 +6,8 @@ const config = require('../config');
 const logger = require('../lib/logger');
 const { buscarEnTodos, listarSitios } = require('../services/busqueda');
 const fondo = require('../services/busquedasFondo');
+const directo = require('../services/directo');
+const { hostDe } = require('../services/web');
 
 const router = express.Router();
 
@@ -13,8 +15,14 @@ const router = express.Router();
 router.get('/buscar/sitios', async (req, res, next) => {
   try {
     const sitios = await listarSitios();
+    const opciones = await directo.opcionesSitios().catch(() => ({}));
     res.json({
-      sitios: sitios.map(s => ({ id: s.id, nombre: s.nombre })),
+      sitios: sitios.map(s => ({
+        id: s.id,
+        nombre: s.nombre,
+        // false: sale apagado de entrada en la pantalla (Ajustes → Sitios)
+        porDefecto: !directo.fueraPorDefecto(hostDe(s.perfil.config.searchUrl || ''), opciones),
+      })),
       web: Boolean(config.busqueda.searxngUrl),
     });
   } catch (error) {

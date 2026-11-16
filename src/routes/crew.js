@@ -290,6 +290,7 @@ router.get(
           nombre: s.nombre,
           dominio,
           jdDirecto: directo.esDirecto(`https://${dominio}/`, opciones),
+          fueraPorDefecto: directo.fueraPorDefecto(dominio, opciones),
           estadisticas: cifras[dominio] || null,
         };
       }),
