@@ -705,9 +705,25 @@ export function createBuscarView(root) {
     }
   }
 
+  /**
+   * Repintado agrupado: como mucho uno cada 80 ms. Al darle a «Ver» a una búsqueda llegan de golpe
+   * todos sus eventos (800 en una búsqueda grande) y repintar la lista entera con cada uno dejaba
+   * el navegador colgado.
+   */
+  let relojPintado = null;
+  function pintarPronto() {
+    if (relojPintado) return;
+    relojPintado = setTimeout(() => {
+      relojPintado = null;
+      pintarResultados();
+    }, 80);
+  }
+
   function soltar() {
     clearTimeout(reintento);
     reintento = null;
+    clearTimeout(relojPintado); // quien suelta pinta él mismo (terminar) o cambia de búsqueda
+    relojPintado = null;
     fuente?.close();
     fuente = null;
   }
@@ -1060,7 +1076,7 @@ export function createBuscarView(root) {
         toast(m.message, 'error', 6000);
         return terminar();
       }
-      pintarResultados();
+      pintarPronto();
     };
     // La conexión se cortó (otra app, la pantalla se apagó, la red): la búsqueda sigue en el
     // servidor, así que se vuelve a mirar desde el último evento visto.
@@ -1077,8 +1093,8 @@ export function createBuscarView(root) {
 
   /**
    * Pregunta a clipkeeper cuáles ya están en la biblioteca: por título, o por duración + la persona
-   * buscada (los ficheros renombrados ya no llevan el título del sitio). En tandas de 200, el tope
-   * de clipkeeper por petición: antes, de una búsqueda grande solo se miraban los 200 primeros.
+   * buscada (los ficheros renombrados ya no llevan el título del sitio). Por tandas, para mirar la
+   * lista entera: antes, de una búsqueda grande solo se miraban los 200 primeros.
    */
   async function comprobarBiblioteca(avisar) {
     const lista = resultados.filter(
@@ -1088,8 +1104,10 @@ export function createBuscarView(root) {
     try {
       const persona = ultimaBusqueda || entrada.value.trim();
       const r = { conectado: true, error: null, resultados: [] };
-      for (let i = 0; i < lista.length; i += 200) {
-        const tanda = lista.slice(i, i + 200);
+      // Tandas de 50: 200 títulos con sus enlaces pasaban de los 64 KB que admite el servidor por
+      // petición (PayloadTooLargeError) y la comprobación fallaba entera en las búsquedas grandes.
+      for (let i = 0; i < lista.length; i += 50) {
+        const tanda = lista.slice(i, i + 50);
         const parte = await ajustes.yaLoTengo(
           tanda.map(x => x.title || nombreDeUrl(x.url) || ''),
           tanda.map(x => (Number.isFinite(x.durationSeconds) ? x.durationSeconds : null)),

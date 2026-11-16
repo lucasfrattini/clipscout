@@ -392,8 +392,8 @@ const config = {
     // Tope por imagen: una miniatura legítima no llega ni de lejos
     maxBytes: intFromEnv('THUMBNAILS_MAX_BYTES', 2 * 1024 * 1024),
     // Caché EN MEMORIA: muere con el proceso y no deja rastro en disco
-    cacheMaxEntries: intFromEnv('THUMBNAILS_CACHE_MAX_ENTRIES', 300),
-    cacheMaxBytes: intFromEnv('THUMBNAILS_CACHE_MAX_BYTES', 64 * 1024 * 1024),
+    cacheMaxEntries: intFromEnv('THUMBNAILS_CACHE_MAX_ENTRIES', 3000),
+    cacheMaxBytes: intFromEnv('THUMBNAILS_CACHE_MAX_BYTES', 256 * 1024 * 1024),
     // Cuánto se recuerda que una miniatura falló (no se vuelve a pedir al sitio); 0 = nada
     negativeTtlMs: intFromEnv('THUMBNAILS_NEGATIVE_TTL_MS', 5 * 60 * 1000),
     // Cuánto puede cachear el navegador lo que ya servimos nosotros
