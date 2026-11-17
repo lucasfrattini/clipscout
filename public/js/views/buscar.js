@@ -241,10 +241,17 @@ export function createBuscarView(root) {
   const listaCola = el('ul', { className: 'buscar__cola-lista' });
   const tituloCola = el('h3', { className: 'buscar__cola-titulo' });
   texto(tituloCola, 'buscar.cola');
+  // Las terminadas van plegadas: con muchas, empujaban los resultados hacia abajo.
+  const listaFin = el('ul', { className: 'buscar__cola-lista' });
+  const resumenFin = el('summary', { className: 'buscar__cola-resumen' });
+  const plegadasFin = el('details', {
+    className: 'buscar__cola-fin',
+    children: [resumenFin, listaFin],
+  });
   const zonaCola = el('section', {
     className: 'buscar__cola',
     attrs: { hidden: '' },
-    children: [tituloCola, listaCola],
+    children: [tituloCola, listaCola, plegadasFin],
   });
 
   // Aviso fijo de uso responsable, siempre visible bajo la caja de búsqueda.
@@ -932,62 +939,68 @@ export function createBuscarView(root) {
     // Se enseña cuando hay algo más que la búsqueda que se mira: si no, es ruido.
     zonaCola.hidden = !colaActual.some(b => b.id !== trabajoVisto);
     if (zonaCola.hidden) return;
-    listaCola.replaceChildren(
-      ...colaActual.slice(0, 15).map(b => {
-        const marca =
-          b.estado === 'curso'
-            ? t('buscar.cola.curso')
-            : b.estado === 'cola'
-              ? t('buscar.cola.esperando', { n: b.posicion })
-              : b.quitada
-                ? t('buscar.cola.quitada')
-                : tp('buscar.resultados', b.total);
-        const acciones = [];
-        if (b.id !== trabajoVisto) {
-          acciones.push(
-            el('button', {
-              className: 'button button--secondary button--small',
-              attrs: { type: 'button' },
-              text: t('buscar.cola.ver'),
-              on: { click: () => ver(b) },
-            })
-          );
-        }
-        if (b.estado !== 'fin') {
-          acciones.push(
-            el('button', {
-              className: 'button button--ghost button--small',
-              attrs: { type: 'button' },
-              text: t(b.estado === 'cola' ? 'buscar.cola.quitar' : 'buscar.parar'),
-              on: {
-                click: async () => {
-                  await fetch(`/api/buscar/cola/${encodeURIComponent(b.id)}`, {
-                    method: 'DELETE',
-                  }).catch(() => {});
-                  refrescarCola();
-                },
-              },
-            })
-          );
-        }
-        return el('li', {
-          className: `buscar__cola-fila buscar__cola-fila--${b.estado}${b.id === trabajoVisto ? ' buscar__cola-fila--vista' : ''}`,
-          children: [
-            el('span', {
-              className: b.estado === 'fin' ? 'buscar__hecho' : 'buscar__girando',
-              text: b.estado === 'fin' ? '✓' : '',
-            }),
-            el('strong', { text: b.q }),
-            b.carpeta ? el('span', { className: 'buscar__sitio', text: `→ ${b.carpeta}` }) : null,
-            b.origen === 'programada'
-              ? el('span', { className: 'buscar__sitio', text: t('buscar.cola.programada') })
-              : null,
-            el('span', { className: 'buscar__cola-estado', text: marca }),
-            el('span', { className: 'buscar__acciones', children: acciones }),
-          ],
-        });
-      })
-    );
+    const activas = colaActual.filter(b => b.estado !== 'fin' || b.id === trabajoVisto);
+    const terminadas = colaActual.filter(b => b.estado === 'fin' && b.id !== trabajoVisto);
+    listaCola.hidden = !activas.length;
+    listaCola.replaceChildren(...activas.map(filaCola));
+    plegadasFin.hidden = !terminadas.length;
+    resumenFin.textContent = t('buscar.cola.terminadas', { n: terminadas.length });
+    listaFin.replaceChildren(...terminadas.slice(0, 50).map(filaCola));
+  }
+
+  function filaCola(b) {
+    const marca =
+      b.estado === 'curso'
+        ? t('buscar.cola.curso')
+        : b.estado === 'cola'
+          ? t('buscar.cola.esperando', { n: b.posicion })
+          : b.quitada
+            ? t('buscar.cola.quitada')
+            : tp('buscar.resultados', b.total);
+    const acciones = [];
+    if (b.id !== trabajoVisto) {
+      acciones.push(
+        el('button', {
+          className: 'button button--secondary button--small',
+          attrs: { type: 'button' },
+          text: t('buscar.cola.ver'),
+          on: { click: () => ver(b) },
+        })
+      );
+    }
+    if (b.estado !== 'fin') {
+      acciones.push(
+        el('button', {
+          className: 'button button--ghost button--small',
+          attrs: { type: 'button' },
+          text: t(b.estado === 'cola' ? 'buscar.cola.quitar' : 'buscar.parar'),
+          on: {
+            click: async () => {
+              await fetch(`/api/buscar/cola/${encodeURIComponent(b.id)}`, {
+                method: 'DELETE',
+              }).catch(() => {});
+              refrescarCola();
+            },
+          },
+        })
+      );
+    }
+    return el('li', {
+      className: `buscar__cola-fila buscar__cola-fila--${b.estado}${b.id === trabajoVisto ? ' buscar__cola-fila--vista' : ''}`,
+      children: [
+        el('span', {
+          className: b.estado === 'fin' ? 'buscar__hecho' : 'buscar__girando',
+          text: b.estado === 'fin' ? '✓' : '',
+        }),
+        el('strong', { text: b.q }),
+        b.carpeta ? el('span', { className: 'buscar__sitio', text: `→ ${b.carpeta}` }) : null,
+        b.origen === 'programada'
+          ? el('span', { className: 'buscar__sitio', text: t('buscar.cola.programada') })
+          : null,
+        el('span', { className: 'buscar__cola-estado', text: marca }),
+        el('span', { className: 'buscar__acciones', children: acciones }),
+      ],
+    });
   }
 
   /** Mirar otra búsqueda del servidor (de la cola o terminada): se vuelve a pintar desde cero. */

@@ -911,6 +911,7 @@ export const es = {
   'buscar.cola.curso': 'buscando…',
   'buscar.cola.esperando': 'en cola (n.º {n})',
   'buscar.cola.ver': 'Ver',
+  'buscar.cola.terminadas': 'Terminadas ({n})',
   'buscar.cola.quitar': 'Quitar de la cola',
   'buscar.cola.programada': 'programada',
   'buscar.estado.enCola': 'En cola: empieza sola cuando termine otra búsqueda',

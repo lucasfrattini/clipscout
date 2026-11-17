@@ -906,6 +906,7 @@ export const en = {
   'buscar.cola.curso': 'searching…',
   'buscar.cola.esperando': 'queued (#{n})',
   'buscar.cola.ver': 'View',
+  'buscar.cola.terminadas': 'Finished ({n})',
   'buscar.cola.quitar': 'Remove',
   'buscar.cola.programada': 'scheduled',
   'buscar.estado.enCola': 'Queued: it starts on its own when another search ends',
