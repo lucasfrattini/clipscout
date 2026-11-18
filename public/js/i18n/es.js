@@ -1087,6 +1087,9 @@ export const es = {
   'asis.movil.texto': 'Escanea el código con la cámara del móvil o escribe la dirección:',
   'asis.movil.qr': 'Código QR con la dirección {dir}',
   'asis.movil.misma': 'El móvil y este equipo tienen que estar en la misma red (la misma wifi).',
+  'asis.movil.red': 'Permitir acceso desde otros dispositivos',
+  'asis.movil.red.reiniciar':
+    'Al reiniciar clipscout (y Clipgeist, si lo tienes) se aplicará el cambio.',
   'asis.movil.soloLocal':
     'Ahora clipscout solo acepta conexiones de este equipo. Para usarlo desde el móvil, activa «Permitir acceso desde otros dispositivos» al instalarlo (o arráncalo con CLIPGEIST_ESCUCHAR=red).',
   'asis.movil.docker':
@@ -1237,8 +1240,10 @@ export const es = {
   'err.error_interno':
     'Error interno (ref. {id}). Está en el registro: Ajustes → Sistema → Diagnóstico.',
   'err.demasiadas_peticiones': 'Demasiadas peticiones seguidas: espera unos segundos.',
-  'err.version_mas_nueva':
+  'err.copia_mas_nueva':
     'Esta copia es de una versión más nueva ({version}): actualiza clipscout antes.',
+  'err.copia_de_otra_app': 'Esta copia es de {app}, no de clipscout.',
+  'err.copia_no_valida': 'No es una copia válida de clipscout.',
   'apps.versionNueva': 'Hay una versión nueva: {version}',
   'aj.copia.titulo': 'Copia de Clipgeist',
   'aj.copia.hint':

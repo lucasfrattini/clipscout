@@ -45,6 +45,10 @@ es.Escritorio=Crear un acceso directo en el escritorio
 en.Escritorio=Create a desktop shortcut
 es.Abrir=Abrir {#Nombre}
 en.Abrir=Open {#Nombre}
+es.SuiteCerrar={#Nombre} forma parte ahora de Clipgeist: se quitará solo esta instalación suelta, sin tocar el programa ni tus datos. Antes, cierra Clipgeist (icono de la bandeja → Salir) y pulsa Aceptar.
+en.SuiteCerrar={#Nombre} is now part of Clipgeist: only this standalone install will be removed, keeping the program and your data. First quit Clipgeist (tray icon → Quit), then press OK.
+es.SuiteNoApartada=No se pudo apartar la carpeta (¿sigue Clipgeist abierto?). Si {#Nombre} deja de funcionar, vuelve a instalar Clipgeist: tus datos siguen.
+en.SuiteNoApartada=The folder could not be moved aside (is Clipgeist still running?). If {#Nombre} stops working, reinstall Clipgeist: your data is safe.
 
 [Tasks]
 Name: "inicio"; Description: "{cm:Inicio}"
@@ -90,8 +94,46 @@ begin
   Result := '';
 end;
 
-procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+// Con la suite de Clipgeist instalada encima ({app}\..\clipgeist), esta carpeta es ahora suya:
+// desinstalar la app suelta solo quita su entrada y sus accesos. La carpeta se aparta antes de que
+// el desinstalador borre sus ficheros y se devuelve después; nunca se toca la carpeta común.
+function HaySuite(): Boolean;
 begin
+  Result := FileExists(ExpandConstant('{app}\..\clipgeist\clipgeist.exe'));
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+  // Con la app en marcha (la arranca el lanzador común) Windows no deja apartar la carpeta.
+  if HaySuite() then
+    Result := MsgBox(CustomMessage('SuiteCerrar'), mbConfirmation, MB_OKCANCEL) = IDOK;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  Apartada: String;
+begin
+  Apartada := ExpandConstant('{app}') + '.suite-guardada';
   if CurUninstallStep = usUninstall then
-    PararApp();
+  begin
+    if HaySuite() then
+    begin
+      // Clipgeist ya se cerró (InitializeUninstall); no se mata nada aquí.
+      if not RenameFile(ExpandConstant('{app}'), Apartada) then
+      begin
+        // No se puede seguir sin borrar ficheros de la suite: se avisa (reinstalar Clipgeist los
+        // repone) en vez de dejarla rota sin decir nada.
+        MsgBox(CustomMessage('SuiteNoApartada'), mbError, MB_OK);
+      end;
+    end
+    else
+      PararApp();
+  end;
+  if (CurUninstallStep = usPostUninstall) and DirExists(Apartada) then
+  begin
+    RenameFile(Apartada, ExpandConstant('{app}'));
+    DeleteFile(ExpandConstant('{app}\unins000.exe'));
+    DeleteFile(ExpandConstant('{app}\unins000.dat'));
+  end;
 end;

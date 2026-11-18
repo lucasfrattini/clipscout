@@ -34,10 +34,12 @@ const json = async (ruta, opciones = {}) => {
   return { status: r.status, body: await r.json() };
 };
 
-test('status exige la clave y responde con la identidad de clipscout', async () => {
+test('status: público sin clave (lo justo), 401 con una mala y completo con la buena', async () => {
   const { body: general } = await json('/api/ajustes/general');
   assert.match(general.api_key, /^[0-9a-f]{32}$/);
-  assert.equal((await json('/api/crew/v1/status')).status, 401);
+  const publico = await json('/api/crew/v1/status');
+  assert.equal(publico.status, 200);
+  assert.deepEqual(Object.keys(publico.body).sort(), ['app', 'crew', 'protocolo', 'version']);
   assert.equal(
     (await json('/api/crew/v1/status', { headers: { 'X-Api-Key': 'mala' } })).status,
     401
@@ -49,6 +51,7 @@ test('status exige la clave y responde con la identidad de clipscout', async () 
   assert.equal(body.crew, 'Clipgeist');
   assert.equal(body.app, 'clipscout');
   assert.equal(body.protocolo, 1);
+  assert.ok('url' in body && 'instancia' in body);
 });
 
 test('ajustes generales y regenerar la clave', async () => {
@@ -102,6 +105,13 @@ test('probar, conectar, listar sin claves y quitar', async () => {
   assert.equal(estado.body.ok, true);
   await json(`/api/ajustes/conexiones/${lista[0].id}`, { method: 'DELETE' });
   assert.deepEqual((await json('/api/ajustes/conexiones')).body, []);
+  // Borrar una que ya no existe: 404 no_encontrado (contrato de la suite).
+  const otraVez = await json(`/api/crew/v1/conexiones/${lista[0].id}`, {
+    method: 'DELETE',
+    headers: { 'X-Api-Key': g.api_key },
+  });
+  assert.equal(otraVez.status, 404);
+  assert.equal(otraVez.body.codigo, 'no_encontrado');
 });
 
 test('«¿ya lo tengo?» sin clipkeeper conectado lo dice, sin fallar', async () => {

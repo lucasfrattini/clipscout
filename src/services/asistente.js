@@ -3,12 +3,14 @@
 const fs = require('node:fs');
 const net = require('node:net');
 const os = require('node:os');
+const path = require('node:path');
 
 const config = require('../config');
 const acceso = require('./acceso');
 const crew = require('./crew');
 const { readProfiles } = require('./profiles');
 const { isPrivateAddress } = require('../lib/ssrf');
+const { escribirTexto } = require('../lib/ficheroJson');
 
 /**
  * Asistente de primer arranque (§2.6, CS-N3; común a las tres apps de Clipgeist).
@@ -161,7 +163,62 @@ function direcciones(req) {
     direcciones: elegidas.map(ip => `http://${net.isIPv6(ip) ? `[${ip}]` : ip}:${puerto}/`),
     soloLocal,
     docker: enDocker(),
+    // Escritorio: el interruptor «Permitir acceso desde otros dispositivos» (vale al reiniciar).
+    escritorio: process.env.CLIPGEIST_LANZADOR === '1',
+    red: leerRed(),
   };
 }
 
-module.exports = { esNueva, detectar, validarCuentaEn, direcciones, PUERTOS };
+/* ── «Permitir acceso desde otros dispositivos» (escritorio) ──────────── */
+
+/**
+ * El lanzador de escritorio lee `escuchar.txt` («red» o «local») de la carpeta de datos al
+ * arrancar. Con la suite instalada (carpeta `suite/` junto a la de datos, o `CLIPGEIST_SUITE=1`)
+ * manda el lanzador común, que lee el SUYO: se escribe también allí si existe, o la portada y las
+ * demás apps seguirían solo en este equipo.
+ */
+const ARCHIVO_RED = 'escuchar.txt';
+const carpetaSuite = () => path.join(config.datos.dir, '..', 'suite');
+
+function leerRed() {
+  try {
+    return fs.readFileSync(path.join(config.datos.dir, ARCHIVO_RED), 'utf8').trim() === 'red';
+  } catch {
+    return !['127.0.0.1', 'localhost', '::1'].includes(config.host);
+  }
+}
+
+async function cambiarRed(red) {
+  if (process.env.CLIPGEIST_LANZADOR !== '1') {
+    throw new crew.ErrorCrew('Esto solo se puede cambiar en la versión de escritorio.', 409);
+  }
+  // Abrir a la red sin usuario dejaría la app abierta a cualquiera de la red (CS-S1).
+  if (red && !acceso.activo()) {
+    const e = new crew.ErrorCrew(
+      'Crea antes un usuario: sin él, cualquiera de la red podría entrar.',
+      409
+    );
+    e.codigo = 'sin_usuario';
+    throw e;
+  }
+  const texto = red ? 'red\n' : 'local\n';
+  await escribirTexto(path.join(config.datos.dir, ARCHIVO_RED), texto);
+  const suite = carpetaSuite();
+  let enSuite = false;
+  if (fs.existsSync(suite)) {
+    await escribirTexto(path.join(suite, ARCHIVO_RED), texto);
+    enSuite = true;
+  }
+  return { ok: true, red: Boolean(red), suite: enSuite, reiniciar: true };
+}
+
+module.exports = {
+  esNueva,
+  detectar,
+  validarCuentaEn,
+  direcciones,
+  cambiarRed,
+  leerRed,
+  carpetaSuite,
+  PUERTOS,
+};

@@ -349,6 +349,11 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       // El protocolo entre apps solo con clave (su propio 401, con el formato del protocolo). La
       // copia de la suite (SU-20) vale también con sesión: la descarga la interfaz.
       if (req.path.startsWith('/api/crew/v1/') && !CON_SESION_EN_PROTOCOLO.has(req.path)) {
+        // `GET /status` sin clave es público, como en clipkeeper y clonbuster (contrato): solo dice
+        // qué app es y su versión. Con una clave que no vale, 401 (así «Probar» comprueba la clave).
+        if (req.method === 'GET' && req.path === '/api/crew/v1/status' && clave === null) {
+          return next();
+        }
         return res.status(401).json({
           codigo: 'clave_invalida',
           detail: 'Clave de API incorrecta o ausente (cabecera X-Api-Key).',

@@ -90,6 +90,8 @@ function createApp() {
   app.post('/api/auth/login', acceso.login);
   app.post('/api/auth/logout', acceso.logout);
   app.post('/api/auth/primer-usuario', acceso.primerUsuario);
+  // El mismo nombre que en clipkeeper y clonbuster (contrato de la suite): alias, sin cambiar nada.
+  app.post('/api/auth/configurar', acceso.primerUsuario);
 
   // Ajustes → Seguridad: poner, cambiar o quitar la contraseña (pide la actual si ya había). Tras
   // cambiarla, las demás sesiones quedan cerradas y esta sigue dentro.

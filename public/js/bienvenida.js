@@ -349,7 +349,39 @@ async function iniciar() {
         } else {
           partes.push(parrafo(red.docker ? 'asis.movil.docker' : 'asis.movil.sinRed'));
         }
-        if (red.soloLocal) partes.push(parrafo('asis.movil.soloLocal'));
+        if (red.escritorio) {
+          // Escritorio: el interruptor escribe escuchar.txt (y el de la suite, si está); el
+          // lanzador lo lee al arrancar, así que vale tras reiniciar clipscout.
+          const nota = el('p', { className: 'asis-nota', attrs: { role: 'status' } });
+          const interruptor = el('input', {
+            attrs: { type: 'checkbox', role: 'switch' },
+            on: {
+              change: async () => {
+                interruptor.disabled = true;
+                try {
+                  await pedir('/api/asistente/red', {
+                    method: 'PUT',
+                    body: JSON.stringify({ red: interruptor.checked }),
+                  });
+                  nota.textContent = t('asis.movil.red.reiniciar');
+                } catch (e) {
+                  interruptor.checked = !interruptor.checked;
+                  nota.textContent = e.message;
+                } finally {
+                  interruptor.disabled = false;
+                }
+              },
+            },
+          });
+          interruptor.checked = Boolean(red.red);
+          partes.push(
+            el('label', {
+              className: 'asis-app-fila',
+              children: [el('span', { text: t('asis.movil.red') }), interruptor],
+            }),
+            nota
+          );
+        } else if (red.soloLocal) partes.push(parrafo('asis.movil.soloLocal'));
         cuerpo.replaceChildren(...partes);
         return {
           textoSiguiente: t('asis.empezar'),

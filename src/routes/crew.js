@@ -84,11 +84,20 @@ const quien = req => ({
 /* ── Protocolo (entre apps) ─────────────────────────────────────────── */
 
 const protocolo = express.Router();
-protocolo.use(requiereClave);
+/**
+ * Sin clave (público, como en las otras dos apps): solo `crew`, `protocolo`, `app` y `version`.
+ * Con una clave válida, además la instancia y la URL.
+ */
 protocolo.get(
   '/status',
-  manejar(req => crew.estadoPropio(req))
+  manejar(async req => {
+    const estado = await crew.estadoPropio(req);
+    if (req.clave) return estado;
+    const { crew: nombre, protocolo: version, app, version: v } = estado;
+    return { crew: nombre, protocolo: version, app, version: v };
+  })
 );
+protocolo.use(requiereClave);
 protocolo.get(
   '/conexiones',
   soloAdmin,
@@ -389,6 +398,11 @@ router.put(
 router.get(
   '/asistente/red',
   manejar(req => require('../services/asistente').direcciones(req))
+);
+/** Escritorio: «Permitir acceso desde otros dispositivos» (escuchar.txt; vale al reiniciar). */
+router.put(
+  '/asistente/red',
+  manejar(req => require('../services/asistente').cambiarRed(Boolean(req.body?.red)))
 );
 
 router.get(

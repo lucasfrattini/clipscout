@@ -98,8 +98,9 @@ const GENERICO_EN = {
   ya_hay_usuario: 'There is already a user: sign in with it.',
   sin_usuario: 'There is no user yet: create it from the sign-in screen.',
   proxy_caido: 'The outbound proxy is not responding.',
-  version_mas_nueva: 'This backup comes from a newer version ({version}): update first.',
-  copia_invalida: 'This is not a valid clipscout backup.',
+  copia_mas_nueva: 'This backup comes from a newer version ({version}): update first.',
+  copia_no_valida: 'This is not a valid clipscout backup.',
+  copia_de_otra_app: 'This backup belongs to {app}, not to clipscout.',
 };
 
 /** Las frases concretas más vistas, en inglés (la clave es el texto en español). */

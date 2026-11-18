@@ -114,7 +114,7 @@ test('B: los códigos comunes de la guardia de acceso', async () => {
     await fetch(`${base}/api/buscar/cola`, { headers: { 'X-Api-Key': 'no-es' } })
   ).json();
   assert.equal(mala.codigo, 'clave_invalida');
-  const protocolo = await (await fetch(`${base}/api/crew/v1/status`)).json();
+  const protocolo = await (await fetch(`${base}/api/crew/v1/conexiones`)).json();
   assert.equal(protocolo.codigo, 'clave_invalida');
   const otraWeb = await globalThis.fetchSinCabecera(`${base}/api/ajustes/general`, {
     method: 'PUT',
@@ -224,7 +224,7 @@ test('C: diagnóstico con el proxy de salida caído lo dice claro (estado degrad
   assert.equal(por.proxy_salida.ok, false);
   assert.match(por.proxy_salida.detalle, /proxy de salida NO responde/);
   assert.equal(por.gestor_descargas.ok, false, 'el gestor configurado no responde');
-  assert.equal(por.conexion_clipkeeper.ok, false);
+  assert.equal(por['conexion:clipkeeper'].ok, false);
   assert.ok(Array.isArray(d.ultimos_errores));
   const en = await (
     await conClave('/api/diagnostico', { headers: { 'Accept-Language': 'en' } })
@@ -374,21 +374,21 @@ test('D: no restaura una copia de otra app, de una versión más nueva ni un fic
   await con(
     [manifiesto({ app: 'clonbuster', version: '0.1.0', esquema: 1 })],
     400,
-    'copia_invalida'
+    'copia_de_otra_app'
   );
   await con(
     [manifiesto({ app: 'clipscout', version: '99.0.0', esquema: 1 })],
     409,
-    'version_mas_nueva'
+    'copia_mas_nueva'
   );
-  await con(Buffer.from('no es un zip'), 400, 'copia_invalida');
+  await con(Buffer.from('no es un zip'), 400, 'copia_no_valida');
   await con(
     [
       manifiesto({ app: 'clipscout', version: '2.22.0', esquema: 1 }),
       { nombre: 'profiles.json', datos: Buffer.from('{ roto') },
     ],
     400,
-    'copia_invalida'
+    'copia_no_valida'
   );
   const perfiles = JSON.parse(fs.readFileSync(process.env.PROFILES_PATH, 'utf8'));
   assert.equal(perfiles.profiles[0].name, 'Ejemplo', 'nada se pisó');

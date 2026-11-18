@@ -186,7 +186,7 @@ export function tarjetaCopiaSuite({ recargar }) {
 /* ── Diagnóstico (SU-11) ─────────────────────────────────────────────── */
 
 function nombreComprobacion(nombre) {
-  const m = /^conexion_(.+)$/.exec(nombre);
+  const m = /^conexion[:_](.+)$/.exec(nombre);
   if (m) return t('aj.diag.c.conexion', { app: m[1] });
   const clave = `aj.diag.c.${nombre}`;
   const traducido = t(clave);

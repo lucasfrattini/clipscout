@@ -19,6 +19,13 @@ cp -a "$AQUI/$APP" "$DEST.nuevo"
 rm -rf "$DEST"
 mv "$DEST.nuevo" "$DEST"
 cp "$AQUI/desinstalar.sh" "$BASE/desinstalar.sh"
+# «Acceso desde la red»: escuchar.txt en los datos de la app y, si está la suite (el lanzador común
+# manda y lee el suyo), también en el de la suite; si no, la portada seguiría solo en este equipo.
+if [ "$HOST" = 0.0.0.0 ]; then
+  echo red > "$BASE/escuchar.txt"
+  SUITE="$(dirname "$BASE")/suite"
+  [ -d "$SUITE" ] && echo red > "$SUITE/escuchar.txt"
+fi
 
 mkdir -p "$HOME/.local/share/applications" "$HOME/.local/share/icons"
 cp "$AQUI/icono.png" "$HOME/.local/share/icons/clipgeist-$APP.png"

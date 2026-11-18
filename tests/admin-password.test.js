@@ -87,7 +87,9 @@ test('tras muchos fallos, el login se bloquea', async () => {
 
 test('health y el protocolo Clipgeist no piden contraseña (tienen su propia clave)', async () => {
   assert.equal((await fetch(`${base}/api/health`)).status, 200);
-  assert.equal((await fetch(`${base}/api/crew/v1/status`)).status, 401); // pide la clave de API, no la contraseña
-  const sinClave = await (await fetch(`${base}/api/crew/v1/status`)).json();
+  // status es público (contrato de la suite); el resto del protocolo pide la clave, no la contraseña
+  assert.equal((await fetch(`${base}/api/crew/v1/status`)).status, 200);
+  assert.equal((await fetch(`${base}/api/crew/v1/conexiones`)).status, 401);
+  const sinClave = await (await fetch(`${base}/api/crew/v1/conexiones`)).json();
   assert.match(sinClave.detail, /Clave de API/);
 });

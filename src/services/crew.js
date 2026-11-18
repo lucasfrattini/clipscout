@@ -371,6 +371,14 @@ async function renovarConexion(cuerpo = {}, { admin = false, conexion = null } =
   }
   let limpia = '';
   if (cuerpo.url) limpia = normalizarUrl(cuerpo.url);
+  // Con una clave de conexión no se cambia la URL: otra distinta se rechaza (403, como en
+  // clipkeeper y clonbuster) en vez de aceptarla en silencio y no usarla.
+  if (!admin && limpia && conexion.url !== limpia) {
+    throw new ErrorCrew(
+      'Con una clave de conexión no se puede cambiar la dirección de la conexión.',
+      403
+    );
+  }
   const entrada = nuevaClaveConexion();
   return cambiar(d => {
     d.conexiones = d.conexiones || [];
@@ -401,13 +409,16 @@ async function renovarConexion(cuerpo = {}, { admin = false, conexion = null } =
     c.activa = true;
     anadirEntrada(c, entrada);
     c.renovada = Date.now();
-    return { clave: entrada };
+    return { id: c.id, clave: entrada };
   });
 }
 
+/** Quita la conexión (y con ella las claves que se le dieron). Una que no existe: 404. */
 function quitar(id) {
   return cambiar(d => {
+    const antes = (d.conexiones || []).length;
     d.conexiones = (d.conexiones || []).filter(c => c.id !== Number(id));
+    if (d.conexiones.length === antes) throw new ErrorCrew('No existe esa conexión.', 404);
   });
 }
 
@@ -819,9 +830,9 @@ async function asegurarConexion(app, url, clave) {
 /**
  * Al arrancar: una conexión con cada app de `CLIPGEIST_*_URL` que no sea esta. Si alguna aún no
  * responde (arrancan a la vez y cada una tarda lo suyo), se reintenta en segundo plano cada
- * `cadaMs` durante `maxMs`. Sin `CLIPGEIST_CLAVE` no hace nada.
+ * `cadaMs` durante `maxMs` y después cada `lentoMs`. Sin `CLIPGEIST_CLAVE` no hace nada.
  */
-function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
+function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000, lentoMs = 5 * 60 * 1000 } = {}) {
   const clave = claveEntorno();
   if (!clave) return Promise.resolve({});
   const pendientes = Object.keys(VARIABLES_URL).filter(a => a !== APP && urlEntorno(a));
@@ -844,18 +855,28 @@ function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
       }
     }
   };
+  // Pasados `maxMs` se sigue probando, pero cada `lentoMs` (como clonbuster): otra app puede
+  // tardar mucho en arrancar (primera vez, disco lento) o instalarse después.
   return intentar().then(() => {
     if (pendientes.length > 0) {
+      let avisado = false;
       const reloj = setInterval(async () => {
-        await intentar();
-        if (pendientes.length === 0 || Date.now() > hasta) {
+        if (Date.now() > hasta && !avisado) {
+          avisado = true;
+          logger.warn(
+            `Clipgeist: ${pendientes.join(', ')} no respondió; se sigue probando cada ` +
+              `${Math.round(lentoMs / 60000)} min (o conéctala desde Ajustes)`
+          );
           clearInterval(reloj);
-          if (pendientes.length) {
-            logger.warn(
-              `Clipgeist: ${pendientes.join(', ')} no respondió; conéctala desde Ajustes`
-            );
-          }
+          const lento = setInterval(async () => {
+            await intentar();
+            if (pendientes.length === 0) clearInterval(lento);
+          }, lentoMs);
+          lento.unref?.();
+          return;
         }
+        await intentar();
+        if (pendientes.length === 0) clearInterval(reloj);
       }, cadaMs);
       reloj.unref?.();
     }

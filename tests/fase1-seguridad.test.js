@@ -124,7 +124,17 @@ test('alta de otra app con la clave de administración: responde con una clave d
     cuerpo: { app: 'clipkeeper', url: urlOtra, clave: 'cgc_renovada' },
   });
   assert.equal(renovar.status, 200);
-  const otraClave = (await renovar.json()).clave;
+  const renovada = await renovar.json();
+  assert.equal(typeof renovada.id, 'number', 'renovar responde con id (contrato de la suite)');
+  const otraClave = renovada.clave;
+
+  // Con la clave de conexión y OTRA url: 403 prohibido (antes 200 sin cambiarla).
+  const otraUrl = await conClave('/api/crew/v1/conexiones/renovar', {
+    metodo: 'POST',
+    cuerpo: { app: 'clipkeeper', url: 'http://192.0.2.99:8096', clave: 'cgc_movida' },
+  });
+  assert.equal(otraUrl.status, 403);
+  assert.equal((await otraUrl.json()).codigo, 'prohibido');
   assert.equal(
     (await pedir('/api/crew/v1/status', { cabeceras: { 'X-Api-Key': otraClave } })).status,
     200

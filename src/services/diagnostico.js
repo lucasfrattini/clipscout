@@ -183,7 +183,7 @@ async function comprobaciones(idioma = 'es') {
   for (const c of conexiones) {
     lista.push(
       comprobar(
-        `conexion_${c.app}`,
+        `conexion:${c.app}`,
         async () => {
           if (c.activa === false) return { detalle: texto(idioma, 'conInactiva') };
           const r = await crew.probar(c.app, c.url, c.api_key);

@@ -71,9 +71,11 @@ async function crear({ miniaturas = false } = {}) {
   return { zip: zip.crear(entradas), manifiesto };
 }
 
-function invalida(detalle, params) {
+// Códigos comunes de las tres apps (contrato de la suite): `copia_no_valida`, `copia_de_otra_app`
+// (400) y `copia_mas_nueva` (409). Hasta la 2.23.0 eran `copia_invalida` y `version_mas_nueva`.
+function invalida(detalle, params, codigo = 'copia_no_valida') {
   const e = new ErrorCrew(detalle, 400);
-  e.codigo = 'copia_invalida';
+  e.codigo = codigo;
   if (params) e.params = params;
   return e;
 }
@@ -94,16 +96,20 @@ function comprobar(buffer) {
     throw invalida('No es una copia válida: manifiesto.json ilegible.');
   }
   if (manifiesto?.app !== 'clipscout') {
-    throw invalida(`Esta copia es de ${manifiesto?.app || 'otra app'}, no de clipscout.`, {
-      app: String(manifiesto?.app || ''),
-    });
+    throw invalida(
+      `Esta copia es de ${manifiesto?.app || 'otra app'}, no de clipscout.`,
+      {
+        app: String(manifiesto?.app || ''),
+      },
+      'copia_de_otra_app'
+    );
   }
   if (compararVersiones(manifiesto.version, version) > 0) {
     const e = new ErrorCrew(
       `Esta copia es de una versión más nueva (${manifiesto.version}): actualiza clipscout antes.`,
       409
     );
-    e.codigo = 'version_mas_nueva';
+    e.codigo = 'copia_mas_nueva';
     e.params = { version: String(manifiesto.version), actual: version };
     throw e;
   }
@@ -112,7 +118,7 @@ function comprobar(buffer) {
       'Esta copia tiene un formato más nuevo: actualiza clipscout antes.',
       409
     );
-    e.codigo = 'version_mas_nueva';
+    e.codigo = 'copia_mas_nueva';
     e.params = { version: String(manifiesto.version), actual: version };
     throw e;
   }

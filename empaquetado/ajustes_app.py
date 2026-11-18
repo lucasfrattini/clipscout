@@ -13,7 +13,7 @@ from pathlib import Path
 
 APP = NOMBRE = "clipscout"
 PUERTO = "3001"
-SALUD = "/api/health"
+SALUD = "/api/salud"  # la honesta (503 si no puede trabajar), como en las otras dos
 PAQUETES: list[str] = []
 _proceso = None
 

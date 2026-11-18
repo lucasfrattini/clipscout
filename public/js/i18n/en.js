@@ -1080,6 +1080,9 @@ export const en = {
   'asis.movil.texto': 'Scan the code with your phone camera or type the address:',
   'asis.movil.qr': 'QR code with the address {dir}',
   'asis.movil.misma': 'Your phone and this computer must be on the same network (the same Wi-Fi).',
+  'asis.movil.red': 'Allow access from other devices',
+  'asis.movil.red.reiniciar':
+    'The change applies when clipscout (and Clipgeist, if you have it) restarts.',
   'asis.movil.soloLocal':
     'Right now clipscout only accepts connections from this computer. To use it from your phone, turn on “Allow access from other devices” when installing it (or start it with CLIPGEIST_ESCUCHAR=red).',
   'asis.movil.docker':
@@ -1231,8 +1234,10 @@ export const en = {
   'err.error_interno':
     'Internal error (ref. {id}). It is in the log: Settings → System → Diagnostics.',
   'err.demasiadas_peticiones': 'Too many requests in a row: wait a few seconds.',
-  'err.version_mas_nueva':
+  'err.copia_mas_nueva':
     'This backup comes from a newer version ({version}): update clipscout first.',
+  'err.copia_de_otra_app': 'This backup belongs to {app}, not to clipscout.',
+  'err.copia_no_valida': 'This is not a valid clipscout backup.',
   'apps.versionNueva': 'A new version is available: {version}',
   'aj.copia.titulo': 'Clipgeist backup',
   'aj.copia.hint':
