@@ -249,7 +249,8 @@ cg-barra-inferior {
   align-items: stretch;
   justify-content: space-around;
   height: calc(var(--cg-barra-alto) + var(--cg-seguro-abajo));
-  padding: 0 4px var(--cg-seguro-abajo);
+  /* Sin relleno lateral: 6 destinos a 390 px miden 65 px cada uno. */
+  padding: 0 env(safe-area-inset-right, 0px) var(--cg-seguro-abajo) env(safe-area-inset-left, 0px);
   box-sizing: border-box;
   background: color-mix(in srgb, var(--cg-superficie) 92%, transparent);
   -webkit-backdrop-filter: saturate(1.6) blur(14px);
@@ -272,7 +273,7 @@ cg-barra-inferior > .cg-barra-mas {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  padding: 6px 2px;
+  padding: 6px 1px;
   border: 0;
   background: none;
   color: var(--cg-tenue);
@@ -293,12 +294,18 @@ cg-barra-inferior > * > .cg-barra-texto {
 }
 /* La píldora detrás del icono del destino actual. */
 cg-barra-inferior > * > .cg-barra-icono {
-  width: 56px;
+  width: min(56px, 100%);
   height: 30px;
   border-radius: var(--cg-radio-total);
   display: grid;
   place-items: center;
   transition: background var(--cg-rapido), color var(--cg-rapido);
+}
+/* Teléfonos estrechos: 6 destinos de 65 px con la etiqueta entera en una línea. */
+@media (max-width: 420px) {
+  cg-barra-inferior > a,
+  cg-barra-inferior > button,
+  cg-barra-inferior > .cg-barra-mas { padding-left: 0; padding-right: 0; font-size: 11px; letter-spacing: 0; }
 }
 cg-barra-inferior > :hover { color: var(--cg-texto); }
 cg-barra-inferior > [aria-current='page'] { color: var(--cg-texto); }
@@ -750,6 +757,13 @@ cg-chips {
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent);
   mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent);
 }
+/* Con «Filtros» fijo a la derecha, nada asoma a su derecha: sin relleno ni
+   difuminado a ese lado; el hueco lo pone el margen del propio botón. */
+cg-chips[filtros] {
+  padding-right: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px);
+  mask-image: linear-gradient(90deg, transparent 0, #000 12px);
+}
 cg-chips::-webkit-scrollbar { display: none; }
 cg-chips > button,
 cg-chips > a {
@@ -781,12 +795,25 @@ cg-chips > [aria-pressed='true'] > .cg-chip-marca { display: block; }
 cg-chips .cg-chip-marca { display: none; width: 18px; height: 18px; margin-left: -4px; stroke-width: 2.6; }
 cg-chips > .cg-chips-filtros {
   position: sticky;
-  right: 0;
+  right: 16px;
   margin-left: auto;
+  margin-right: 16px;
+  scroll-snap-align: none;
   background: var(--cg-texto);
   border-color: var(--cg-texto);
   color: var(--cg-fondo);
   box-shadow: -12px 0 12px -4px var(--cg-fondo);
+}
+/* Tapa el hueco de 16 px a su derecha: por ahí no asoma ningún chip. */
+cg-chips > .cg-chips-filtros::after {
+  content: '';
+  position: absolute;
+  left: 100%;
+  top: -5px;
+  bottom: -5px;
+  width: 17px;
+  background: var(--cg-fondo);
+  pointer-events: none;
 }
 cg-chips > .cg-chips-filtros:hover { border-color: var(--cg-texto); filter: brightness(1.15); }
 cg-chips > .cg-chips-filtros .cg-icono { width: 20px; height: 20px; }
@@ -872,9 +899,14 @@ cg-barra-accion > :not(.cg-accion-cancelar, .cg-accion-cuenta) {
 cg-barra-accion > :not(.cg-accion-cuenta):hover { background: color-mix(in srgb, var(--cg-fondo) 14%, transparent); }
 cg-barra-accion > [data-peligro] { color: color-mix(in srgb, var(--cg-mal) 70%, var(--cg-fondo)); }
 cg-barra-accion :focus-visible { outline-color: var(--cg-acento-claro) !important; }
+/* Con 5 acciones o más, en el móvil solo iconos (el nombre va en aria-label). */
+@media (max-width: 768px) {
+  cg-barra-accion[data-compacta] > :not(.cg-accion-cancelar, .cg-accion-cuenta) { font-size: 0; gap: 0; flex-basis: 56px; }
+}
 @media (min-width: 769px) {
   cg-barra-accion {
-    left: calc(var(--cg-ocupa-izq) + 50%);
+    /* centrada en lo que queda a la derecha de la barra lateral */
+    left: calc(50% + var(--cg-ocupa-izq) / 2);
     right: auto;
     bottom: 20px;
     height: auto;

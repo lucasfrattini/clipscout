@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     $('cg-cabecera').setAttribute('titulo', a.textContent.trim());
   });
 
+  $('#b-apps').addEventListener('click', () => cgAviso('Aquí irían las tres apps.'));
+
   // Filtros
   const chips = $('#chips');
   chips.addEventListener('cg-filtros', () => $('#hoja-filtros').abrir());

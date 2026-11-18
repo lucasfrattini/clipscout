@@ -14,7 +14,7 @@
   'use strict';
   if (window.cg && window.cg.version) return; // cargado dos veces: nada
 
-  const VERSION = '1.2.0';
+  const VERSION = '1.3.0';
   const raiz = document.documentElement;
 
   // ── Textos ────────────────────────────────────────────────────────────
@@ -586,14 +586,11 @@
       uno.addEventListener('pointerleave', seguir);
       uno.addEventListener('focusin', pausar);
       uno.addEventListener('focusout', seguir);
+      // Uno solo a la vez: el nuevo sustituye al anterior (también a un error, y
+      // el «Deshacer» del anterior se pierde). Se quita sin animación para que
+      // no se vean dos apilados ni un instante.
+      for (const viejo of [...this.children]) viejo.remove();
       this.append(uno);
-      // Como mucho tres a la vez: se va el más antiguo que no sea un error.
-      const todos = [...this.children].filter(n => !n.classList.contains('cg-saliendo'));
-      if (todos.length > 3) {
-        const viejo = todos.find(n => !n.classList.contains('cg-aviso-uno--error')) || todos[0];
-        viejo.classList.add('cg-saliendo');
-        setTimeout(() => viejo.remove(), 200);
-      }
       seguir();
       return { cerrar, elemento: uno };
     }
@@ -729,7 +726,10 @@
           masActivo = masActivo || activo;
         }
       }
-      if (hayMas) this.append(this._mas);
+      // «Más» va justo detrás del último destino que guarda: así un destino que el
+      // autor pone después (p. ej. «Apps») sigue siendo el último de la barra.
+      const guardados = this._destinos().filter(n => n.hasAttribute('data-mas'));
+      if (hayMas) guardados[guardados.length - 1].after(this._mas);
       else this._mas.remove();
       if (masActivo) this._mas.setAttribute('aria-current', 'page');
       else this._mas.removeAttribute('aria-current');
@@ -958,11 +958,21 @@
     }
     _iconos() {
       this._obs.disconnect();
-      for (const n of this.children) {
-        if (n === this._cancelar || n === this._caja || !n.dataset.icono) continue;
-        if (!n.querySelector(':scope > .cg-icono, :scope > .cg-icono-texto')) n.prepend(icono(n.dataset.icono));
+      const acciones = [...this.children].filter(n => n !== this._cancelar && n !== this._caja);
+      for (const n of acciones) {
+        if (n.dataset.icono && !n.querySelector(':scope > .cg-icono, :scope > .cg-icono-texto')) {
+          n.prepend(icono(n.dataset.icono));
+        }
+        // Con muchas acciones el móvil enseña solo los iconos: el nombre queda en aria-label.
+        const nombre = n.textContent.trim();
+        if (nombre && (!n.hasAttribute('aria-label') || 'cgEtiqueta' in n.dataset)) {
+          n.setAttribute('aria-label', nombre);
+          n.dataset.cgEtiqueta = '';
+        }
       }
-      this._obs.observe(this, { childList: true });
+      // A partir de 5 acciones no caben los nombres a 390 px: solo iconos (CSS, ≤ 768 px).
+      this.toggleAttribute('data-compacta', acciones.length >= 5);
+      this._obs.observe(this, { childList: true, subtree: true, characterData: true });
     }
     _pintar() {
       const n = this.cuenta;
