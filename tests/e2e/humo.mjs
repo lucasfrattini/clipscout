@@ -3,7 +3,12 @@
 // propia prueba, y los datos van a una carpeta temporal (DATA_DIR, CREW_PATH y PROFILES_PATH).
 //
 //   asistente (usuario → JDownloader → alta de un sitio → apps → móvil)
-//   → condiciones de uso → buscar en el sitio falso → enviar un resultado a la cola falsa.
+//   → condiciones de uso → buscar en el sitio falso → elegir varios resultados y enviarlos a la
+//   cola falsa → Actividad → Ajustes → Sitios → editor de sitio.
+//
+// Fase 3 (cómoda con una mano), todo a 390×844: en cada pantalla se mide que el primer contenido
+// útil empiece antes de 160 px, que ningún control visible mida menos de 44 px de alto y que no
+// haya desplazamiento horizontal; se falla si no. Con E2E_CAPTURAS=<carpeta> guarda capturas.
 //
 // Uso:  npm run e2e
 // Necesita Playwright con Chromium: en CI `npm i --no-save playwright && npx playwright install
@@ -23,11 +28,78 @@ const { chromium } = await import(process.env.PLAYWRIGHT || 'playwright');
 const registro = (...a) => console.log('[humo]', ...a);
 // E2E_CAPTURAS=<carpeta>: guarda una captura de cada pantalla del asistente (para revisarlas).
 const CAPTURAS = process.env.E2E_CAPTURAS || '';
-const capturar = (pagina, nombre) =>
-  CAPTURAS
-    ? pagina.screenshot({ path: path.join(CAPTURAS, `${nombre}.png`), fullPage: true })
-    : null;
+const capturar = (pagina, nombre, fullPage = true) =>
+  CAPTURAS ? pagina.screenshot({ path: path.join(CAPTURAS, `${nombre}.png`), fullPage }) : null;
 const esperar = ms => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Medidas de una pantalla a 390×844 (apartado 7 de la fase 3). Cuenta los controles que se ven en
+ * pantalla; una casilla dentro de su <label> cuenta por la etiqueta (es lo que se toca).
+ */
+async function medir(pagina, nombre, selectorPrimero) {
+  await esperar(350); // que acaben las transiciones (barra, marcas) antes de medir y capturar
+  const m = await pagina.evaluate(sel => {
+    const visible = e => {
+      const r = e.getBoundingClientRect();
+      const s = getComputedStyle(e);
+      return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.opacity !== '0';
+    };
+    const enPantalla = e => {
+      const r = e.getBoundingClientRect();
+      return r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
+    };
+    const selector =
+      'a[href],button,input:not([type=hidden]),select,textarea,summary,[role=button],[role=tab]';
+    // Excepciones justificadas: el enlace «Saltar al contenido» (fuera de pantalla hasta el foco)
+    // y los campos dentro de una etiqueta que ya mide 44 px.
+    const controles = [
+      ...new Set(
+        [...document.querySelectorAll(selector)]
+          .filter(e => !e.classList.contains('skip-link'))
+          .filter(e => !e.closest('[inert], [aria-hidden="true"]'))
+          .map(
+            e => (e.matches('input[type=checkbox],input[type=radio]') && e.closest('label')) || e
+          )
+      ),
+    ].filter(e => visible(e) && enPantalla(e));
+    const pequenos = controles
+      .filter(e => e.getBoundingClientRect().height < 43.5)
+      .map(
+        e =>
+          `${e.tagName.toLowerCase()}.${String(e.className).split(' ')[0]} «${(
+            e.getAttribute('aria-label') ||
+            e.textContent ||
+            e.placeholder ||
+            ''
+          )
+            .trim()
+            .slice(0, 24)}» ${Math.round(e.getBoundingClientRect().height)}px`
+      );
+    const primero = sel ? document.querySelector(sel) : null;
+    const filas = [...document.querySelectorAll('.buscar__tarjeta')].filter(e => {
+      const r = e.getBoundingClientRect();
+      return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight;
+    }).length;
+    return {
+      primerContenido: primero ? Math.round(primero.getBoundingClientRect().top + scrollY) : null,
+      controles: controles.length,
+      pequenos,
+      desbordaHorizontal: document.documentElement.scrollWidth > innerWidth + 1,
+      filasEnPantalla: filas,
+    };
+  }, selectorPrimero);
+  registro('medida', nombre, JSON.stringify(m));
+  medidas[nombre] = m;
+  await capturar(pagina, nombre, false);
+  const fallos = [];
+  if (m.primerContenido === null) fallos.push('sin primer contenido');
+  else if (m.primerContenido >= 160) fallos.push(`primer contenido a ${m.primerContenido} px`);
+  if (m.pequenos.length) fallos.push(`controles < 44 px: ${m.pequenos.join(', ')}`);
+  if (m.desbordaHorizontal) fallos.push('desplazamiento horizontal');
+  if (fallos.length) throw new Error(`[${nombre}] ${fallos.join(' · ')}`);
+  return m;
+}
+const medidas = {};
 
 /* ── Sitio falso: portada con buscador, listado paginado y fichas con su vídeo ── */
 function crearSitio() {
@@ -43,7 +115,8 @@ function crearSitio() {
     if (url.pathname === '/resultados') {
       const q = url.searchParams.get('q') || '';
       const pagina = Number(url.searchParams.get('page') || '1');
-      const fichas = q && pagina <= 2 ? [1, 2, 3, 4, 5].map(n => n + (pagina - 1) * 5) : [];
+      const fichas =
+        q && pagina <= 2 ? Array.from({ length: 8 }, (_, i) => i + 1 + (pagina - 1) * 8) : [];
       return html(`<h1>Resultados de ${q}</h1>
         ${fichas.map(n => `<a href="/v/${n}/clip-de-prueba-${n}">Clip de prueba ${n}</a>`).join('')}
         <a href="/ayuda">ayuda</a><a href="/contacto">contacto</a>
@@ -94,6 +167,7 @@ const jd = crearJd(recibidos);
 let servidor = null;
 let navegador = null;
 let salida = '';
+const errores = [];
 
 async function limpiar() {
   if (navegador) await navegador.close().catch(() => {});
@@ -163,7 +237,6 @@ try {
     viewport: { width: 390, height: 844 },
   });
   pagina.setDefaultTimeout(30000);
-  const errores = [];
   pagina.on('pageerror', e => errores.push(e.message));
 
   // 1. Instalación nueva: la raíz lleva al asistente.
@@ -219,24 +292,164 @@ try {
     await guia.getByRole('button').last().click();
   }
 
-  // Buscar en el sitio falso y mandar un resultado a la cola falsa.
+  // Un segundo sitio, y nombres neutros para las capturas («sitio A», «sitio B»): el mismo sitio
+  // falso visto como 127.0.0.1 y como localhost.
+  const perfiles = await (await pagina.request.get(`${base}/api/profiles`)).json();
+  const [primero] = perfiles.profiles;
+  const segundo = JSON.parse(JSON.stringify(primero));
+  segundo.config.searchUrl = segundo.config.searchUrl.replace('127.0.0.1', 'localhost');
+  if (segundo.config.url) segundo.config.url = segundo.config.url.replace('127.0.0.1', 'localhost');
+  const guardado = await pagina.request.put(`${base}/api/profiles`, {
+    headers: { 'X-Clipgeist': '1' },
+    data: {
+      profiles: [
+        { ...primero, name: 'sitio A' },
+        { ...segundo, name: 'sitio B' },
+      ],
+    },
+  });
+  if (!guardado.ok()) throw new Error(`no se pudo preparar el segundo sitio: ${guardado.status()}`);
+  await pagina.reload();
+  await pagina.locator('.buscar__entrada').waitFor();
+  await esperar(500);
+  await medir(pagina, 'buscar-vacio', '.buscar__entrada');
+
+  // Buscar en los dos sitios falsos: lista compacta, una sola fila de marcas y filtros en hoja.
   await pagina.locator('.buscar__entrada').fill('playa');
   await pagina.locator('.buscar__entrada').press('Enter');
-  const descargar = pagina.getByRole('button', { name: '⬇ Descargar', exact: true }).first();
-  await descargar.waitFor({ timeout: 60000 });
-  registro('resultados en pantalla');
-  await descargar.click();
+  await pagina.locator('.buscar__tarjeta').first().waitFor({ timeout: 60000 });
+  // Terminada: ya no queda el botón «Parar» en la línea de estado.
+  await pagina.waitForFunction(() => !document.querySelector('.buscar__parar'), null, {
+    timeout: 90000,
+  });
+  await esperar(500);
+  await pagina.evaluate(() => window.scrollTo(0, 0));
+  const lista = await medir(pagina, 'buscar-resultados', '.buscar__tarjeta');
+  if (lista.filasEnPantalla < 7) {
+    throw new Error(`solo ${lista.filasEnPantalla} resultados enteros en pantalla (mínimo 7)`);
+  }
+  registro('resultados en pantalla:', lista.filasEnPantalla);
+  await pagina.locator('.buscar__boton-filtros').click();
+  await pagina.locator('cg-hoja.buscar__hoja-filtros[abierta]').waitFor();
+  await esperar(400);
+  await capturar(pagina, 'buscar-filtros', false);
+  await pagina.keyboard.press('Escape');
+  await esperar(400);
+
+  // Selección: pulsación larga en una fila y la casilla de otra; se envían desde la barra de acción.
+  const filas = pagina.locator('.buscar__tarjeta');
+  const caja = await filas.nth(0).locator('.buscar__texto').boundingBox();
+  await pagina.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2);
+  await pagina.mouse.down();
+  await esperar(700);
+  await pagina.mouse.up();
+  await filas.nth(2).locator('.buscar__casilla').click();
+  await pagina.locator('cg-barra-accion[cuenta="2"]').waitFor();
+  await esperar(300);
+  await medir(pagina, 'buscar-seleccion', '.buscar__tarjeta');
+  const elegidos = await pagina.evaluate(() =>
+    [...document.querySelectorAll('.buscar__tarjeta.cg-seleccionado')].map(n => n.dataset.id)
+  );
+  if (elegidos.length !== 2) throw new Error(`seleccionados: ${elegidos.length}`);
+  await pagina.locator('cg-barra-accion button[data-icono="descargar"]').click();
   await pagina.locator('button[data-tipo="etiqueta"]').click();
   await pagina.locator('.dialog__input').fill('Prueba de humo');
   await pagina.locator('.dialog__input').press('Enter');
   for (let i = 0; i < 100 && recibidos.length === 0; i += 1) await esperar(100);
   if (recibidos.length === 0) throw new Error('La cola falsa no recibió nada');
-  registro('enviado a la cola falsa:', JSON.stringify(recibidos[0]).slice(0, 160));
+  const enlaces = recibidos.flatMap(r =>
+    String(r.links || '')
+      .split(/\s+/)
+      .filter(Boolean)
+  );
+  if (!elegidos.every(e => enlaces.includes(e))) {
+    throw new Error(`La cola falsa no recibió los dos elegidos: ${enlaces.join(' ')}`);
+  }
+  registro('enviados a la cola falsa:', enlaces.length);
+  // Lo enviado sale de la lista (con su contador) y de «Descargar todo».
+  await pagina.locator('.buscar__contador', { hasText: '2 ya enviados' }).waitFor();
+  const visiblesTras = await pagina.locator('.buscar__tarjeta').count();
+  const todo = await pagina.locator('.buscar__descargar-todo').textContent();
+  if (!todo.includes(`(${visiblesTras})`)) {
+    throw new Error(`«Descargar todo» no cuadra con lo visible: ${todo} / ${visiblesTras}`);
+  }
+  if (await pagina.locator('cg-barra-accion[abierta]').count()) {
+    throw new Error('la barra de selección sigue abierta tras enviar');
+  }
+  await capturar(pagina, 'buscar-enviados', false);
+
+  // Actividad: la búsqueda, el paquete enviado y las programadas, en un sitio.
+  await pagina.locator('cg-barra-inferior a[href="#/actividad"]').click();
+  await pagina.locator('.cs-fila').first().waitFor();
+  await medir(pagina, 'actividad-busquedas', '.cs-fila');
+  await pagina.locator('cg-chips.actividad__pestanas button[value="descargas"]').click();
+  await pagina.locator('.cs-fila', { hasText: 'Prueba de humo' }).waitFor();
+  const pulsada = await pagina
+    .locator('cg-chips.actividad__pestanas button[aria-pressed="true"]')
+    .allTextContents();
+  if (pulsada.length !== 1 || !pulsada[0].includes('Descargas')) {
+    throw new Error(`pestaña marcada en Actividad: ${pulsada.join(' | ')}`);
+  }
+  await medir(pagina, 'actividad-descargas', '.cs-fila');
+  await pagina.locator('cg-chips.actividad__pestanas button[value="programadas"]').click();
+  await pagina.getByRole('button', { name: 'Nueva programada' }).click();
+  await pagina.locator('#form-programada').waitFor();
+  await esperar(400);
+  await capturar(pagina, 'actividad-programada', false);
+  await pagina.keyboard.press('Escape');
+  await esperar(400);
+
+  // Ajustes: índice de 4 secciones → Búsqueda → Sitios (interruptor y «⋯») → editor de sitio.
+  await pagina.locator('cg-barra-inferior a[href="#/ajustes"]').click();
+  await pagina.locator('.cs-ajustes-indice a').first().waitFor();
+  const secciones = await pagina.locator('.cs-ajustes-indice a').count();
+  if (secciones !== 4) throw new Error(`Ajustes tiene ${secciones} secciones (4 esperadas)`);
+  await medir(pagina, 'ajustes', '.cs-ajustes-indice a');
+  await pagina.locator('.cs-ajustes-indice a[href="#/ajustes/busqueda"]').click();
+  await pagina.locator('.cs-sitio').first().waitFor();
+  await medir(pagina, 'ajustes-sitios', '.cs-sitio');
+  await pagina.locator('.cs-sitio').first().locator('button[aria-haspopup]').click();
+  await pagina.getByRole('button', { name: /^Editar/ }).click();
+  await pagina.waitForURL(/#\/explorer\/0/);
+  await pagina.getByText('Editando «sitio A»').waitFor();
+  await esperar(400);
+  await capturar(pagina, 'editor-sitio', false);
+
+  // Menú del logo: las otras apps (aquí no hay ninguna conectada) y «Salir».
+  await pagina.locator('#view-explorer .cs-logo').click();
+  await pagina.locator('#hoja-apps[abierta]').waitFor();
+  await esperar(400);
+  await capturar(pagina, 'menu-apps', false);
+  await pagina.keyboard.press('Escape');
+  // Escritorio: la misma estructura con la barra lateral (solo capturas, para revisarlas).
+  if (CAPTURAS) {
+    await pagina.emulateMedia({ colorScheme: 'dark' });
+    await pagina.goto(`${base}/#/buscar`);
+    await pagina.locator('.buscar__tarjeta').first().waitFor();
+    await esperar(600);
+    await capturar(pagina, 'oscuro-buscar', false);
+    await pagina.emulateMedia({ colorScheme: 'light' });
+    await pagina.setViewportSize({ width: 1280, height: 800 });
+    await pagina.goto(`${base}/#/buscar`);
+    await pagina.locator('.buscar__tarjeta').first().waitFor();
+    await esperar(600);
+    await capturar(pagina, 'escritorio-buscar', false);
+    await pagina.goto(`${base}/#/ajustes/busqueda`);
+    await pagina.locator('.cs-sitio').first().waitFor();
+    await esperar(400);
+    await capturar(pagina, 'escritorio-ajustes', false);
+  }
+  registro('medidas', JSON.stringify(medidas));
   if (errores.length) throw new Error(`Errores en la página: ${errores.join(' | ')}`);
   codigo = 0;
   registro('OK');
 } catch (error) {
   console.error('[humo] FALLA:', error.message);
+  if (navegador) {
+    const [abierta] = navegador.contexts().flatMap(c => c.pages());
+    if (abierta) await capturar(abierta, 'fallo', false)?.catch(() => {});
+  }
+  if (errores.length) console.error('[humo] errores en la página:', errores.join(' | '));
   console.error(salida.split('\n').slice(-30).join('\n'));
 } finally {
   clearTimeout(tope);

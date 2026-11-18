@@ -5,7 +5,7 @@ const globals = require('globals');
 /** Configuración plana de ESLint 9. */
 module.exports = [
   {
-    ignores: ['node_modules/**', 'logs/**', 'coverage/**'],
+    ignores: ['node_modules/**', 'logs/**', 'coverage/**', 'public/cg/**'],
   },
 
   // Backend: CommonJS sobre Node

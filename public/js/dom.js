@@ -128,6 +128,13 @@ export function badge(text, variant) {
 
 /** Notificación efímera. */
 export function toast(message, variant = 'success', duration = 2600) {
+  // Con el paquete común cargado, el aviso es el de las tres apps (abajo, encima de la barra; los
+  // errores no se cierran solos). Las páginas sin él (login, bienvenida) siguen con el propio.
+  if (typeof window !== 'undefined' && typeof window.cgAviso === 'function') {
+    const tipo = variant === 'error' ? 'error' : variant === 'success' ? 'ok' : 'info';
+    window.cgAviso(String(message), { tipo, duracion: duration });
+    return;
+  }
   const container = document.getElementById('toasts');
   if (!container) return;
 

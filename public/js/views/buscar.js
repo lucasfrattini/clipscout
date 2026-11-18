@@ -1,11 +1,13 @@
 import { ajustes } from '../api.js';
 import { el, clear, toast, enfocarAlAbrir } from '../dom.js';
-import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
+import { t, tp, texto, atributo, alCambiarIdioma, idiomaActual } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
-import { chooseDialog } from '../components/dialog.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
 import { palabras, contieneAlguna, textoDe } from '../filtros.js';
 import { plegarAlbumes, claveAlbum } from '../albumes.js';
+import { botonLogo } from '../cabecera.js';
+import { abrirHoja, menuAcciones } from '../hojas.js';
+import { paraDescargarTodo, fechaCorta } from '../unaMano.js';
 
 /** El «sitio» de lo encontrado en toda la web (no es una configuración guardada). */
 const ID_WEB = -1;
@@ -29,33 +31,49 @@ function tipoDeEntrada(texto) {
 /**
  * Buscar: la pantalla de inicio. Se escribe un nombre y se busca en TODOS los sitios guardados a la
  * vez (las configuraciones cuya dirección lleva {q}); los resultados llegan mezclados y arriba hay
- * una pestaña por sitio para ver solo los de uno. Para ir a fondo en un sitio está el Explorador.
+ * una marca por sitio, con su recuento y su estado, para ver solo los de uno.
+ *
+ * Fase 3 (cómoda con una mano): la caja va en la cabecera; las opciones de la búsqueda y los
+ * filtros de la lista, en hojas inferiores; la lista es compacta (unas ocho filas por pantalla),
+ * con selección múltiple (pulsación larga o la casilla) y las acciones abajo. «Ya lo tengo» y lo
+ * ya enviado se ocultan por defecto, con su contador, y nunca entran en «Descargar todo».
  */
 
 const CLAVE_SITIOS = 'clipscout:buscar-apagados';
 /** Sitios «no buscar por defecto» ya apagados una vez: si luego se encienden a mano, se respeta. */
 const CLAVE_FUERA = 'clipscout:buscar-fuera-aplicados';
+/** «Usar también el buscador web»: antes se preguntaba en cada búsqueda; ahora se recuerda. */
+const CLAVE_WEB = 'clipscout:buscar-web';
 
 /**
- * Miniaturas que ya fallaron en esta página. La rejilla se rehace con cada tanda de resultados y
- * cada <img> nuevo volvía a pedir la misma imagen rota: estas salen ya como hueco, sin petición.
+ * Miniaturas que ya fallaron en esta página. Una fila rehecha volvía a pedir la misma imagen rota:
+ * estas salen ya como hueco, sin petición.
  */
 const miniaturasRotas = new Set();
 
+const leer = (clave, defecto) => {
+  try {
+    return localStorage.getItem(clave) ?? defecto;
+  } catch {
+    return defecto;
+  }
+};
+const guardar = (clave, valor) => {
+  try {
+    localStorage.setItem(clave, valor);
+  } catch {
+    // sin almacenamiento: se olvida al recargar, no es crítico
+  }
+};
+
 function leerApagados() {
   try {
-    return new Set(JSON.parse(localStorage.getItem(CLAVE_SITIOS) || '[]'));
+    return new Set(JSON.parse(leer(CLAVE_SITIOS, '[]')));
   } catch {
     return new Set();
   }
 }
-function guardarApagados(apagados) {
-  try {
-    localStorage.setItem(CLAVE_SITIOS, JSON.stringify([...apagados]));
-  } catch {
-    // sin almacenamiento: se olvidan al recargar, no es crítico
-  }
-}
+const guardarApagados = apagados => guardar(CLAVE_SITIOS, JSON.stringify([...apagados]));
 
 function nombreDeUrl(url) {
   try {
@@ -79,18 +97,19 @@ export function createBuscarView(root) {
   // La búsqueda corre en el servidor: la página solo la mira. Se guarda por dónde iba para
   // reengancharse si la conexión se corta (otra app, pantalla apagada…).
   let trabajo = null; // id de la búsqueda en el servidor
-  let trabajoVisto = null; // la que se está mirando (sigue tras terminar, para marcarla en la cola)
+  let trabajoVisto = null; // la que se está mirando (sigue tras terminar)
   let enCola = null; // puesto en la cola mientras espera su turno (null = ya arrancó)
   let recibidos = 0; // eventos ya procesados
   let reintento = null;
-  let enBiblioteca = new Map(); // sourceUrl → coincidencia de clipkeeper
+  let enBiblioteca = new Map(); // ficha → coincidencia de clipkeeper
+  let enviados = new Map(); // ficha → fecha en que se mandó a JDownloader (CS-N7)
   const nombresDelServidor = new Map(); // id → nombre, para los «sitios» que no son guardados
   // Enlaces pegados que, además de sus vídeos, son un listado: se ofrece recorrer sus fichas.
   let listados = new Map(); // id → url
   let sugeridos = []; // { dominio, videos }: sitios sin configurar que dieron vídeos en la web
   let ultimaBusqueda = '';
 
-  /* ── Formulario ─────────────────────────────────────────────────── */
+  /* ── Cabecera: la caja de búsqueda ──────────────────────────────── */
   const entrada = el('input', {
     className: 'input buscar__entrada',
     attrs: { type: 'search', autocomplete: 'off', enterkeyhint: 'search' },
@@ -98,44 +117,129 @@ export function createBuscarView(root) {
   atributo(entrada, 'placeholder', 'buscar.placeholder');
   atributo(entrada, 'aria-label', 'buscar.placeholder');
 
-  const boton = el('button', { className: 'button buscar__boton', attrs: { type: 'submit' } });
-  const parar = el('button', {
-    className: 'button button--secondary buscar__boton',
-    attrs: { type: 'button', hidden: '' },
-    on: { click: () => pararBusqueda() },
+  const icono = nombre => (window.cgIcono ? window.cgIcono(nombre) : document.createTextNode(''));
+  const boton = el('button', {
+    className: 'cg-boton cg-boton--icono cg-boton--principal buscar__boton',
+    attrs: { type: 'submit' },
+    children: [icono('buscar')],
   });
-  texto(parar, 'buscar.parar');
+  const botonOpciones = el('button', {
+    className: 'cg-boton cg-boton--icono cg-boton--fantasma buscar__opciones-boton',
+    attrs: { type: 'button', 'aria-haspopup': 'dialog' },
+    children: [icono('filtros')],
+    on: { click: () => abrirOpciones() },
+  });
+  const formCaja = el('form', {
+    className: 'buscar__fila',
+    attrs: { role: 'search' },
+    children: [entrada, boton, botonOpciones],
+    on: {
+      submit: e => {
+        e.preventDefault();
+        entrada.blur(); // en el móvil baja el teclado y deja ver los resultados
+        empezar();
+      },
+    },
+  });
+  const titulo = el('h1', {
+    className: 'cg-cabecera-titulo buscar__titulo-oculto',
+    attrs: { id: 'buscar-heading' },
+  });
+  texto(titulo, 'buscar.titulo');
+  const cabecera = document.createElement('cg-cabecera');
+  cabecera.className = 'buscar__cabecera';
+  cabecera.append(
+    titulo,
+    formCaja,
+    el('div', { className: 'cs-cabecera-acciones', children: [botonLogo()] })
+  );
 
-  const chipsSitios = el('div', { className: 'buscar__sitios' });
-  const ayuda = el('p', { className: 'buscar__ayuda' });
-
-  // Cuántas páginas de resultados mirar en cada sitio (se recuerda).
+  /* ── Opciones de la búsqueda (hoja): sitios, páginas, web, varias ─ */
   const CLAVE_PAGINAS = 'clipscout:buscar-paginas';
   const paginas = el('select', { className: 'input buscar__paginas' });
   // Hasta 50: a veces se quiere barrer a fondo, y es la cola la que reparte el trabajo.
   for (const n of [1, 2, 3, 5, 10, 20, 30, 50]) {
     paginas.append(el('option', { attrs: { value: n }, text: n }));
   }
-  try {
-    paginas.value = localStorage.getItem(CLAVE_PAGINAS) || '2';
-  } catch {
-    paginas.value = '2';
-  }
+  paginas.value = leer(CLAVE_PAGINAS, '2');
   paginas.addEventListener('change', () => {
-    try {
-      localStorage.setItem(CLAVE_PAGINAS, paginas.value);
-    } catch {
-      // sin almacenamiento
-    }
+    guardar(CLAVE_PAGINAS, paginas.value);
+    pintarInicio();
   });
-  const etiquetaPaginas = el('label', { className: 'buscar__opcion', children: [paginas] });
+
+  /**
+   * «También en toda la web»: cualquier sitio que nombre lo buscado, aunque no esté configurado.
+   * DESACTIVADA por defecto (trae mucho ruido); se recuerda en este navegador. Solo con SearXNG.
+   */
+  const CLAVE_ABIERTA = 'clipscout:buscar-abierta';
+  const abierta = el('input', { attrs: { type: 'checkbox' } });
+  abierta.checked = leer(CLAVE_ABIERTA, '0') === '1';
+  abierta.addEventListener('change', () => guardar(CLAVE_ABIERTA, abierta.checked ? '1' : '0'));
+  // «Usar también el buscador web» (resultados 🌐): antes un diálogo en cada búsqueda.
+  const conWeb = el('input', { attrs: { type: 'checkbox' } });
+  conWeb.checked = leer(CLAVE_WEB, '0') === '1';
+  conWeb.addEventListener('change', () => guardar(CLAVE_WEB, conWeb.checked ? '1' : '0'));
+
+  let hayWeb = false; // ¿hay SearXNG configurado?
+  const casilla = (input, clave, detalleClave) =>
+    el('label', {
+      className: 'cs-casilla',
+      children: [
+        input,
+        el('span', {
+          children: [t(clave), detalleClave ? el('small', { text: t(detalleClave) }) : null],
+        }),
+      ],
+    });
+
+  const chipsSitios = el('div', { className: 'buscar__sitios' });
+  function abrirOpciones() {
+    pintarSitios();
+    const hoja = abrirHoja({
+      titulo: t('buscar.opciones'),
+      contenido: [
+        el('h3', { className: 'cs-hoja-titulo', text: t('buscar.sitios.titulo') }),
+        chipsSitios,
+        el('p', { className: 'cs-nota', text: textoAyudaSitios() }),
+        el('label', {
+          className: 'field',
+          children: [el('span', { className: 'field__label', text: t('buscar.paginas') }), paginas],
+        }),
+        hayWeb ? casilla(conWeb, 'buscar.web.siempre', 'buscar.webSi.detalle') : null,
+        hayWeb ? casilla(abierta, 'buscar.webTodo', 'buscar.webTodo.detalle') : null,
+        el('div', {
+          className: 'cs-fila-botones',
+          children: [
+            el('button', {
+              className: 'cg-boton',
+              attrs: { type: 'button' },
+              text: t('buscar.agregarSitios'),
+              on: {
+                click: () => {
+                  hoja.cerrar();
+                  abrirAlta({ termino: entrada.value.trim() });
+                },
+              },
+            }),
+            el('button', {
+              className: 'cg-boton',
+              attrs: { type: 'button' },
+              text: t('buscar.varias'),
+              on: {
+                click: () => {
+                  hoja.cerrar();
+                  abrirVarias('');
+                },
+              },
+            }),
+          ],
+        }),
+      ].filter(Boolean),
+    });
+    hoja.addEventListener('cg-cerrar', () => pintarInicio(), { once: true });
+  }
 
   // Alta de sitios con solo su dirección: clipscout la configura y la prueba.
-  const agregar = el('button', {
-    className: 'button button--secondary button--small',
-    attrs: { type: 'button', id: 'agregar-sitios' },
-    on: { click: () => abrirAlta({ termino: entrada.value.trim() }) },
-  });
   async function abrirAlta({ dominios = [], termino = '' } = {}) {
     const n = await altaSitiosDialog({ dominios, termino });
     if (n > 0) {
@@ -146,87 +250,33 @@ export function createBuscarView(root) {
     }
   }
 
-  /**
-   * «También en toda la web»: cualquier sitio que nombre lo buscado, aunque no esté configurado.
-   * DESACTIVADA por defecto (trae mucho ruido y abre muchas páginas de desconocidos); la casilla
-   * se recuerda en este navegador, así que quien ya la marcó la sigue teniendo marcada.
-   * Solo se ve si hay SearXNG configurado.
-   */
-  const CLAVE_ABIERTA = 'clipscout:buscar-abierta';
-  const abierta = el('input', { attrs: { type: 'checkbox' } });
-  try {
-    abierta.checked = localStorage.getItem(CLAVE_ABIERTA) === '1';
-  } catch {
-    abierta.checked = false;
-  }
-  abierta.addEventListener('change', () => {
-    try {
-      localStorage.setItem(CLAVE_ABIERTA, abierta.checked ? '1' : '0');
-    } catch {
-      // sin almacenamiento: vuelve a desmarcada al recargar
-    }
-  });
-  const textoAbierta = el('span');
-  texto(textoAbierta, 'buscar.webTodo');
-  const etiquetaAbierta = el('label', {
-    className: 'buscar__opcion',
-    attrs: { hidden: '' },
-    children: [abierta, textoAbierta],
-  });
-  atributo(etiquetaAbierta, 'title', 'buscar.webTodo.detalle');
-  const textoPaginas = el('span');
-  etiquetaPaginas.prepend(textoPaginas);
-
-  // Varias búsquedas de golpe (una por línea, opcional «término → carpeta»): van todas a la cola.
-  const botonVarias = el('button', {
-    className: 'button button--secondary button--small',
-    attrs: { type: 'button' },
-    on: { click: () => abrirVarias('') },
-  });
-  texto(botonVarias, 'buscar.varias');
-  const textoVarias = el('textarea', {
-    className: 'input buscar__varias-texto',
-    attrs: { rows: 5, spellcheck: 'false' },
-  });
-  atributo(textoVarias, 'placeholder', 'buscar.varias.ej');
-  atributo(textoVarias, 'aria-label', 'buscar.varias');
-  const ayudaVarias = el('p', { className: 'field__hint' });
-  texto(ayudaVarias, 'buscar.varias.hint');
-  const encolar = el('button', { className: 'button button--small', attrs: { type: 'submit' } });
-  const cancelarVarias = el('button', {
-    className: 'button button--secondary button--small',
-    attrs: { type: 'button' },
-    on: {
-      click: () => {
-        zonaVarias.hidden = true;
-      },
-    },
-  });
-  texto(cancelarVarias, 'aj.prog.cancelar');
-  const zonaVarias = el('form', {
-    className: 'buscar__varias',
-    attrs: { hidden: '' },
-    children: [
-      textoVarias,
-      ayudaVarias,
-      el('div', { className: 'ajustes-acciones', children: [encolar, cancelarVarias] }),
-    ],
-    on: {
-      submit: e => {
-        e.preventDefault();
-        encolarVarias();
-      },
-    },
-  });
-  const pintarEncolar = () => {
-    encolar.textContent = t('buscar.varias.encolar', { n: leerLineas(textoVarias.value).length });
-  };
-  textoVarias.addEventListener('input', pintarEncolar);
+  /* ── Varias búsquedas de golpe (una por línea, «término → carpeta») ── */
   function abrirVarias(textoInicial) {
-    if (textoInicial) textoVarias.value = textoInicial;
-    zonaVarias.hidden = false;
+    const area = el('textarea', {
+      className: 'input buscar__varias-texto',
+      attrs: { rows: 6, spellcheck: 'false', placeholder: t('buscar.varias.ej') },
+    });
+    atributo(area, 'aria-label', 'buscar.varias');
+    area.value = textoInicial || '';
+    const encolar = el('button', {
+      className: 'cg-boton cg-boton--principal',
+      attrs: { type: 'button' },
+    });
+    const pintarEncolar = () => {
+      encolar.textContent = t('buscar.varias.encolar', { n: leerLineas(area.value).length });
+    };
     pintarEncolar();
-    textoVarias.focus();
+    area.addEventListener('input', pintarEncolar);
+    const hoja = abrirHoja({
+      titulo: t('buscar.varias'),
+      contenido: [area, el('p', { className: 'field__hint', text: t('buscar.varias.hint') })],
+      pie: [encolar],
+    });
+    encolar.addEventListener('click', async () => {
+      if (await encolarVarias(area.value)) hoja.cerrar();
+      else area.focus();
+    });
+    setTimeout(() => area.focus(), 300);
   }
   // Pegar una lista en la caja normal (que es de una línea y se comería los saltos) abre la de varias.
   entrada.addEventListener('paste', e => {
@@ -237,87 +287,109 @@ export function createBuscarView(root) {
     }
   });
 
-  // La cola: lo que está en marcha, lo que espera su turno y lo terminado hace poco.
-  const listaCola = el('ul', { className: 'buscar__cola-lista' });
-  const tituloCola = el('h3', { className: 'buscar__cola-titulo' });
-  texto(tituloCola, 'buscar.cola');
-  // Las terminadas van plegadas: con muchas, empujaban los resultados hacia abajo.
-  const listaFin = el('ul', { className: 'buscar__cola-lista' });
-  const resumenFin = el('summary', { className: 'buscar__cola-resumen' });
-  const plegadasFin = el('details', {
-    className: 'buscar__cola-fin',
-    children: [resumenFin, listaFin],
+  /* ── Antes de buscar: qué va a pasar y los primeros pasos ───────── */
+  const resumenInicio = el('p', { className: 'buscar__resumen-inicio' });
+  const cambiarOpciones = el('button', {
+    className: 'cg-boton cg-boton--fantasma',
+    attrs: { type: 'button' },
+    on: { click: () => abrirOpciones() },
   });
-  const zonaCola = el('section', {
-    className: 'buscar__cola',
-    attrs: { hidden: '' },
-    children: [tituloCola, listaCola, plegadasFin],
+  const botonAgregar = el('button', {
+    className: 'cg-boton',
+    attrs: { type: 'button', id: 'agregar-sitios' },
+    on: { click: () => abrirAlta({ termino: entrada.value.trim() }) },
   });
-
-  // Aviso fijo de uso responsable, siempre visible bajo la caja de búsqueda.
-  const avisoTexto = el('span');
-  texto(avisoTexto, 'aviso.buscar');
-  const avisoEnlace = el('a', {
-    attrs: { href: 'https://clipgeist.com/#uso', target: '_blank', rel: 'noopener' },
+  const botonVarias = el('button', {
+    className: 'cg-boton',
+    attrs: { type: 'button' },
+    on: { click: () => abrirVarias('') },
   });
-  texto(avisoEnlace, 'aviso.enlace');
-  const avisoUso = el('p', {
-    className: 'buscar__aviso',
-    attrs: { role: 'note' },
-    children: [avisoTexto, ' ', avisoEnlace],
-  });
-
-  const form = el('form', {
-    className: 'buscar__form',
+  const zonaInicio = el('section', {
+    className: 'buscar__inicio',
     children: [
-      el('div', { className: 'buscar__fila', children: [entrada, boton, parar] }),
-      chipsSitios,
+      resumenInicio,
       el('div', {
-        className: 'buscar__pie',
-        children: [
-          ayuda,
-          el('span', { children: [agregar, botonVarias] }),
-          el('span', {
-            className: 'buscar__opciones',
-            children: [etiquetaAbierta, etiquetaPaginas],
-          }),
-        ],
+        className: 'cs-fila-botones',
+        children: [cambiarOpciones, botonAgregar, botonVarias],
       }),
-      avisoUso,
     ],
-    on: {
-      submit: e => {
-        e.preventDefault();
-        empezar();
-      },
-    },
   });
+
+  // Otras búsquedas en marcha (la cola entera está en Actividad).
+  const otras = el('a', { className: 'buscar__otras', attrs: { href: '#/actividad', hidden: '' } });
 
   /* ── Resultados ─────────────────────────────────────────────────── */
-  const pestanas = el('div', { className: 'buscar__pestanas', attrs: { role: 'tablist' } });
-  // Estado de cada sitio mientras busca: así se ve que sigue trabajando y por dónde va.
-  const progreso = el('ul', { className: 'buscar__progreso', attrs: { 'aria-live': 'polite' } });
+  // Una sola fila con la marca de cada sitio: recuento y estado (⏳ buscando, ⚠ error); al final,
+  // «Filtros (N)». Sustituye a la lista de progreso + las pestañas por sitio de antes.
+  const marcasSitios = document.createElement('cg-chips');
+  marcasSitios.setAttribute('unico', '');
+  marcasSitios.className = 'buscar__pestanas';
+  // «Filtros (N)» va FUERA de la fila deslizable: siempre a la vista, a la derecha.
+  const botonFiltros = el('button', {
+    className: 'cg-boton buscar__boton-filtros',
+    attrs: { type: 'button', 'aria-haspopup': 'dialog' },
+    on: { click: () => abrirFiltros() },
+  });
+  const pintarBotonFiltros = n => {
+    const hijos = [icono('filtros'), el('span', { text: t('buscar.filtros') })];
+    if (n) hijos.push(el('span', { className: 'buscar__cuenta-filtros', text: n }));
+    botonFiltros.replaceChildren(...hijos);
+    botonFiltros.setAttribute(
+      'aria-label',
+      n ? `${t('buscar.filtros')} (${n})` : t('buscar.filtros')
+    );
+  };
+  marcasSitios.addEventListener('cg-cambiado', e => {
+    const id = e.detail?.chip?.dataset.sitio;
+    if (id === undefined) return;
+    pestana = id === 'todos' ? 'todos' : Number(id);
+    pintarResultados();
+  });
+  // Filtros activos, cada uno con su ✕ (solo si hay alguno).
+  const marcasFiltros = el('div', { className: 'buscar__marcas', attrs: { hidden: '' } });
+  const lineaEstado = el('div', { className: 'buscar__estado', attrs: { 'aria-live': 'polite' } });
   const zonaSugeridos = el('div', { className: 'buscar__sugeridos', attrs: { hidden: '' } });
-  const barra = el('div', { className: 'buscar__barra' });
-  // Los filtros van en su propia fila y NO se reconstruyen al repintar: la rejilla se repinta con
-  // cada tanda de resultados y un campo rehecho perdería el foco a mitad de escribir.
-  const zonaFiltros = el('div', { className: 'buscar__filtros', attrs: { hidden: '' } });
-  const rejilla = el('div', { className: 'buscar__rejilla' });
-  const vacio = el('p', { className: 'buscar__vacio' });
+  const rejilla = el('div', {
+    className: 'buscar__rejilla',
+    attrs: { role: 'listbox', 'aria-multiselectable': 'true' },
+  });
+  const vacio = el('div', { className: 'buscar__vacio cs-vacio' });
+  // «Descargar todo» y la carpeta, abajo (al alcance del pulgar), encima de la barra.
+  const pieAccion = el('div', { className: 'buscar__pie-accion', attrs: { hidden: '' } });
   const zonaResultados = el('section', {
     className: 'buscar__resultados',
     attrs: { hidden: '' },
-    children: [progreso, zonaSugeridos, pestanas, zonaFiltros, barra, vacio, rejilla],
+    children: [
+      el('div', { className: 'buscar__fila-marcas', children: [marcasSitios, botonFiltros] }),
+      marcasFiltros,
+      lineaEstado,
+      zonaSugeridos,
+      vacio,
+      rejilla,
+      pieAccion,
+    ],
   });
 
-  const titulo = el('h2', { className: 'buscar__titulo', attrs: { id: 'buscar-heading' } });
-  texto(titulo, 'buscar.titulo');
+  // Barra de selección (sustituye a la de navegación mientras hay algo elegido).
+  const barraSeleccion = document.createElement('cg-barra-accion');
+  barraSeleccion.className = 'buscar__barra-seleccion';
+  const accionSel = (icono2, clave, fn) => {
+    const b = el('button', { attrs: { type: 'button', 'data-icono': icono2 }, on: { click: fn } });
+    texto(b, clave);
+    return b;
+  };
+  const selDescargar = accionSel('descargar', 'buscar.sel.descargar', () => descargarSeleccion());
+  const selTodos = accionSel('check', 'buscar.sel.todos', () => seleccionarTodos());
+  const selQuitar = accionSel('cerrar', 'buscar.sel.quitar', () => quitarSeleccion());
+  barraSeleccion.append(selDescargar, selTodos, selQuitar);
 
   root.append(
+    cabecera,
     el('div', {
       className: 'buscar',
-      children: [titulo, form, zonaVarias, zonaCola, zonaResultados],
-    })
+      children: [otras, zonaInicio, zonaResultados],
+    }),
+    barraSeleccion
   );
 
   /* ── Repetidos y filtros de la lista ─────────────────────────────────── */
@@ -325,23 +397,28 @@ export function createBuscarView(root) {
   // el primero, como en el Explorador; nunca se borra nada.
   let copias = new Map();
   let ocultarRepetidos = true;
+  let ocultarTengo = true; // CS-41: lo que ya está en la biblioteca, fuera por defecto
+  let ocultarEnviados = true; // CS-N7: lo ya mandado a JDownloader, también
   let minDuracion = 0; // minutos; 0 = cualquiera
-  // Filtros de texto e idioma de la tarjeta de resultados. Deciden qué se MUESTRA de lo encontrado,
-  // nunca qué se busca: lo oculto se cuenta y se puede ver («Ver ocultos»).
+  // Filtros de texto e idioma. Deciden qué se MUESTRA de lo encontrado, nunca qué se busca: lo
+  // oculto se cuenta y se puede ver («Ver ocultos»).
   let contener = []; // alguna de estas frases (ya normalizadas)
   let excluir = []; // ninguna de estas
   let idiomaFiltro = ''; // '' = cualquiera; un resultado «dudoso» no se oculta nunca
   let verOcultos = false;
   let soloFrase = false; // «frase exacta»: oculta (con contador) lo que no la lleva seguida
   let orden = 'llegada'; // 'llegada' | 'relevancia' | 'duracion'
-  const textos = new WeakMap(); // resultado → texto normalizado (se repinta con cada tanda)
+  const textos = new WeakMap(); // resultado → texto normalizado
   const textoNormal = r => {
     if (!textos.has(r)) textos.set(r, textoDe(r));
     return textos.get(r);
   };
+  const enlaceDe = r => r.sourceUrl || r.url;
   /** Por qué un resultado no se muestra (o null). El orden es el de las explicaciones. */
   function motivoOculto(r) {
     if (r.bloqueada) return 'bloqueada';
+    if (ocultarTengo && enBiblioteca.has(enlaceDe(r))) return 'tengo';
+    if (ocultarEnviados && enviados.has(enlaceDe(r))) return 'enviado';
     if (excluir.length && contieneAlguna(textoNormal(r), excluir)) return 'excluir';
     if (contener.length && !contieneAlguna(textoNormal(r), contener)) return 'contener';
     // Sin dato (un enlace pegado no tiene término) no se oculta: no se sabe.
@@ -357,11 +434,7 @@ export function createBuscarView(root) {
     }
     return null;
   }
-  const descartados = new Set(); // páginas quitadas a mano de esta búsqueda
-  // El vídeo que se está reproduciendo en su tarjeta: { enlace, tarjeta, video }. Mientras dura la
-  // búsqueda la rejilla se repinta entera con cada tanda de resultados; esa tarjeta se REUTILIZA y
-  // se vuelve a insertar en el mismo paso, y así el navegador no pausa el vídeo.
-  let reproduciendo = null;
+  const descartados = new Set(); // fichas quitadas a mano de esta búsqueda
 
   /**
    * ¿Hay un fichero de vídeo que reproducir, distinto de la ficha? Las listas HLS (.m3u8) y sus
@@ -373,15 +446,6 @@ export function createBuscarView(root) {
     r.url !== (r.sourceUrl || '') &&
     !/\.(m3u8|ts)(\?|$)/i.test(r.url);
 
-  function pararVideo() {
-    if (!reproduciendo) return;
-    const v = reproduciendo.video;
-    v.pause();
-    v.removeAttribute('src'); // corta la descarga que va por el servidor
-    v.load();
-    reproduciendo = null;
-  }
-  let hayWeb = false; // ¿hay SearXNG configurado? (entonces se pregunta al buscar)
   let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
   let reglaFija = null; // si la carpeta fija es nueva: qué persona/categoría/etiqueta lleva
 
@@ -392,15 +456,9 @@ export function createBuscarView(root) {
   // Repetido = el MISMO vídeo (mismo fichero, p. ej. hallado por la búsqueda propia y por la web)
   // o una copia que detecta el servidor. Los vídeos distintos de un mismo álbum NO lo son.
   const clavePagina = r => r.url;
-  const porPagina = () => {
-    const n = new Map();
-    for (const r of resultados) n.set(clavePagina(r), (n.get(clavePagina(r)) || 0) + 1);
-    return n;
-  };
-  let cuentaPagina = new Map(); // resultados por página, para el «+N» de cada tarjeta
+  let cuentaPagina = new Map(); // resultados por página, para el «+N» de cada fila
   const enPestana = r =>
-    (pestana === 'todos' || r.sitio === pestana) && !descartados.has(r.sourceUrl || r.url);
-  /** Lo que se ve. `conOcultos`: también lo que esconden los filtros (marcado como tal). */
+    (pestana === 'todos' || r.sitio === pestana) && !descartados.has(enlaceDe(r));
   /**
    * Orden elegido. Los que no tienen el dato van siempre al final (la misma regla que la lista del
    * Explorador); el orden de llegada desempata, así la lista no baila con cada tanda.
@@ -431,85 +489,122 @@ export function createBuscarView(root) {
    */
   const albumesAbiertos = new Set(); // fichas desplegadas
   let albumes = new Map(); // ficha → miembros visibles (los de la última lista pintada)
-  const plegarLista = lista => {
-    const r = plegarAlbumes(lista, albumesAbiertos);
-    albumes = r.albumes;
-    return r.lista;
-  };
-  const visibles = ({ plegar = ocultarRepetidos, conOcultos = false, porAlbum = true } = {}) => {
+  const plegarRepetidos = lista => {
     const vistas = new Set();
-    const lista = ordenar(resultados).filter(r => {
-      if (!enPestana(r)) return false;
-      if (!conOcultos && motivoOculto(r)) return false;
-      if (!plegar) return true;
+    return lista.filter(r => {
       if (esCopia(r) || vistas.has(clavePagina(r))) return false;
       vistas.add(clavePagina(r));
       return true;
     });
-    return porAlbum ? plegarLista(lista) : lista;
   };
-  const jd = createJdEnvio({ visibles: () => visibles().map(r => r.sourceUrl || r.url) });
+  /**
+   * Una sola pasada por pintado (CS-14): antes se ordenaba y filtraba la lista cuatro veces cada
+   * 80 ms mientras llegaban resultados.
+   */
+  function calcular() {
+    const base = ordenar(resultados).filter(enPestana);
+    const motivos = new Map(base.map(r => [r, motivoOculto(r)]));
+    const sinOcultos = base.filter(r => !motivos.get(r));
+    const plegada = ocultarRepetidos ? plegarRepetidos(sinOcultos) : sinOcultos;
+    const conAlbumes = plegarAlbumes(plegada, albumesAbiertos);
+    const lista = conAlbumes.lista;
+    let pintar = lista;
+    albumes = conAlbumes.albumes;
+    if (verOcultos) {
+      const todos = plegarAlbumes(ocultarRepetidos ? plegarRepetidos(base) : base, albumesAbiertos);
+      pintar = todos.lista;
+      albumes = todos.albumes;
+    }
+    const ocultos = new Map();
+    for (const m of motivos.values()) if (m) ocultos.set(m, (ocultos.get(m) || 0) + 1);
+    return {
+      lista,
+      pintar,
+      motivos,
+      ocultos,
+      repetidos: sinOcultos.length - plegada.length,
+      enAlbumes: plegada.length - lista.length,
+    };
+  }
+  let ultimaPasada = null;
+  const visibles = () => (ultimaPasada || calcular()).lista;
+
+  const jd = createJdEnvio({ visibles: () => visibles().map(enlaceDe) });
   // La misma página (un álbum con varios vídeos) se manda una sola vez: JDownloader ya la abre entera.
-  const descargar = links => {
+  async function descargar(links) {
     const unicos = [...new Set(links)];
-    const titulo = new Map(resultados.map(r => [r.sourceUrl || r.url, r.title || '']));
-    return jd.enviar(unicos, {
+    if (!unicos.length) return null;
+    const titulo = new Map(resultados.map(r => [enlaceDe(r), r.title || '']));
+    const r = await jd.enviar(unicos, {
       ...(destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija }),
       titulos: unicos.map(l => titulo.get(l) || ''),
     });
-  };
+    if (r) {
+      // Memoria de lo enviado: desde ya salen ocultos (con su contador) y fuera de «todo».
+      const ahora = Date.now();
+      for (const l of unicos) enviados.set(l, ahora);
+      pintarResultados();
+    }
+    return r;
+  }
 
-  const filtroRepetidos = el('input', { attrs: { type: 'checkbox', checked: true } });
-  filtroRepetidos.addEventListener('change', () => {
-    ocultarRepetidos = filtroRepetidos.checked;
-    pintarResultados();
-  });
-  const textoRepetidos = el('span');
-  const etiquetaRepetidos = el('label', {
-    className: 'buscar__opcion',
-    children: [filtroRepetidos, textoRepetidos],
-  });
-  const duracion = el('select', { className: 'input buscar__paginas' });
-  const textoDuracion = el('span');
-  const etiquetaDuracion = el('label', {
-    className: 'buscar__opcion',
-    children: [textoDuracion, duracion],
-  });
-  duracion.addEventListener('change', () => {
-    minDuracion = Number(duracion.value);
-    pintarResultados();
-  });
-
+  /* ── Filtros (hoja) ─────────────────────────────────────────────── */
   const campoFiltro = (clave, alCambiar) => {
     const input = el('input', {
       className: 'input buscar__filtro',
       attrs: { type: 'search', autocomplete: 'off', spellcheck: 'false' },
     });
     atributo(input, 'placeholder', `${clave}.ej`);
-    atributo(input, 'aria-label', clave);
     input.addEventListener('input', () => {
       alCambiar(palabras(input.value));
       pintarResultados();
     });
-    const rotulo = el('span');
-    texto(rotulo, clave);
-    return el('label', { className: 'buscar__opcion', children: [rotulo, input] });
+    return input;
   };
   const filtroContener = campoFiltro('buscar.filtro.contener', v => (contener = v));
   const filtroExcluir = campoFiltro('buscar.filtro.excluir', v => (excluir = v));
-  const idioma = el('select', { className: 'input buscar__paginas' });
+  const duracion = el('select', { className: 'input' });
+  duracion.addEventListener('change', () => {
+    minDuracion = Number(duracion.value);
+    pintarResultados();
+  });
+  const idioma = el('select', { className: 'input' });
   idioma.addEventListener('change', () => {
     idiomaFiltro = idioma.value;
     pintarResultados();
   });
-  const textoIdioma = el('span');
-  const etiquetaIdioma = el('label', {
-    className: 'buscar__opcion',
-    attrs: { title: '' },
-    children: [textoIdioma, idioma],
+  const selectOrden = el('select', { className: 'input' });
+  selectOrden.addEventListener('change', () => {
+    orden = selectOrden.value;
+    pintarResultados();
   });
-  function pintarIdiomas() {
-    const actual = idioma.value || idiomaFiltro;
+  const casillaFiltro = (inicial, alCambiar) => {
+    const c = el('input', { attrs: { type: 'checkbox' } });
+    c.checked = inicial;
+    c.addEventListener('change', () => {
+      alCambiar(c.checked);
+      pintarResultados();
+    });
+    return c;
+  };
+  const frase = casillaFiltro(false, v => (soloFrase = v));
+  const filtroRepetidos = casillaFiltro(true, v => (ocultarRepetidos = v));
+  const filtroTengo = casillaFiltro(true, v => (ocultarTengo = v));
+  const filtroEnviados = casillaFiltro(true, v => (ocultarEnviados = v));
+  const filtroVerOcultos = casillaFiltro(false, v => (verOcultos = v));
+
+  function pintarSelects() {
+    const minActual = duracion.value || String(minDuracion);
+    clear(duracion);
+    for (const n of [0, 1, 3, 5, 10, 20, 30]) {
+      duracion.append(
+        el('option', {
+          attrs: { value: n },
+          text: n ? t('buscar.duracion.min', { n }) : t('buscar.duracion.cualquiera'),
+        })
+      );
+    }
+    duracion.value = minActual;
     clear(idioma);
     for (const v of ['', 'es', 'en', 'pt', 'fr', 'de', 'it']) {
       idioma.append(
@@ -519,55 +614,194 @@ export function createBuscarView(root) {
         })
       );
     }
-    idioma.value = actual;
-    textoIdioma.textContent = t('buscar.idioma');
-    etiquetaIdioma.title = t('buscar.idioma.titulo');
-  }
-  const frase = el('input', { attrs: { type: 'checkbox' } });
-  frase.addEventListener('change', () => {
-    soloFrase = frase.checked;
-    pintarResultados();
-  });
-  const textoFrase = el('span');
-  texto(textoFrase, 'buscar.frase');
-  const etiquetaFrase = el('label', {
-    className: 'buscar__opcion',
-    children: [frase, textoFrase],
-  });
-  atributo(etiquetaFrase, 'title', 'buscar.frase.titulo');
-  const selectOrden = el('select', { className: 'input buscar__paginas' });
-  selectOrden.addEventListener('change', () => {
-    orden = selectOrden.value;
-    pintarResultados();
-  });
-  const textoOrden = el('span');
-  texto(textoOrden, 'buscar.orden');
-  const etiquetaOrden = el('label', {
-    className: 'buscar__opcion',
-    children: [textoOrden, selectOrden],
-  });
-  function pintarOrden() {
+    idioma.value = idiomaFiltro;
     clear(selectOrden);
     for (const v of ['llegada', 'relevancia', 'duracion']) {
       selectOrden.append(el('option', { attrs: { value: v }, text: t(`buscar.orden.${v}`) }));
     }
     selectOrden.value = orden;
   }
-  // «Ver ocultos (N)»: lo que esconden los filtros se puede mirar sin quitar ninguno.
-  const resumenOcultos = el('span', { className: 'buscar__ocultos' });
-  const botonOcultos = el('button', {
-    className: 'button button--ghost button--small',
-    attrs: { type: 'button' },
-    on: {
-      click: () => {
-        verOcultos = !verOcultos;
-        pintarResultados();
+
+  let hojaFiltros = null;
+  let verN = null;
+  function abrirFiltros() {
+    const campo = (clave, control, ayuda) =>
+      el('label', {
+        className: 'field',
+        attrs: ayuda ? { title: t(ayuda) } : {},
+        children: [el('span', { className: 'field__label', text: t(clave) }), control],
+      });
+    verN = el('button', {
+      className: 'cg-boton cg-boton--principal',
+      attrs: { type: 'button' },
+      on: { click: () => hojaFiltros?.cerrar() },
+    });
+    const limpiar = el('button', {
+      className: 'cg-boton',
+      attrs: { type: 'button' },
+      text: t('buscar.filtros.limpiar'),
+      on: { click: () => limpiarFiltros() },
+    });
+    hojaFiltros = abrirHoja({
+      titulo: t('buscar.filtros'),
+      clase: 'buscar__hoja-filtros',
+      contenido: [
+        campo('buscar.orden', selectOrden),
+        campo('buscar.filtro.contener', filtroContener),
+        campo('buscar.filtro.excluir', filtroExcluir),
+        campo('buscar.duracion', duracion),
+        campo('buscar.idioma', idioma, 'buscar.idioma.titulo'),
+        casilla(frase, 'buscar.frase', 'buscar.frase.titulo'),
+        casilla(filtroRepetidos, 'buscar.ocultarRepetidos'),
+        casilla(filtroTengo, 'buscar.ocultarTengo', 'buscar.ocultarTengo.detalle'),
+        casilla(filtroEnviados, 'buscar.ocultarEnviados'),
+        casilla(filtroVerOcultos, 'buscar.ocultos.ver'),
+        el('div', {
+          className: 'cs-fila-botones',
+          children: [
+            el('button', {
+              className: 'cg-boton',
+              attrs: { type: 'button', title: t('video.yaLoTengo.titulo') },
+              text: t('video.yaLoTengo'),
+              on: { click: () => comprobarBiblioteca(true) },
+            }),
+            el('button', {
+              className: 'cg-boton',
+              attrs: { type: 'button' },
+              text: t('buscar.programar'),
+              on: {
+                click: () => {
+                  hojaFiltros.cerrar();
+                  programar();
+                },
+              },
+            }),
+          ],
+        }),
+      ],
+      pie: [limpiar, verN],
+    });
+    hojaFiltros.addEventListener(
+      'cg-cerrar',
+      () => {
+        hojaFiltros = null;
+        verN = null;
       },
-    },
-  });
-  // «Descargar en»: un botón que abre la ventana de carpeta (qué es → nombre), no un desplegable.
+      { once: true }
+    );
+    pintarResultados();
+  }
+
+  /** Los filtros activos (lo que difiere de lo de fábrica), para las marcas y el «Filtros (N)». */
+  function filtrosActivos() {
+    const a = [];
+    if (contener.length) {
+      a.push({
+        texto: t('buscar.marca.contener', { v: contener.join(', ') }),
+        quitar: () => {
+          filtroContener.value = '';
+          contener = [];
+        },
+      });
+    }
+    if (excluir.length) {
+      a.push({
+        texto: t('buscar.marca.excluir', { v: excluir.join(', ') }),
+        quitar: () => {
+          filtroExcluir.value = '';
+          excluir = [];
+        },
+      });
+    }
+    if (minDuracion) {
+      a.push({
+        texto: t('buscar.marca.duracion', { n: minDuracion }),
+        quitar: () => {
+          duracion.value = '0';
+          minDuracion = 0;
+        },
+      });
+    }
+    if (idiomaFiltro) {
+      a.push({
+        texto: t(`buscar.idioma.${idiomaFiltro}`),
+        quitar: () => {
+          idioma.value = '';
+          idiomaFiltro = '';
+        },
+      });
+    }
+    if (soloFrase) {
+      a.push({
+        texto: t('buscar.frase'),
+        quitar: () => {
+          frase.checked = false;
+          soloFrase = false;
+        },
+      });
+    }
+    if (!ocultarRepetidos) {
+      a.push({
+        texto: t('buscar.marca.repetidos'),
+        quitar: () => {
+          filtroRepetidos.checked = true;
+          ocultarRepetidos = true;
+        },
+      });
+    }
+    if (!ocultarTengo) {
+      a.push({
+        texto: t('buscar.marca.tengo'),
+        quitar: () => {
+          filtroTengo.checked = true;
+          ocultarTengo = true;
+        },
+      });
+    }
+    if (!ocultarEnviados) {
+      a.push({
+        texto: t('buscar.marca.enviados'),
+        quitar: () => {
+          filtroEnviados.checked = true;
+          ocultarEnviados = true;
+        },
+      });
+    }
+    if (verOcultos) {
+      a.push({
+        texto: t('buscar.ocultos.ver'),
+        quitar: () => {
+          filtroVerOcultos.checked = false;
+          verOcultos = false;
+        },
+      });
+    }
+    return a;
+  }
+  function limpiarFiltros() {
+    for (const f of filtrosActivos()) f.quitar();
+    pintarResultados();
+  }
+
+  /** «Repetir cada…»: una programada con lo de esta búsqueda ya puesto (en Actividad). */
+  function programar() {
+    window.dispatchEvent(
+      new CustomEvent('clipscout:programar', {
+        detail: {
+          termino: ultimaBusqueda || entrada.value.trim(),
+          carpeta: destinoFijo || '',
+          contener: filtroContener.value,
+          excluir: filtroExcluir.value,
+          minutosMinimo: minDuracion,
+        },
+      })
+    );
+  }
+
+  /* ── «Descargar en» y «Descargar todo» ──────────────────────────── */
+  // Un botón que abre la ventana de carpeta (qué es → nombre), no un desplegable.
   const destino = el('button', {
-    className: 'button button--secondary button--small buscar__destino',
+    className: 'cg-boton buscar__destino',
     attrs: { type: 'button' },
     on: {
       click: async () => {
@@ -584,119 +818,156 @@ export function createBuscarView(root) {
       },
     },
   });
-  const textoDestino = el('span');
-  const etiquetaDestino = el('span', {
-    className: 'buscar__opcion',
-    children: [textoDestino, destino],
-  });
   function pintarDestinos() {
-    destino.textContent = `📁 ${
-      destinoFijo === null ? t('buscar.destino.preguntar') : destinoFijo || t('video.jd.porDefecto')
-    }`;
+    const nombre =
+      destinoFijo === null
+        ? t('buscar.destino.preguntar')
+        : destinoFijo || t('video.jd.porDefecto');
+    destino.replaceChildren(icono('carpeta'), el('span', { text: nombre }));
+    destino.title = `${t('buscar.destino')}: ${nombre}`;
   }
   const descargarTodo = el('button', {
-    className: 'button button--small',
+    className: 'cg-boton cg-boton--principal buscar__descargar-todo',
     attrs: { type: 'button' },
-    on: { click: () => descargar(visibles().map(r => r.sourceUrl || r.url)) },
+    on: {
+      click: () => descargar(paraDescargarTodo(visibles(), { tengo: enBiblioteca, enviados })),
+    },
   });
+  pieAccion.append(destino, descargarTodo);
   jd.alCargar(() => {
     pintarDestinos();
     pintarResultados();
   });
 
-  const yaLoTengo = el('button', {
-    className: 'button button--secondary button--small',
-    attrs: { type: 'button' },
-    on: { click: () => comprobarBiblioteca(true) },
+  /* ── Selección múltiple (CS-40) ──────────────────────────────────── */
+  const seleccion = window.cgSeleccion
+    ? window.cgSeleccion(rejilla, {
+        item: '.buscar__tarjeta',
+        clave: n => n.dataset.id,
+        alCambiar: claves => {
+          barraSeleccion.cuenta = claves.length;
+          pintarCasillas();
+        },
+      })
+    : null;
+  barraSeleccion.addEventListener('cg-cancelar', e => {
+    e.preventDefault();
+    seleccion?.limpiar();
   });
-  texto(yaLoTengo, 'video.yaLoTengo');
-  atributo(yaLoTengo, 'title', 'video.yaLoTengo.titulo');
+  function pintarCasillas() {
+    const elegidas = new Set(seleccion?.claves || []);
+    for (const c of rejilla.querySelectorAll('.buscar__casilla')) {
+      c.setAttribute(
+        'aria-checked',
+        String(elegidas.has(c.closest('.buscar__tarjeta').dataset.id))
+      );
+    }
+    selDescargar.hidden = !jd.configurado();
+  }
+  async function descargarSeleccion() {
+    const r = await descargar(seleccion?.claves || []);
+    if (r) seleccion.limpiar();
+  }
+  function seleccionarTodos() {
+    // Todos los de la lista filtrada, no solo los que se ven en pantalla.
+    seleccion?.poner(visibles().map(enlaceDe));
+  }
+  function quitarSeleccion() {
+    const quitar = seleccion?.claves || [];
+    quitarDeLaLista(quitar);
+    seleccion.limpiar();
+  }
+  /** Quitar de la lista es reversible: sin pregunta, con «Deshacer». */
+  function quitarDeLaLista(enlaces) {
+    if (!enlaces.length) return;
+    for (const e of enlaces) descartados.add(e);
+    pintarResultados();
+    const aviso = window.cgAviso
+      ? window.cgAviso(tp('buscar.quitados', enlaces.length), {
+          deshacer: () => {
+            for (const e of enlaces) descartados.delete(e);
+            pintarResultados();
+          },
+        })
+      : null;
+    return aviso;
+  }
 
   /* ── Sitios ─────────────────────────────────────────────────────── */
+  function textoAyudaSitios() {
+    const activos = sitios.filter(s => !apagados.has(s.nombre));
+    return sitios.length === 0
+      ? t('buscar.sinSitios')
+      : activos.length === sitios.length
+        ? t('buscar.ayuda.todos', { n: sitios.length })
+        : tp('buscar.ayuda.algunos', activos.length);
+  }
   function pintarSitios() {
     clear(chipsSitios);
     const activos = sitios.filter(s => !apagados.has(s.nombre));
-    const todos = el('button', {
-      className: `buscar__chip${activos.length === sitios.length ? ' buscar__chip--on' : ''}`,
-      attrs: { type: 'button', 'aria-pressed': String(activos.length === sitios.length) },
-      text: t('buscar.todos'),
-      on: {
-        click: () => {
-          apagados.clear();
-          guardarApagados(apagados);
-          pintarSitios();
-        },
-      },
-    });
-    chipsSitios.append(todos);
+    const chip = (textoChip, on, fn) =>
+      el('button', {
+        className: `buscar__chip${on ? ' buscar__chip--on' : ''}`,
+        attrs: { type: 'button', 'aria-pressed': String(on) },
+        text: textoChip,
+        on: { click: fn },
+      });
+    chipsSitios.append(
+      chip(t('buscar.todos'), activos.length === sitios.length, () => {
+        apagados.clear();
+        guardarApagados(apagados);
+        pintarSitios();
+      })
+    );
     for (const s of sitios) {
       const on = !apagados.has(s.nombre);
       chipsSitios.append(
-        el('button', {
-          className: `buscar__chip${on ? ' buscar__chip--on' : ''}`,
-          attrs: { type: 'button', 'aria-pressed': String(on) },
-          text: s.nombre,
-          on: {
-            click: () => {
-              // Con todos encendidos, tocar uno = buscar SOLO en ese (lo habitual al querer ir a uno).
-              if (activos.length === sitios.length) {
-                for (const x of sitios) if (x.id !== s.id) apagados.add(x.nombre);
-              } else if (on) apagados.add(s.nombre);
-              else apagados.delete(s.nombre);
-              if (sitios.every(x => apagados.has(x.nombre))) apagados.clear();
-              guardarApagados(apagados);
-              pintarSitios();
-            },
-          },
+        chip(s.nombre, on, () => {
+          // Con todos encendidos, tocar uno = buscar SOLO en ese (lo habitual al querer ir a uno).
+          if (activos.length === sitios.length) {
+            for (const x of sitios) if (x.id !== s.id) apagados.add(x.nombre);
+          } else if (on) apagados.add(s.nombre);
+          else apagados.delete(s.nombre);
+          if (sitios.every(x => apagados.has(x.nombre))) apagados.clear();
+          guardarApagados(apagados);
+          pintarSitios();
         })
       );
     }
-    ayuda.textContent =
-      sitios.length === 0
-        ? t('buscar.sinSitios')
-        : activos.length === sitios.length
-          ? t('buscar.ayuda.todos', { n: sitios.length })
-          : tp('buscar.ayuda.algunos', activos.length);
-    pintarModoEntrada();
-    textoPaginas.textContent = t('buscar.paginas');
-    textoRepetidos.textContent = t('buscar.ocultarRepetidos');
-    textoDuracion.textContent = t('buscar.duracion');
-    textoDestino.textContent = t('buscar.destino');
-    const minActual = duracion.value || '0';
-    clear(duracion);
-    for (const n of [0, 1, 3, 5, 10, 20, 30]) {
-      duracion.append(
-        el('option', {
-          attrs: { value: n },
-          text: n ? t('buscar.duracion.min', { n }) : t('buscar.duracion.cualquiera'),
-        })
-      );
-    }
-    duracion.value = minActual;
-    pintarDestinos();
-    pintarIdiomas();
-    pintarOrden();
-    agregar.textContent = t('buscar.agregarSitios');
+    const nota = chipsSitios.parentElement?.querySelector(':scope > .cs-nota');
+    if (nota) nota.textContent = textoAyudaSitios();
   }
 
-  /** La ayuda y el botón dicen qué va a pasar con lo escrito (palabra o enlace). */
-  function pintarModoEntrada() {
+  /** Antes de buscar: a cuántos sitios irá y con cuántas páginas; o el primer paso si no hay. */
+  function pintarInicio() {
     const enlace = tipoDeEntrada(entrada.value) === 'enlace';
-    boton.textContent = t(enlace ? 'buscar.boton.enlace' : 'buscar.boton');
-    chipsSitios.hidden = enlace;
-    if (enlace) ayuda.textContent = t('buscar.ayuda.enlace');
+    boton.setAttribute('aria-label', t(enlace ? 'buscar.boton.enlace' : 'buscar.boton'));
+    boton.title = boton.getAttribute('aria-label');
+    botonOpciones.setAttribute('aria-label', t('buscar.opciones'));
+    botonOpciones.title = t('buscar.opciones');
+    const activos = sitios.filter(s => !apagados.has(s.nombre));
+    if (enlace) resumenInicio.textContent = t('buscar.ayuda.enlace');
+    else if (sitios.length === 0) resumenInicio.textContent = t('buscar.sinSitios');
+    else {
+      resumenInicio.textContent = t('buscar.resumenInicio', {
+        activos: activos.length,
+        total: sitios.length,
+        paginas: paginas.value,
+      });
+    }
+    cambiarOpciones.textContent = t('buscar.opciones');
+    cambiarOpciones.hidden = sitios.length === 0;
+    botonAgregar.textContent = t('buscar.agregarSitios');
+    botonAgregar.className = sitios.length === 0 ? 'cg-boton cg-boton--principal' : 'cg-boton';
+    botonVarias.textContent = t('buscar.varias');
   }
-  entrada.addEventListener('input', () => {
-    const antes = chipsSitios.hidden;
-    pintarModoEntrada();
-    if (antes && !chipsSitios.hidden) pintarSitios();
-  });
+  entrada.addEventListener('input', pintarInicio);
 
   /** Los marcados en Ajustes como «no buscar por defecto» salen apagados la primera vez. */
   function aplicarFueraPorDefecto() {
     let aplicados;
     try {
-      aplicados = new Set(JSON.parse(localStorage.getItem(CLAVE_FUERA) || '[]'));
+      aplicados = new Set(JSON.parse(leer(CLAVE_FUERA, '[]')));
     } catch {
       aplicados = new Set();
     }
@@ -707,11 +978,7 @@ export function createBuscarView(root) {
       aplicados.add(s.nombre);
     }
     guardarApagados(apagados);
-    try {
-      localStorage.setItem(CLAVE_FUERA, JSON.stringify([...aplicados]));
-    } catch {
-      // sin almacenamiento: se vuelve a apagar en cada visita, que es lo que se quería
-    }
+    guardar(CLAVE_FUERA, JSON.stringify([...aplicados]));
   }
 
   async function cargarSitios() {
@@ -720,11 +987,11 @@ export function createBuscarView(root) {
       sitios = r.sitios || [];
       hayWeb = Boolean(r.web);
       aplicarFueraPorDefecto();
-      etiquetaAbierta.hidden = !hayWeb;
     } catch {
       sitios = [];
     }
     pintarSitios();
+    pintarInicio();
   }
 
   /* ── Búsqueda ───────────────────────────────────────────────────── */
@@ -739,8 +1006,7 @@ export function createBuscarView(root) {
 
   /**
    * Repintado agrupado: como mucho uno cada 80 ms. Al darle a «Ver» a una búsqueda llegan de golpe
-   * todos sus eventos (800 en una búsqueda grande) y repintar la lista entera con cada uno dejaba
-   * el navegador colgado.
+   * todos sus eventos (800 en una búsqueda grande) y repintar con cada uno colgaba el navegador.
    */
   let relojPintado = null;
   function pintarPronto() {
@@ -763,8 +1029,6 @@ export function createBuscarView(root) {
   function terminar(cancelado = false) {
     soltar();
     trabajo = null;
-    boton.hidden = false;
-    parar.hidden = true;
     if (cancelado) {
       for (const [id, e] of estado) {
         if (e.fase === 'espera' || e.fase === 'busca') estado.set(id, { ...e, fase: 'fin' });
@@ -772,22 +1036,22 @@ export function createBuscarView(root) {
     }
     pintarResultados();
     comprobarBiblioteca(false);
+    comprobarEnviados();
   }
 
-  /** La búsqueda web trae más, pero también mucho que no es: se pregunta cada vez (null = cancelar). */
-  async function preguntarWeb() {
-    if (!hayWeb) return { conWeb: false, conAbierta: false };
-    // «Toda la web» ya no se ofrece aquí: es la casilla del formulario, desmarcada por defecto.
-    const r = await chooseDialog({
-      titleKey: 'buscar.webPregunta',
-      labelKey: 'buscar.webPregunta.texto',
-      opciones: [
-        { valor: 'no', titulo: t('buscar.webNo'), detalle: t('buscar.webNo.detalle') },
-        { valor: 'si', titulo: t('buscar.webSi'), detalle: t('buscar.webSi.detalle') },
-      ],
-    });
-    if (r === null) return null;
-    return { conWeb: r === 'si', conAbierta: abierta.checked };
+  /** Vacía lo de la búsqueda anterior antes de mirar otra. */
+  function reiniciar() {
+    resultados = [];
+    estado = new Map();
+    descartados.clear();
+    copias = new Map();
+    enBiblioteca = new Map();
+    enviados = new Map();
+    sugeridos = [];
+    pestana = 'todos';
+    enCola = null;
+    filas.clear();
+    seleccion?.limpiar();
   }
 
   async function empezar(opciones = {}) {
@@ -801,38 +1065,31 @@ export function createBuscarView(root) {
     // «ejemplo.com» a secas: no hay nada que buscar en él todavía; se ofrece agregarlo.
     if (tipo === 'dominio') return abrirAlta({ dominios: [q] });
     const esEnlace = tipo === 'enlace';
-    let conWeb = false;
-    let conAbierta = false;
-    if (!esEnlace) {
-      const web = await preguntarWeb();
-      if (web === null) return;
-      ({ conWeb, conAbierta } = web);
-    }
+    const web = !esEnlace && hayWeb && conWeb.checked;
+    const conAbierta = !esEnlace && hayWeb && abierta.checked;
     const elegidos = esEnlace ? [] : sitios.filter(s => !apagados.has(s.nombre));
-    if (!esEnlace && elegidos.length === 0 && !conAbierta) return;
+    if (!esEnlace && elegidos.length === 0 && !conAbierta) {
+      // Antes no hacía nada ni avisaba (CS-18).
+      toast(sitios.length ? t('buscar.ningunSitio') : t('buscar.sinSitios'), 'error', 6000);
+      if (!sitios.length) abrirAlta({ termino: q });
+      return;
+    }
     fuente?.close();
-    resultados = [];
-    descartados.clear();
-    copias = new Map();
-    enBiblioteca = new Map();
-    pestana = 'todos';
+    reiniciar();
     estado = new Map(elegidos.map(s => [s.id, { fase: 'espera', total: 0 }]));
     if (conAbierta) estado.set(ID_WEB, { fase: 'espera', total: 0 });
-    sugeridos = [];
     if (!opciones.listado) listados = new Map();
     ultimaBusqueda = q;
-    zonaResultados.hidden = false;
-    boton.hidden = true;
-    parar.hidden = false;
+    mostrarResultados();
 
     const query = new URLSearchParams(
       esEnlace ? { url: q, paginas: paginas.value } : { q, paginas: paginas.value }
     );
     if (opciones.listado) query.set('listado', '1');
-    if (conWeb) query.set('web', '1');
+    if (web) query.set('web', '1');
     if (conAbierta) query.set('abierta', '1');
     // Siempre la lista: sin ella el servidor se salta los «no buscar por defecto», y aquí lo que
-    // manda es lo que está encendido en pantalla.
+    // manda es lo que está encendido.
     if (!esEnlace && elegidos.length > 0) {
       query.set('sitios', elegidos.map(s => s.id).join(','));
     }
@@ -866,6 +1123,11 @@ export function createBuscarView(root) {
     refrescarCola();
   }
 
+  function mostrarResultados() {
+    zonaResultados.hidden = false;
+    zonaInicio.hidden = true;
+  }
+
   /** «término → carpeta» por línea (también «->», «=>» o un tabulador); las vacías no cuentan. */
   function leerLineas(textoLineas) {
     return String(textoLineas || '')
@@ -881,12 +1143,11 @@ export function createBuscarView(root) {
       });
   }
 
-  async function encolarVarias() {
-    const lineas = leerLineas(textoVarias.value);
-    if (lineas.length === 0) return textoVarias.focus();
-    const web = lineas.some(l => l.q) ? await preguntarWeb() : { conWeb: false, conAbierta: false };
-    if (web === null) return;
+  async function encolarVarias(textoLineas) {
+    const lineas = leerLineas(textoLineas);
+    if (lineas.length === 0) return false;
     const elegidos = sitios.filter(x => !apagados.has(x.nombre));
+    const hayPalabras = lineas.some(l => l.q);
     try {
       const resp = await fetch('/api/buscar/varias', {
         method: 'POST',
@@ -894,8 +1155,8 @@ export function createBuscarView(root) {
         body: JSON.stringify({
           busquedas: lineas,
           paginas: paginas.value,
-          web: web.conWeb,
-          abierta: web.conAbierta,
+          web: hayPalabras && hayWeb && conWeb.checked,
+          abierta: hayPalabras && hayWeb && abierta.checked,
           ...(elegidos.length ? { sitios: elegidos.map(x => x.id) } : {}),
         }),
       });
@@ -904,119 +1165,44 @@ export function createBuscarView(root) {
       if (r.errores?.length) {
         toast(r.errores.map(e => `${e.q || '—'}: ${e.error}`).join(' · '), 'error', 8000);
       }
-      if (r.ids?.length) {
-        textoVarias.value = '';
-        zonaVarias.hidden = true;
-        // Si no se está mirando ninguna, se mira la primera de la tanda.
-        if (!trabajo) await refrescarCola({ verId: r.ids[0] });
-        else await refrescarCola();
-      }
+      if (!r.ids?.length) return false;
+      // Si no se está mirando ninguna, se mira la primera de la tanda.
+      if (!trabajo) await refrescarCola({ verId: r.ids[0] });
+      else await refrescarCola();
+      return true;
     } catch (error) {
       toast(error.message, 'error', 6000);
+      return false;
     }
   }
 
-  let colaActual = [];
-  let relojCola = null;
+  /** Solo para el aviso «N búsquedas más en marcha» (la cola entera está en Actividad). */
   async function refrescarCola({ verId = null } = {}) {
+    let cola;
     try {
-      const r = await fetch('/api/buscar/cola').then(x => x.json());
-      colaActual = r.busquedas || [];
+      cola = (await fetch('/api/buscar/cola').then(x => x.json())).busquedas || [];
     } catch {
       return;
     }
-    pintarCola();
+    const n = cola.filter(b => b.estado !== 'fin' && b.id !== trabajoVisto).length;
+    otras.hidden = n === 0;
+    otras.textContent = `${tp('buscar.otras', n)} · ${t('buscar.otras.ver')} ›`;
     if (verId) {
-      const b = colaActual.find(x => x.id === verId);
+      const b = cola.find(x => x.id === verId);
       if (b) ver(b);
     }
   }
-  relojCola = setInterval(() => {
-    if (document.visibilityState !== 'hidden') refrescarCola();
-  }, 4000);
+  // Solo mientras se mira Buscar (antes, cada 4 s aunque no hubiera nada, CS-18).
+  const relojCola = setInterval(() => {
+    if (!root.hidden && document.visibilityState !== 'hidden') refrescarCola();
+  }, 5000);
 
-  function pintarCola() {
-    // Se enseña cuando hay algo más que la búsqueda que se mira: si no, es ruido.
-    zonaCola.hidden = !colaActual.some(b => b.id !== trabajoVisto);
-    if (zonaCola.hidden) return;
-    const activas = colaActual.filter(b => b.estado !== 'fin' || b.id === trabajoVisto);
-    const terminadas = colaActual.filter(b => b.estado === 'fin' && b.id !== trabajoVisto);
-    listaCola.hidden = !activas.length;
-    listaCola.replaceChildren(...activas.map(filaCola));
-    plegadasFin.hidden = !terminadas.length;
-    resumenFin.textContent = t('buscar.cola.terminadas', { n: terminadas.length });
-    listaFin.replaceChildren(...terminadas.slice(0, 50).map(filaCola));
-  }
-
-  function filaCola(b) {
-    const marca =
-      b.estado === 'curso'
-        ? t('buscar.cola.curso')
-        : b.estado === 'cola'
-          ? t('buscar.cola.esperando', { n: b.posicion })
-          : b.quitada
-            ? t('buscar.cola.quitada')
-            : tp('buscar.resultados', b.total);
-    const acciones = [];
-    if (b.id !== trabajoVisto) {
-      acciones.push(
-        el('button', {
-          className: 'button button--secondary button--small',
-          attrs: { type: 'button' },
-          text: t('buscar.cola.ver'),
-          on: { click: () => ver(b) },
-        })
-      );
-    }
-    if (b.estado !== 'fin') {
-      acciones.push(
-        el('button', {
-          className: 'button button--ghost button--small',
-          attrs: { type: 'button' },
-          text: t(b.estado === 'cola' ? 'buscar.cola.quitar' : 'buscar.parar'),
-          on: {
-            click: async () => {
-              await fetch(`/api/buscar/cola/${encodeURIComponent(b.id)}`, {
-                method: 'DELETE',
-              }).catch(() => {});
-              refrescarCola();
-            },
-          },
-        })
-      );
-    }
-    return el('li', {
-      className: `buscar__cola-fila buscar__cola-fila--${b.estado}${b.id === trabajoVisto ? ' buscar__cola-fila--vista' : ''}`,
-      children: [
-        el('span', {
-          className: b.estado === 'fin' ? 'buscar__hecho' : 'buscar__girando',
-          text: b.estado === 'fin' ? '✓' : '',
-        }),
-        el('strong', { text: b.q }),
-        b.carpeta ? el('span', { className: 'buscar__sitio', text: `→ ${b.carpeta}` }) : null,
-        b.origen === 'programada'
-          ? el('span', { className: 'buscar__sitio', text: t('buscar.cola.programada') })
-          : null,
-        el('span', { className: 'buscar__cola-estado', text: marca }),
-        el('span', { className: 'buscar__acciones', children: acciones }),
-      ],
-    });
-  }
-
-  /** Mirar otra búsqueda del servidor (de la cola o terminada): se vuelve a pintar desde cero. */
+  /** Mirar otra búsqueda del servidor (desde Actividad o al reengancharse). */
   function ver(b) {
-    pararVideo();
     entrada.value = b.q;
     ultimaBusqueda = b.q;
-    resultados = [];
-    estado = new Map();
-    descartados.clear();
-    copias = new Map();
-    enBiblioteca = new Map();
+    reiniciar();
     listados = new Map();
-    sugeridos = [];
-    pestana = 'todos';
-    enCola = null;
     // La carpeta con la que se encoló pasa a ser el «Descargar en» de lo que encuentre.
     if (b.carpeta) {
       destinoFijo = b.carpeta;
@@ -1024,9 +1210,11 @@ export function createBuscarView(root) {
       pintarDestinos();
     }
     conectar(b.id, 0);
-    pintarCola();
     pintarResultados();
   }
+  window.addEventListener('clipscout:ver-busqueda', e => {
+    if (e.detail) ver(e.detail);
+  });
 
   /** Se suscribe a la búsqueda `id` del servidor desde el evento `desde`. */
   function conectar(id, desde) {
@@ -1034,9 +1222,7 @@ export function createBuscarView(root) {
     trabajo = id;
     trabajoVisto = id;
     recibidos = desde;
-    zonaResultados.hidden = false;
-    boton.hidden = true;
-    parar.hidden = false;
+    mostrarResultados();
     fuente = new EventSource(`/api/buscar/trabajos/${id}/stream?desde=${desde}`);
     fuente.onmessage = ev => {
       let m;
@@ -1052,10 +1238,8 @@ export function createBuscarView(root) {
       }
       if (m.type === 'en_cola') {
         enCola = m.posicion;
-        refrescarCola();
       } else if (m.type === 'inicio' || m.type === 'reanudada') {
         enCola = null;
-        refrescarCola();
       } else if (m.type === 'sitios') {
         for (const x of m.sitios || []) {
           nombresDelServidor.set(x.id, x.nombre);
@@ -1134,7 +1318,7 @@ export function createBuscarView(root) {
   /**
    * Pregunta a clipkeeper cuáles ya están en la biblioteca: por título, o por duración + la persona
    * buscada (los ficheros renombrados ya no llevan el título del sitio). Por tandas, para mirar la
-   * lista entera: antes, de una búsqueda grande solo se miraban los 200 primeros.
+   * lista entera.
    */
   async function comprobarBiblioteca(avisar) {
     const lista = resultados.filter(
@@ -1144,8 +1328,7 @@ export function createBuscarView(root) {
     try {
       const persona = ultimaBusqueda || entrada.value.trim();
       const r = { conectado: true, error: null, resultados: [] };
-      // Tandas de 50: 200 títulos con sus enlaces pasaban de los 64 KB que admite el servidor por
-      // petición (PayloadTooLargeError) y la comprobación fallaba entera en las búsquedas grandes.
+      // Tandas de 50: 200 títulos con sus enlaces pasaban de los 64 KB que admite el servidor.
       for (let i = 0; i < lista.length; i += 50) {
         const tanda = lista.slice(i, i + 50);
         const parte = await ajustes.yaLoTengo(
@@ -1155,7 +1338,7 @@ export function createBuscarView(root) {
           // Para el rendimiento por sitio: la comprobación automática al terminar cuenta (el
           // servidor la cuenta una sola vez por búsqueda); el botón, no.
           {
-            enlaces: tanda.map(x => x.sourceUrl || x.url),
+            enlaces: tanda.map(enlaceDe),
             contar: avisar || !trabajoVisto ? false : `${trabajoVisto}#${i}`,
           }
         );
@@ -1171,9 +1354,7 @@ export function createBuscarView(root) {
       }
       enBiblioteca = new Map();
       r.resultados.forEach((res, i) => {
-        if (res.coincidencias.length) {
-          enBiblioteca.set(lista[i].sourceUrl || lista[i].url, res.coincidencias[0]);
-        }
+        if (res.coincidencias.length) enBiblioteca.set(enlaceDe(lista[i]), res.coincidencias[0]);
       });
       if (avisar) {
         toast(
@@ -1190,6 +1371,23 @@ export function createBuscarView(root) {
     }
   }
 
+  /** Memoria de lo ya enviado (CS-N7): lo apuntado en los paquetes del servidor. */
+  async function comprobarEnviados() {
+    const enlaces = [...new Set(resultados.map(enlaceDe))];
+    if (!enlaces.length) return;
+    try {
+      for (let i = 0; i < enlaces.length; i += 200) {
+        const r = await ajustes.enviadosJd(enlaces.slice(i, i + 200));
+        for (const [l, fecha] of Object.entries(r.enviados || {})) {
+          if (!enviados.has(l)) enviados.set(l, fecha);
+        }
+      }
+    } catch {
+      return; // sin datos: no se oculta nada
+    }
+    pintarResultados();
+  }
+
   /* ── Pintar ─────────────────────────────────────────────────────── */
   const nombreSitio = id =>
     id === ID_WEB
@@ -1202,23 +1400,22 @@ export function createBuscarView(root) {
       return '';
     }
   };
-  function pestanaBoton(id, etiqueta, n, e) {
+
+  function marcaSitio(id, etiqueta, n, e) {
     const activa = pestana === id;
     const marca = !e
       ? ''
       : e.fase === 'busca' || e.fase === 'espera'
         ? ' ⏳'
-        : e.fase === 'error'
+        : e.fase === 'error' || e.bloqueo
           ? ' ⚠'
-          : e.bloqueo
-            ? ' ⚠'
-            : '';
+          : '';
     return el('button', {
-      className: `buscar__pestana${activa ? ' buscar__pestana--activa' : ''}${e?.fase === 'error' ? ' buscar__pestana--error' : ''}`,
+      className: e?.fase === 'error' ? 'buscar__pestana--error' : '',
       attrs: {
         type: 'button',
-        role: 'tab',
-        'aria-selected': String(activa),
+        'aria-pressed': String(activa),
+        'data-sitio': String(id),
         title:
           e?.error ||
           (e?.bloqueo ? t('buscar.bloqueo') : e?.recortado ? t('buscar.recortado') : ''),
@@ -1227,21 +1424,63 @@ export function createBuscarView(root) {
         `${etiqueta} `,
         el('span', { className: 'buscar__n', text: `${n}${e?.recortado ? '+' : ''}${marca}` }),
       ],
-      on: {
-        click: () => {
-          pestana = id;
-          pintarResultados();
-        },
-      },
     });
   }
 
-  function tarjeta(r) {
-    const enlace = r.sourceUrl || r.url;
-    // Por FICHERO, no por ficha: los vídeos de un álbum comparten ficha y cada uno tiene su tarjeta.
-    if (reproduciendo?.url === r.url) return reproduciendo.tarjeta;
+  /**
+   * Filas reutilizables (CS-14): cada resultado guarda su fila y la «firma» de lo que enseña. Con
+   * cada tanda solo se crean las nuevas y las que cambiaron; el resto se recoloca (o ni eso).
+   */
+  const filas = new Map(); // r.url → { firma, nodo }
+  function firmaDe(r, pasada) {
+    const enlace = enlaceDe(r);
+    const k = claveAlbum(r);
+    const grupo = k ? albumes.get(k) : null;
+    return [
+      r.title,
+      r.duration,
+      enBiblioteca.has(enlace) ? 1 : 0,
+      enviados.get(enlace) || 0,
+      pasada.motivos.get(r) || '',
+      copias.get(r.url)?.n || 0,
+      ocultarRepetidos ? cuentaPagina.get(clavePagina(r)) || 1 : 0,
+      grupo
+        ? `${grupo[0] === r ? 'c' : 'm'}${grupo.length}${albumesAbiertos.has(k) ? 'a' : ''}`
+        : '',
+      jd.configurado() ? 1 : 0,
+    ].join('|');
+  }
+  function filaDe(r, pasada) {
+    const firma = firmaDe(r, pasada);
+    const guardada = filas.get(r.url);
+    if (guardada && guardada.firma === firma) return guardada.nodo;
+    const nodo = tarjeta(r, pasada);
+    filas.set(r.url, { firma, nodo });
+    return nodo;
+  }
+  /** Deja en `caja` exactamente `nodos`, en ese orden, moviendo lo mínimo. */
+  function reconciliar(caja, nodos) {
+    let actual = caja.firstChild;
+    for (const n of nodos) {
+      if (n === actual) {
+        actual = actual.nextSibling;
+        continue;
+      }
+      caja.insertBefore(n, actual);
+    }
+    while (actual) {
+      const siguiente = actual.nextSibling;
+      actual.remove();
+      actual = siguiente;
+    }
+  }
+
+  function tarjeta(r, pasada) {
+    const enlace = enlaceDe(r);
     const nombreDelSitio = r.sitio === ID_WEB ? dominioDe(enlace) : nombreSitio(r.sitio);
     const tengo = enBiblioteca.get(enlace);
+    const enviado = enviados.get(enlace);
+    const tituloFila = r.title || nombreDeUrl(r.url) || enlace;
     const imagen =
       r.thumbnail && !miniaturasRotas.has(r.thumbnail)
         ? el('img', {
@@ -1249,6 +1488,7 @@ export function createBuscarView(root) {
               src: `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}`,
               alt: '',
               loading: 'lazy',
+              decoding: 'async',
             },
             // Si el sitio no la da, el hueco de siempre en vez de una imagen rota
             on: {
@@ -1259,155 +1499,132 @@ export function createBuscarView(root) {
             },
           })
         : el('span', { className: 'buscar__sin', text: '▶' });
-    const acciones = [
-      el('a', {
-        className: 'button button--secondary button--small',
-        attrs: { href: enlace, target: '_blank', rel: 'noopener noreferrer' },
-        text: t('buscar.abrir'),
-      }),
-    ];
-    if (archivoReproducible(r)) {
-      acciones.unshift(
-        el('button', {
-          className: 'button button--secondary button--small buscar__play',
-          attrs: { type: 'button' },
-          text: t('buscar.ver'),
-          on: { click: e => alternarVideo(r, enlace, e.currentTarget) },
-        })
-      );
-    }
-    if (jd.configurado()) {
-      acciones.push(
-        el('button', {
-          className: 'button button--small',
-          attrs: { type: 'button' },
-          text: t('buscar.jd'),
-          on: { click: () => descargar([enlace]) },
-        })
-      );
-    }
-    const oculto = motivoOculto(r);
+    const oculto = pasada.motivos.get(r);
     const kAlbum = claveAlbum(r);
     const grupoAlbum = kAlbum ? albumes.get(kAlbum) : null;
     const esCabezaAlbum = Boolean(grupoAlbum && grupoAlbum[0] === r);
-    const abierto = Boolean(kAlbum && albumesAbiertos.has(kAlbum));
-    if (esCabezaAlbum) {
-      acciones.push(
+    const extra =
+      (copias.get(r.url)?.representante === r.url ? copias.get(r.url).n - 1 : 0) +
+      (ocultarRepetidos ? (cuentaPagina.get(clavePagina(r)) || 1) - 1 : 0);
+    const meta = [
+      r.duration || null,
+      nombreDelSitio,
+      Number.isFinite(r.relevancia) ? `${r.relevancia} %` : null,
+      extra > 0 ? `+${extra}` : null,
+      esCabezaAlbum ? `▣ ${grupoAlbum.length}` : null,
+      r.web ? '🌐' : null,
+    ].filter(Boolean);
+    const estadoFila = oculto
+      ? oculto === 'bloqueada'
+        ? t('buscar.oculto.bloqueada.palabra', { palabra: r.bloqueada })
+        : t(`buscar.oculto.${oculto}`)
+      : tengo
+        ? t('buscar.loTienes')
+        : enviado
+          ? t('buscar.enviadoEl', { fecha: fechaCorta(enviado, idiomaActual()) })
+          : '';
+    return el('article', {
+      className: `buscar__tarjeta${tengo ? ' buscar__tarjeta--tengo' : ''}${enviado ? ' buscar__tarjeta--enviado' : ''}${oculto ? ' buscar__tarjeta--oculta' : ''}${grupoAlbum && !esCabezaAlbum ? ' buscar__tarjeta--miembro' : ''}`,
+      attrs: { 'data-id': enlace, role: 'option', 'aria-label': tituloFila },
+      children: [
         el('button', {
-          className: 'button button--ghost button--small buscar__album-boton',
-          attrs: { type: 'button', 'aria-expanded': String(abierto) },
-          text: abierto
-            ? t('buscar.album.plegar')
-            : t('buscar.album.ver', { n: grupoAlbum.length }),
+          className: 'buscar__casilla',
+          attrs: {
+            type: 'button',
+            role: 'checkbox',
+            'aria-checked': 'false',
+            'aria-label': t('buscar.seleccionar', { titulo: tituloFila }),
+          },
           on: {
             click: () => {
-              if (abierto) albumesAbiertos.delete(kAlbum);
-              else albumesAbiertos.add(kAlbum);
-              pintarResultados();
+              // En modo selección ya alterna cgSeleccion (captura el clic de toda la fila).
+              if (!seleccion?.modo) seleccion?.alternar(enlace);
             },
           },
-        })
-      );
-    }
-    return el('article', {
-      className: `buscar__tarjeta${tengo ? ' buscar__tarjeta--tengo' : ''}${oculto ? ' buscar__tarjeta--oculta' : ''}${grupoAlbum && !esCabezaAlbum ? ' buscar__tarjeta--miembro' : ''}`,
-      children: [
-        oculto
-          ? el('span', {
-              className: 'buscar__motivo',
-              text:
-                oculto === 'bloqueada'
-                  ? t('buscar.oculto.bloqueada.palabra', { palabra: r.bloqueada })
-                  : t(`buscar.oculto.${oculto}`),
-            })
-          : null,
+        }),
         el('a', {
           className: 'buscar__imagen',
-          attrs: { href: enlace, target: '_blank', rel: 'noopener noreferrer' },
+          attrs: {
+            href: enlace,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            tabindex: '-1',
+            'aria-hidden': 'true',
+          },
           children: [
             imagen,
             r.duration ? el('span', { className: 'buscar__duracion', text: r.duration }) : null,
-            tengo ? el('span', { className: 'buscar__tengo', text: t('buscar.loTienes') }) : null,
-            (() => {
-              const extra =
-                (copias.get(r.url)?.representante === r.url ? copias.get(r.url).n - 1 : 0) +
-                (ocultarRepetidos ? (cuentaPagina.get(clavePagina(r)) || 1) - 1 : 0);
-              return extra > 0
-                ? el('span', {
-                    className: 'buscar__copias',
-                    text: `+${extra}`,
-                    attrs: { title: tp('buscar.copias', extra) },
-                  })
-                : null;
-            })(),
-            esCabezaAlbum
-              ? el('span', {
-                  className: 'buscar__album',
-                  text: `▣ ${grupoAlbum.length}`,
-                  attrs: { title: tp('buscar.album', grupoAlbum.length) },
-                })
-              : null,
-            r.web
-              ? el('span', {
-                  className: 'buscar__web',
-                  text: '🌐',
-                  attrs: { title: t('buscar.web.resultado') },
-                })
-              : null,
           ],
         }),
-        el('div', {
+        el('a', {
           className: 'buscar__texto',
+          attrs: {
+            href: enlace,
+            target: '_blank',
+            rel: 'noopener noreferrer',
+            title: r.title || enlace,
+          },
           children: [
-            el('strong', {
-              text: r.title || nombreDeUrl(r.url) || enlace,
-              attrs: { title: r.title || enlace },
-            }),
-            el('span', {
-              className: 'buscar__sitio',
-              text: Number.isFinite(r.relevancia)
-                ? `${nombreDelSitio} · ${r.relevancia} %`
-                : nombreDelSitio,
-              attrs: Number.isFinite(r.relevancia)
-                ? { title: t('buscar.relevancia', { n: r.relevancia }) }
-                : {},
-            }),
+            el('strong', { text: tituloFila }),
+            el('span', { className: 'buscar__meta', text: meta.join(' · ') }),
+            estadoFila ? el('span', { className: 'buscar__marca-estado', text: estadoFila }) : null,
           ],
         }),
-        el('div', { className: 'buscar__acciones', children: acciones }),
         el('button', {
-          className: 'buscar__descartar',
+          className: 'buscar__mas',
           attrs: {
             type: 'button',
-            title: t('buscar.descartar'),
-            'aria-label': t('buscar.descartar'),
+            'aria-haspopup': 'dialog',
+            'aria-label': t('buscar.mas'),
+            title: t('buscar.mas'),
           },
-          text: '✕',
-          on: {
-            click: () => {
-              descartados.add(enlace);
-              pintarResultados();
-            },
-          },
+          text: '⋯',
+          on: { click: () => menuFila(r, { esCabezaAlbum, grupoAlbum, kAlbum, tituloFila }) },
         }),
       ],
     });
   }
 
+  /** «⋯» de una fila: ver aquí, abrir, descargar, álbum, quitar de la lista. */
+  function menuFila(r, { esCabezaAlbum, grupoAlbum, kAlbum, tituloFila }) {
+    const enlace = enlaceDe(r);
+    const abierto = Boolean(kAlbum && albumesAbiertos.has(kAlbum));
+    menuAcciones({
+      titulo: tituloFila,
+      acciones: [
+        archivoReproducible(r)
+          ? { texto: t('buscar.ver'), fn: () => verVideo(r, tituloFila) }
+          : null,
+        {
+          texto: t('buscar.abrir'),
+          detalle: dominioDe(enlace),
+          fn: () => window.open(enlace, '_blank', 'noopener,noreferrer'),
+        },
+        jd.configurado() ? { texto: t('buscar.jd'), fn: () => descargar([enlace]) } : null,
+        esCabezaAlbum
+          ? {
+              texto: abierto
+                ? t('buscar.album.plegar')
+                : t('buscar.album.ver', { n: grupoAlbum.length }),
+              fn: () => {
+                if (abierto) albumesAbiertos.delete(kAlbum);
+                else albumesAbiertos.add(kAlbum);
+                pintarResultados();
+              },
+            }
+          : null,
+        { texto: t('buscar.sel.elegir'), fn: () => seleccion?.seleccionar([enlace]) },
+        { texto: t('buscar.descartar'), fn: () => quitarDeLaLista([enlace]) },
+      ],
+    });
+  }
+
   /**
-   * Reproduce el vídeo dentro de su tarjeta, en lugar de la miniatura. Pasa por /api/media (el
-   * servidor), por lo mismo que las miniaturas: el navegador no habla con el sitio, y muchos solo
-   * sirven el fichero a quien abrió la ficha. Uno a la vez: empezar otro para el anterior.
+   * Reproduce el vídeo en una hoja. Pasa por /api/media (el servidor), por lo mismo que las
+   * miniaturas: el navegador no habla con el sitio, y muchos solo sirven el fichero a quien abrió
+   * la ficha. Al cerrar la hoja se corta la descarga.
    */
-  function alternarVideo(r, enlace, boton) {
-    const tarjetaActual = boton.closest('.buscar__tarjeta');
-    if (reproduciendo?.url === r.url) {
-      pararVideo();
-      pintarResultados();
-      return;
-    }
-    const habia = Boolean(reproduciendo);
-    pararVideo();
+  function verVideo(r, tituloFila) {
     const video = el('video', {
       className: 'buscar__video',
       attrs: {
@@ -1417,35 +1634,32 @@ export function createBuscarView(root) {
         preload: 'metadata',
         src: `/api/media?url=${encodeURIComponent(r.url)}&ref=${encodeURIComponent(r.sourceUrl || '')}`,
       },
-      on: {
-        error: () => {
-          if (reproduciendo?.video === video) toast(t('buscar.videoError'), 'error', 6000);
-        },
+      on: { error: () => toast(t('buscar.videoError'), 'error', 6000) },
+    });
+    const hoja = abrirHoja({ titulo: tituloFila, contenido: [video], clase: 'buscar__hoja-video' });
+    hoja.addEventListener(
+      'cg-cerrar',
+      () => {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
       },
-    });
-    const caja = el('div', {
-      className: 'buscar__imagen buscar__imagen--video',
-      children: [video],
-    });
-    tarjetaActual.querySelector('.buscar__imagen').replaceWith(caja);
-    boton.textContent = t('buscar.cerrarVideo');
-    reproduciendo = { enlace, url: r.url, tarjeta: tarjetaActual, video };
-    // La tarjeta del vídeo anterior vuelve a su miniatura
-    if (habia) pintarResultados();
+      { once: true }
+    );
   }
 
   function lineaSitio(id, e) {
-    let texto;
-    if (e.fase === 'espera') texto = t('buscar.estado.cola');
-    else if (e.fase === 'busca' && e.web) texto = t('buscar.estado.web');
-    else if (e.fase === 'busca' && e.modo === 'pagina') texto = t('buscar.estado.pagina');
+    let textoLinea;
+    if (e.fase === 'espera') textoLinea = t('buscar.estado.cola');
+    else if (e.fase === 'busca' && e.web) textoLinea = t('buscar.estado.web');
+    else if (e.fase === 'busca' && e.modo === 'pagina') textoLinea = t('buscar.estado.pagina');
     else if (e.fase === 'busca' && e.modo === 'listado' && !e.enlaces) {
-      texto = t('buscar.estado.listado');
+      textoLinea = t('buscar.estado.listado');
     } else if (e.fase === 'busca' && e.enlaces) {
-      texto = t('buscar.estado.revisando', { hechos: e.hechos || 0, total: e.enlaces });
-    } else if (e.fase === 'busca') texto = t('buscar.estado.buscando');
-    else if (e.fase === 'error') texto = t('buscar.estado.error', { error: e.error });
-    else texto = tp('buscar.resultados', e.total || 0);
+      textoLinea = t('buscar.estado.revisando', { hechos: e.hechos || 0, total: e.enlaces });
+    } else if (e.fase === 'busca') textoLinea = t('buscar.estado.buscando');
+    else if (e.fase === 'error') textoLinea = t('buscar.estado.error', { error: e.error });
+    else textoLinea = tp('buscar.resultados', e.total || 0);
     const enCurso = e.fase === 'busca' || e.fase === 'espera';
     return el('li', {
       className: `buscar__linea${enCurso ? ' buscar__linea--curso' : ''}${e.fase === 'error' ? ' buscar__linea--error' : ''}`,
@@ -1455,62 +1669,126 @@ export function createBuscarView(root) {
           text: enCurso ? '' : e.fase === 'error' ? '⚠' : '✓',
         }),
         el('strong', { text: nombreSitio(id) }),
-        el('span', { text: texto }),
+        el('span', { text: textoLinea }),
       ],
     });
   }
-
-  function pintarResultados() {
-    if (zonaResultados.hidden) return;
-    clear(progreso);
+  /** El detalle por sitio (antes siempre a la vista, encima de los resultados). */
+  function abrirProgreso() {
+    const lista = el('ul', {
+      className: 'buscar__progreso',
+      children: [...estado].map(([id, e]) => lineaSitio(id, e)),
+    });
+    abrirHoja({ titulo: textoEstado(), contenido: [lista] });
+  }
+  function textoEstado() {
     const quedan = [...estado.values()].filter(
       e => e.fase === 'espera' || e.fase === 'busca'
     ).length;
-    progreso.append(
-      el('li', {
-        className: 'buscar__resumen',
-        children: [
-          el('span', {
-            text: enCola
-              ? t('buscar.estado.enCola')
-              : quedan
-                ? t('buscar.estado.quedan', { n: quedan, total: estado.size })
-                : t('buscar.estado.terminado'),
-          }),
-          quedan
-            ? el('button', {
-                className: 'button button--secondary button--small',
-                attrs: { type: 'button' },
-                text: t('buscar.parar'),
-                on: { click: () => pararBusqueda() },
-              })
-            : null,
-        ],
-      })
-    );
-    for (const [id, e] of estado) progreso.append(lineaSitio(id, e));
-    clear(pestanas);
+    return enCola
+      ? t('buscar.estado.enCola')
+      : quedan
+        ? t('buscar.estado.quedan', { n: quedan, total: estado.size })
+        : t('buscar.estado.terminado');
+  }
+
+  let ultimaFirmaMarcas = '';
+  function pintarResultados() {
+    if (zonaResultados.hidden) return;
     const buscando = [...estado.values()].some(e => e.fase === 'espera' || e.fase === 'busca');
-    pestanas.append(
-      pestanaBoton(
-        'todos',
-        t('buscar.todos'),
-        resultados.length,
-        buscando ? { fase: 'busca' } : null
+
+    // Marcas por sitio (recuento + estado) y «Filtros (N)».
+    // Solo se rehacen si cambió algo (llegan tandas cada 80 ms y casi siempre es lo mismo).
+    const datosMarcas = [
+      ['todos', t('buscar.todos'), resultados.length, buscando ? { fase: 'busca' } : null],
+    ];
+    for (const [id, e] of estado) {
+      if (nombreSitio(id)) datosMarcas.push([id, nombreSitio(id), e.total || 0, e]);
+    }
+    const firmaMarcas = JSON.stringify([pestana, datosMarcas]);
+    if (firmaMarcas !== ultimaFirmaMarcas) {
+      ultimaFirmaMarcas = firmaMarcas;
+      marcasSitios.replaceChildren(...datosMarcas.map(d => marcaSitio(...d)));
+    }
+    const activos = filtrosActivos();
+    pintarBotonFiltros(activos.length);
+    marcasFiltros.hidden = activos.length === 0;
+    marcasFiltros.replaceChildren(
+      ...activos.map(f =>
+        el('button', {
+          className: 'buscar__marca',
+          attrs: { type: 'button', 'aria-label': t('buscar.marca.quitar', { v: f.texto }) },
+          children: [
+            el('span', { text: f.texto }),
+            el('span', { attrs: { 'aria-hidden': 'true' }, text: '✕' }),
+          ],
+          on: {
+            click: () => {
+              f.quitar();
+              pintarResultados();
+            },
+          },
+        })
       )
     );
-    for (const [id, e] of estado) {
-      if (nombreSitio(id)) pestanas.append(pestanaBoton(id, nombreSitio(id), e.total || 0, e));
-    }
     pintarSugeridos();
 
-    const lista = visibles();
-    clear(barra);
-    if (lista.length > 0) {
-      if (descartados.size) {
-        barra.append(
-          el('button', {
-            className: 'button button--ghost button--small',
+    cuentaPagina = new Map();
+    for (const r of resultados) {
+      cuentaPagina.set(clavePagina(r), (cuentaPagina.get(clavePagina(r)) || 0) + 1);
+    }
+    const pasada = calcular();
+    ultimaPasada = pasada;
+    const { lista } = pasada;
+
+    // Una línea: estado de la búsqueda, cuántos se ven y lo oculto que se puede recuperar.
+    const quedan = buscando;
+    const piezas = [
+      el('button', {
+        className: 'buscar__estado-texto',
+        attrs: { type: 'button', 'aria-haspopup': 'dialog' },
+        children: [
+          quedan
+            ? el('span', { className: 'buscar__girando', attrs: { 'aria-hidden': 'true' } })
+            : null,
+          el('span', {
+            text:
+              (quedan || enCola ? `${textoEstado()} · ` : '') +
+              tp('buscar.resultados', lista.length) +
+              (pasada.repetidos ? ` · ${tp('buscar.repetidos', pasada.repetidos)}` : '') +
+              (pasada.enAlbumes > 0 ? ` · ${tp('buscar.enAlbumes', pasada.enAlbumes)}` : ''),
+          }),
+        ],
+        on: { click: () => abrirProgreso() },
+      }),
+    ];
+    const contador = (n, clave, alPulsar) =>
+      n
+        ? el('button', {
+            className: 'buscar__contador',
+            attrs: { type: 'button' },
+            text: tp(clave, n),
+            on: { click: alPulsar },
+          })
+        : null;
+    piezas.push(
+      contador(ocultarTengo ? pasada.ocultos.get('tengo') || 0 : 0, 'buscar.tengo.cuenta', () => {
+        filtroTengo.checked = false;
+        ocultarTengo = false;
+        pintarResultados();
+      }),
+      contador(
+        ocultarEnviados ? pasada.ocultos.get('enviado') || 0 : 0,
+        'buscar.enviados.cuenta',
+        () => {
+          filtroEnviados.checked = false;
+          ocultarEnviados = false;
+          pintarResultados();
+        }
+      ),
+      descartados.size
+        ? el('button', {
+            className: 'buscar__contador',
             attrs: { type: 'button' },
             text: tp('buscar.descartados', descartados.size),
             on: {
@@ -1520,83 +1798,67 @@ export function createBuscarView(root) {
               },
             },
           })
-        );
-      }
-      const sueltos = visibles({ porAlbum: false }).length;
-      const repetidos = ocultarRepetidos
-        ? visibles({ plegar: false, porAlbum: false }).length - sueltos
-        : 0;
-      const enAlbumes = sueltos - lista.length;
-      // `visibles` deja en `albumes` lo de la última llamada: se recalcula con la lista pintada.
-      visibles();
-      barra.append(
-        el('span', {
-          className: 'buscar__cuenta',
-          text:
-            tp('buscar.resultados', lista.length) +
-            (repetidos ? ` · ${tp('buscar.repetidos', repetidos)}` : '') +
-            (enAlbumes > 0 ? ` · ${tp('buscar.enAlbumes', enAlbumes)}` : ''),
-        }),
-        yaLoTengo
-      );
-      if (jd.configurado()) {
-        descargarTodo.textContent = t('buscar.descargarTodo', { n: lista.length });
-        barra.append(etiquetaDestino, descargarTodo);
-      }
+        : null,
+      quedan
+        ? el('button', {
+            className: 'cg-boton cg-boton--fantasma buscar__parar',
+            attrs: { type: 'button' },
+            text: t('buscar.parar'),
+            on: { click: () => pararBusqueda() },
+          })
+        : null
+    );
+    lineaEstado.replaceChildren(...piezas.filter(Boolean));
+
+    // Lo oculto por los filtros (sin contar «ya lo tengo» y «enviado», que tienen su contador).
+    const ocultosFiltro = [...pasada.ocultos].filter(([m]) => m !== 'tengo' && m !== 'enviado');
+    const totalOcultos = ocultosFiltro.reduce((a, [, n]) => a + n, 0);
+    if (verN) {
+      verN.textContent = t('buscar.filtros.ver', { n: lista.length });
+      verN.title = totalOcultos
+        ? `${tp('buscar.ocultos', totalOcultos)} (${ocultosFiltro
+            .map(([m, n]) => t(`buscar.oculto.${m}.n`, { n }))
+            .join(', ')})`
+        : '';
     }
-    pintarFiltros();
+
+    // «Descargar todo»: sin lo que ya tienes ni lo enviado, aunque se esté mostrando.
+    const paraTodo = paraDescargarTodo(lista, { tengo: enBiblioteca, enviados });
+    pieAccion.hidden = !jd.configurado() || lista.length === 0;
+    descargarTodo.textContent = t('buscar.descargarTodo', { n: paraTodo.length });
+    descargarTodo.disabled = paraTodo.length === 0;
 
     const e = pestana === 'todos' ? null : estado.get(pestana);
-    vacio.hidden = lista.length > 0;
-    vacio.textContent =
-      e?.fase === 'error'
-        ? t('buscar.errorSitio', { error: e.error })
-        : buscando || e?.fase === 'busca' || e?.fase === 'espera'
-          ? t('buscar.buscando')
-          : t('buscar.nada');
+    const pintar = pasada.pintar;
+    vacio.hidden = pintar.length > 0;
+    const hijosVacio = [
+      el('p', {
+        text:
+          e?.fase === 'error'
+            ? t('buscar.errorSitio', { error: e.error })
+            : buscando || e?.fase === 'busca' || e?.fase === 'espera'
+              ? t('buscar.buscando')
+              : resultados.length && (totalOcultos || pasada.ocultos.size)
+                ? t('buscar.nada.ocultos')
+                : t('buscar.nada'),
+      }),
+      !buscando && resultados.length && pasada.ocultos.size
+        ? el('button', {
+            className: 'cg-boton cg-boton--principal',
+            attrs: { type: 'button' },
+            text: t('buscar.filtros'),
+            on: { click: () => abrirFiltros() },
+          })
+        : null,
+    ];
+    // replaceChildren() escribiría «null» o «0»: solo nodos.
+    vacio.replaceChildren(...hijosVacio.filter(Boolean));
 
-    clear(rejilla);
-    cuentaPagina = porPagina();
-    for (const r of verOcultos ? visibles({ conOcultos: true }) : lista) {
-      rejilla.append(tarjeta(r));
-    }
-  }
-
-  /** Cuántos esconde cada filtro, en la pestaña que se mira (sin contar los quitados a mano). */
-  function contarOcultos() {
-    const n = new Map();
-    for (const r of resultados) {
-      if (!enPestana(r)) continue;
-      const m = motivoOculto(r);
-      if (m) n.set(m, (n.get(m) || 0) + 1);
-    }
-    return n;
-  }
-
-  function pintarFiltros() {
-    zonaFiltros.hidden = resultados.length === 0;
-    if (zonaFiltros.hidden) return;
-    if (!zonaFiltros.firstChild) {
-      zonaFiltros.append(
-        filtroContener,
-        filtroExcluir,
-        etiquetaIdioma,
-        etiquetaFrase,
-        etiquetaOrden,
-        etiquetaDuracion,
-        etiquetaRepetidos,
-        el('span', { className: 'buscar__ocultos-fila', children: [resumenOcultos, botonOcultos] })
-      );
-    }
-    const ocultos = contarOcultos();
-    const total = [...ocultos.values()].reduce((a, b) => a + b, 0);
-    resumenOcultos.textContent = total
-      ? `${tp('buscar.ocultos', total)} (${[...ocultos]
-          .map(([m, n]) => t(`buscar.oculto.${m}.n`, { n }))
-          .join(', ')})`
-      : '';
-    botonOcultos.hidden = total === 0 && !verOcultos;
-    botonOcultos.textContent = t(verOcultos ? 'buscar.ocultos.esconder' : 'buscar.ocultos.ver');
+    reconciliar(
+      rejilla,
+      pintar.map(r => filaDe(r, pasada))
+    );
+    pintarCasillas();
   }
 
   function pintarSugeridos() {
@@ -1606,7 +1868,7 @@ export function createBuscarView(root) {
       zonaSugeridos.append(
         el('span', { text: t('buscar.listado', { sitio: nombreSitio(id) }) }),
         el('button', {
-          className: 'button button--secondary button--small',
+          className: 'cg-boton',
           attrs: { type: 'button' },
           text: t('buscar.listado.recorrer'),
           on: {
@@ -1623,7 +1885,7 @@ export function createBuscarView(root) {
     for (const s of sugeridos) {
       zonaSugeridos.append(
         el('button', {
-          className: 'button button--secondary button--small',
+          className: 'cg-boton',
           attrs: { type: 'button', title: tp('buscar.resultados', s.videos) },
           text: `+ ${s.dominio} (${s.videos})`,
           on: { click: () => abrirAlta({ dominios: [s.dominio], termino: ultimaBusqueda }) },
@@ -1633,27 +1895,29 @@ export function createBuscarView(root) {
   }
 
   alCambiarIdioma(() => {
+    filas.clear(); // los textos de cada fila están traducidos
+    ultimaFirmaMarcas = '';
+    pintarSelects();
     pintarSitios();
+    pintarInicio();
+    pintarDestinos();
     pintarResultados();
   });
+  pintarSelects();
+  pintarDestinos();
+  pintarInicio();
 
   // Viene con ?q= (o ?searchTerm=, como enlaza clipkeeper): se busca directamente.
-  const inicial = (() => {
+  const parametro = nombre => {
     try {
-      const p = new URLSearchParams(window.location.search);
-      return p.get('q') || p.get('searchTerm') || '';
+      return new URLSearchParams(window.location.search).get(nombre) || '';
     } catch {
       return '';
     }
-  })();
+  };
+  const inicial = parametro('q') || parametro('searchTerm');
   // ?prellenar=: deja el texto escrito, pero la búsqueda la lanza la persona.
-  const prellenado = (() => {
-    try {
-      return new URLSearchParams(window.location.search).get('prellenar') || '';
-    } catch {
-      return '';
-    }
-  })();
+  const prellenado = parametro('prellenar');
   if (inicial || prellenado) entrada.value = inicial || prellenado;
   /** Al abrir la página: si hay una búsqueda (en marcha o reciente) en el servidor, se muestra. */
   async function reengancharse() {
@@ -1662,7 +1926,7 @@ export function createBuscarView(root) {
       if (!busqueda) return;
       ver(busqueda);
     } catch {
-      // sin búsqueda previa: la pantalla queda vacía, como siempre
+      // sin búsqueda previa: la pantalla queda en su estado inicial
     }
   }
 
@@ -1675,6 +1939,8 @@ export function createBuscarView(root) {
 
   return {
     focus: () => enfocarAlAbrir(entrada),
+    // Al irse a otra pantalla la selección no sigue tapando la barra de navegación.
+    ocultar: () => seleccion?.limpiar(),
     // Solo deja de mirar: la búsqueda sigue en el servidor.
     teardown: () => {
       soltar();

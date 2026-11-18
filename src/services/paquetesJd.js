@@ -323,11 +323,31 @@ async function listar() {
   return (await almacen.leer()).paquetes || [];
 }
 
+/**
+ * Memoria de lo ya enviado (CS-N7): de estas fichas, cuáles van en algún paquete y cuándo se
+ * mandaron por última vez. Pura, para poder probarla. Una ficha con o sin «/» final es la misma.
+ */
+function enviadosDe(paquetes, enlaces) {
+  const normal = u => String(u || '').replace(/\/+$/, '');
+  const pedidos = new Map();
+  for (const e of enlaces || []) pedidos.set(normal(e), e);
+  const r = {};
+  for (const p of paquetes || []) {
+    for (const f of p.fichas || []) {
+      const original = pedidos.get(normal(f));
+      if (original === undefined) continue;
+      if (!r[original] || r[original] < p.creado) r[original] = p.creado;
+    }
+  }
+  return r;
+}
+
 module.exports = {
   registrar,
   anotarTrabajo,
   revisar,
   listar,
+  enviadosDe,
   arrancar,
   parar,
   resumir,

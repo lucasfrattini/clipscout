@@ -39,9 +39,9 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
 
   /** `carpeta` fijada de antemano (p. ej. «Descargar en» del buscador): no se pregunta. */
   async function enviar(links, { carpeta, regla = null, titulos = [] } = {}) {
-    if (links.length === 0) return;
+    if (links.length === 0) return null;
     const elegido = carpeta !== undefined ? { carpeta, regla } : await elegirCarpeta();
-    if (elegido === null) return;
+    if (elegido === null) return null;
     ultima = elegido.carpeta.replace(/^\/+|\/+$/g, '');
     try {
       const r = await ajustes.enviarJd({
@@ -67,8 +67,11 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
       }
       // La carpeta nueva ya existe para la próxima vez
       if (elegido.regla) cargar();
+      // Quien llama sabe así que salió (Buscar lo apunta como «ya enviado»).
+      return r;
     } catch (error) {
       toast(error.message, 'error', 6000);
+      return null;
     }
   }
 

@@ -3,6 +3,7 @@ import { createExplorerView } from './views/explorer.js';
 import { createBuscarView } from './views/buscar.js';
 import { createVideoView } from './views/video.js';
 import { createAjustesView, initCrewCabecera } from './views/ajustes.js';
+import { createActividadView } from './views/actividad.js';
 import { aplicarTema, temaGuardado } from './tema.js';
 import { t, alCambiarIdioma, traducirDocumento } from './i18n/index.js';
 
@@ -20,21 +21,26 @@ const DEFAULT_LIMITS = {
 /* ── Navegación entre vistas ───────────────────────────────────────── */
 
 function initRouter(views) {
-  const tabs = [...document.querySelectorAll('.tab')];
+  const barra = document.querySelector('cg-barra-inferior');
   const sections = {
     buscar: document.getElementById('view-buscar'),
+    actividad: document.getElementById('view-actividad'),
     explorer: document.getElementById('view-explorer'),
     video: document.getElementById('view-video'),
     ajustes: document.getElementById('view-ajustes'),
   };
+  /**
+   * Qué destino de la barra se ilumina: el editor de sitio (#/explorer) se abre desde Ajustes y
+   * el análisis de un enlace (#/video) es parte de Buscar.
+   */
+  const DESTINO = { explorer: 'ajustes', video: 'buscar' };
 
   /**
    * Fija `<title>` y `<meta name="description">` según la vista activa.
    *
-   * Las dos herramientas viven en la misma URL con hash (`#/explorer`,
-   * `#/video`), así que sin esto ambas compartían el título estático
-   * "clipscout" y una descripción genérica: la pestaña del navegador y el
-   * historial no distinguían en cuál de las dos estabas.
+   * Las vistas viven en la misma URL con hash (`#/explorer`, `#/video`), así que sin esto
+   * compartían el título estático "clipscout" y una descripción genérica: la pestaña del
+   * navegador y el historial no distinguían en cuál estabas.
    */
   function aplicarCabecera(name) {
     document.title = t(`head.${name}.titulo`);
@@ -42,18 +48,14 @@ function initRouter(views) {
     if (meta) meta.setAttribute('content', t(`head.${name}.desc`));
   }
 
+  let actual = null;
   function activate(name, { updateHash = true } = {}) {
     // «ajustes/sitios»: la vista es la primera parte; el resto lo lee la propia vista.
     name = String(name).split('/')[0];
     if (!sections[name]) name = 'buscar';
 
     aplicarCabecera(name);
-
-    for (const tab of tabs) {
-      const isActive = tab.dataset.view === name;
-      if (isActive) tab.setAttribute('aria-current', 'page');
-      else tab.removeAttribute('aria-current');
-    }
+    barra?.activar?.(`#/${DESTINO[name] || name}`);
 
     for (const [key, section] of Object.entries(sections)) {
       section.hidden = key !== name;
@@ -61,17 +63,17 @@ function initRouter(views) {
 
     if (updateHash) {
       const hash = `#/${name}`;
-      const actual = window.location.hash;
-      if (actual !== hash && !actual.startsWith(`${hash}/`)) {
+      const hashActual = window.location.hash;
+      if (hashActual !== hash && !hashActual.startsWith(`${hash}/`)) {
         window.history.replaceState(null, '', hash);
       }
     }
 
+    // Cambiar de pantalla empieza arriba (cada una tiene su propia cabecera).
+    if (actual !== name) window.scrollTo(0, 0);
+    if (actual && actual !== name) views[actual]?.ocultar?.();
+    actual = name;
     views[name]?.focus?.();
-  }
-
-  for (const tab of tabs) {
-    tab.addEventListener('click', () => activate(tab.dataset.view));
   }
 
   window.addEventListener('hashchange', () => {
@@ -81,11 +83,11 @@ function initRouter(views) {
   const initial = window.location.hash.replace('#/', '') || 'buscar';
   activate(initial);
 
-  // El título es texto calculado, así que se rehace al cambiar de idioma: si
-  // no, se quedaría en español con la interfaz ya en inglés.
+  // El título es texto calculado, así que se rehace al cambiar de idioma: si no, se quedaría en
+  // español con la interfaz ya en inglés.
   alCambiarIdioma(() => {
-    const actual = (window.location.hash.replace('#/', '') || 'buscar').split('/')[0];
-    aplicarCabecera(sections[actual] ? actual : 'buscar');
+    const vista = (window.location.hash.replace('#/', '') || 'buscar').split('/')[0];
+    aplicarCabecera(sections[vista] ? vista : 'buscar');
   });
 }
 
@@ -156,6 +158,7 @@ async function main() {
 
   const views = {
     buscar: createBuscarView(document.getElementById('view-buscar')),
+    actividad: createActividadView(document.getElementById('view-actividad')),
     explorer: createExplorerView(document.getElementById('view-explorer'), { limits }),
     video: createVideoView(document.getElementById('view-video')),
     ajustes: createAjustesView(document.getElementById('view-ajustes')),
@@ -163,7 +166,10 @@ async function main() {
 
   initRouter(views);
   await initCrewCabecera(document.getElementById('crew-apps'));
-  document.getElementById('guia').addEventListener('click', mostrarGuia);
+  document.getElementById('guia').addEventListener('click', () => {
+    document.getElementById('hoja-apps')?.cerrar?.();
+    mostrarGuia();
+  });
   await aceptarAviso();
   if (!window.guiaVista('clipscout')) mostrarGuia();
   avisoSinCifrar();

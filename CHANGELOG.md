@@ -1,5 +1,54 @@
 # Cambios
 
+## 2.20.0 — cómoda con una mano (fase 3)
+
+- **Navegación nueva**: **Buscar · Actividad · Ajustes**, abajo en el móvil y como barra lateral
+  en escritorio, con el paquete común de interfaz de Clipgeist (`public/cg/`, copia idéntica de
+  la de clonbuster). Cada pantalla tiene una cabecera de una fila que se esconde al bajar.
+- **Actividad** reúne lo que antes estaba en tres sitios: la cola de búsquedas, los paquetes
+  mandados a JDownloader y las búsquedas programadas (alta y edición en una hoja).
+- **Buscar**: la caja va arriba; sitios, páginas y «Varias búsquedas» en «Opciones»; los filtros
+  en una hoja («Filtros (N)») y fuera solo los activos, cada uno con su ✕. Una marca por sitio con
+  su recuento y su estado sustituye a la lista de progreso y a las pestañas por sitio.
+- **Lista compacta** (unas ocho filas por pantalla, antes ninguna entera) con **selección
+  múltiple**: pulsación larga o la casilla; abajo, **Descargar**, **Todos** y **Quitar** (con
+  «Deshacer»). Ver, abrir, descargar y el álbum, en el «⋯» de cada fila.
+- **«Ya lo tengo»** y **lo ya enviado** se ocultan por defecto, con su contador, y nunca entran en
+  «Descargar todo». Lo enviado se recuerda en el servidor (`POST /api/ajustes/jdownloader/enviados`,
+  ruta nueva).
+- La lista ya no se rehace entera con cada tanda de resultados: reutiliza las filas.
+- **Ajustes** de 9 secciones a 4 (**Búsqueda · Descargas · Clipgeist · Sistema**); en el móvil, una
+  lista y una pantalla por sección. **Sitios**: una fila por sitio con interruptor grande («buscar
+  por defecto») y «⋯» con editar, fichero directo y **borrar**.
+- **Avanzado** sale del menú: es el **editor de sitio** (Ajustes → Búsqueda → Sitios → ⋯ → Editar).
+- Los iconos de las otras apps (en el logo) usan la dirección desde la que se ve la página: desde
+  el móvil ya abren.
+- Ningún control mide menos de 44 px en el móvil; lo irreversible (borrar un sitio, quitar una
+  programada, vaciar el capturador, poner las cifras a cero) pide mantener pulsado.
+- Ya no se pregunta «¿también en la web?» en cada búsqueda (es una casilla recordada en
+  Opciones) ni se ve el aviso fijo de uso responsable (se acepta al entrar).
+
+**Al actualizar**: no hay que hacer nada; búsquedas, programadas, paquetes y sitios siguen igual y
+ninguna ruta de la API cambia. Dónde quedó cada cosa:
+
+| Antes                                                      | Ahora                                                     |
+| ---------------------------------------------------------- | --------------------------------------------------------- |
+| Avanzado (menú)                                            | Ajustes → Búsqueda → Sitios → ⋯ → Editar (o `#/explorer`) |
+| Cola de búsquedas (en Buscar)                              | Actividad → Búsquedas                                     |
+| Ajustes → JDownloader → paquetes                           | Actividad → Descargas                                     |
+| Ajustes → Búsqueda → programadas                           | Actividad → Programadas                                   |
+| Ajustes → Sitios, Búsqueda (web)                           | Ajustes → Búsqueda                                        |
+| Ajustes → JDownloader                                      | Ajustes → Descargas                                       |
+| Ajustes → Conexiones, clave de API                         | Ajustes → Clipgeist                                       |
+| Ajustes → General, Seguridad, Copia, Apariencia, Acerca de | Ajustes → Sistema                                         |
+| Iconos de las apps, «?», «Salir» (cabecera)                | Logo de clipscout (arriba a la derecha)                   |
+| Filtros de resultados                                      | Botón «Filtros»                                           |
+| Sitios de la búsqueda, páginas, «Varias búsquedas…»        | Botón de opciones junto a la caja                         |
+| «▶ Ver», «Abrir», «⬇ Descargar», «✕» de cada tarjeta       | «⋯» de cada fila                                          |
+
+Las direcciones viejas (`#/ajustes/sitios`, `#/ajustes/jdownloader`…) llevan a la sección nueva.
+Los sitios que tenías apagados en Buscar en este navegador siguen apagados para esa búsqueda.
+
 ## 2.19.0 — Windows, instalador y primer arranque (fase 2)
 
 - **Apagado ordenado**: `POST /api/apagar` (sesión, clave de administración, o el propio equipo con

@@ -2,12 +2,14 @@
 <html lang="es" data-app="clipscout">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>clipscout</title>
     <meta name="description" content="Explorador de enlaces y recursos multimedia de sitios web." />
     <meta name="color-scheme" content="light dark" />
+    <link rel="stylesheet" href="/cg/cg-ui.css" />
     <link rel="stylesheet" href="/styles/crew.css" />
     <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="stylesheet" href="/styles/una-mano.css" />
 
     <!--
       Favicons. Llevan una placa clara HORNEADA en la propia imagen, a
@@ -24,79 +26,39 @@
   <body>
     <a class="skip-link" href="#main" data-i18n="app.saltar">Saltar al contenido</a>
 
+    <!--
+      Navegación (fase 3): Buscar · Actividad · Ajustes. Abajo en el móvil, barra lateral en
+      escritorio (componente común cg-ui). «Avanzado» ya no está aquí: es el editor de un sitio
+      (Ajustes → Búsqueda → Sitios → Editar); #/explorer sigue funcionando.
+    -->
+    <cg-barra-inferior data-i18n="nav.aria" data-i18n-attr="etiqueta" etiqueta="Herramientas">
+      <a data-marca class="cs-marca" href="/">
+        <img src="/img/logo.png" alt="" width="34" height="34" />
+        <span class="cs-marca-texto">
+          <small>Clipgeist</small>
+          <span>clipscout</span>
+        </span>
+      </a>
+      <a href="#/buscar" data-icono="buscar" data-vista="buscar"
+        ><span data-i18n="nav.buscar">Buscar</span></a
+      >
+      <a href="#/actividad" data-icono="actividad" data-vista="actividad"
+        ><span data-i18n="nav.actividad">Actividad</span></a
+      >
+      <a href="#/ajustes" data-icono="ajustes" data-vista="ajustes"
+        ><span data-i18n="nav.ajustes">Ajustes</span></a
+      >
+    </cg-barra-inferior>
+
     <div class="layout">
-      <!-- Cabecera COMÚN de Clipgeist (styles/crew.css): igual en clonbuster y clipkeeper. -->
-      <header class="cc-cabecera">
-        <div class="cc-cabecera-dentro">
-          <a class="cc-marca" href="/">
-            <img src="/img/logo.png" alt="" width="38" height="38" />
-            <span class="cc-marca-texto">
-              <span class="cc-crew">Clipgeist</span>
-              <span class="cc-nombre">clipscout</span>
-            </span>
-          </a>
-
-          <nav
-            class="cc-menu"
-            data-i18n="nav.aria"
-            data-i18n-attr="aria-label"
-            aria-label="Herramientas"
-          >
-            <button
-              class="tab"
-              data-view="buscar"
-              type="button"
-              data-i18n="tip.buscar"
-              data-i18n-attr="title"
-              aria-current="page"
-            >
-              <span class="tab__label" data-i18n="nav.buscar">Buscar</span>
-            </button>
-            <button
-              class="tab"
-              data-view="explorer"
-              type="button"
-              data-i18n="tip.explorador"
-              data-i18n-attr="title"
-            >
-              <span class="tab__label" data-i18n="nav.explorador">Avanzado</span>
-            </button>
-            <!-- «Vídeos» ya no va en el menú: pegar un enlace en Buscar hace lo mismo. #/video sigue. -->
-            <button
-              class="tab"
-              data-view="ajustes"
-              type="button"
-              data-i18n="tip.ajustes"
-              data-i18n-attr="title"
-            >
-              <span class="tab__label" data-i18n="nav.ajustes">Ajustes</span>
-            </button>
-          </nav>
-
-          <div class="cc-derecha">
-            <!-- Las tres apps de Clipgeist; las no conectadas aparecen apagadas. -->
-            <nav
-              class="cc-apps"
-              id="crew-apps"
-              data-i18n="crew.aria"
-              data-i18n-attr="aria-label"
-              aria-label="Apps de Clipgeist"
-            ></nav>
-            <button
-              class="cc-ayuda"
-              id="guia"
-              type="button"
-              data-i18n="guia.ayuda"
-              data-i18n-attr="title,aria-label"
-            >
-              ?
-            </button>
-          </div>
-        </div>
-      </header>
-
       <main id="main" class="main">
         <section id="view-buscar" class="view" aria-labelledby="buscar-heading"></section>
+        <section
+          id="view-actividad"
+          class="view"
+          hidden
+          aria-labelledby="actividad-heading"
+        ></section>
         <section
           id="view-explorer"
           class="view"
@@ -117,8 +79,26 @@
       </footer>
     </div>
 
+    <!--
+      Menú del logo: las tres apps de Clipgeist (con la dirección desde la que se ve esta página),
+      la guía y «Salir». Lo abre el botón del logo de cada cabecera.
+    -->
+    <cg-hoja id="hoja-apps" titulo="Clipgeist">
+      <nav
+        class="cc-apps cs-apps"
+        id="crew-apps"
+        data-i18n="crew.aria"
+        data-i18n-attr="aria-label"
+        aria-label="Apps de Clipgeist"
+      ></nav>
+      <div class="cs-apps-acciones">
+        <button class="cg-boton" id="guia" type="button" data-i18n="guia.ayuda">Guía rápida</button>
+      </div>
+    </cg-hoja>
+
     <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
 
+    <script src="/cg/cg-ui.js" defer></script>
     <script src="/js/guia.js"></script>
     <script type="module" src="/js/app.js"></script>
   </body>

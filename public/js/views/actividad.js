@@ -1,0 +1,573 @@
+/**
+ * Actividad (fase 3): «qué está pasando», en un solo sitio. Antes la cola de búsquedas estaba en
+ * Buscar, los paquetes de descargas en Ajustes → JDownloader y las programadas en Ajustes →
+ * Búsqueda. Tres pestañas (#/actividad/busquedas, /descargas, /programadas); los datos y las
+ * rutas de la API son los mismos de siempre.
+ */
+import { ajustes } from '../api.js';
+import { el, toast } from '../dom.js';
+import { t, tp, alCambiarIdioma } from '../i18n/index.js';
+import { crearCabecera } from '../cabecera.js';
+import { abrirHoja, menuAcciones } from '../hojas.js';
+import { pestanaActividad, PESTANAS_ACTIVIDAD } from '../unaMano.js';
+
+const confirmarIrreversible = opciones =>
+  window.cgConfirmar({ peligro: true, mantener: true, ...opciones });
+
+export function createActividadView(raiz) {
+  const cabecera = crearCabecera({ tituloClave: 'nav.actividad', id: 'actividad-heading' });
+  const chips = document.createElement('cg-chips');
+  chips.setAttribute('unico', '');
+  chips.className = 'actividad__pestanas';
+  const botones = Object.fromEntries(
+    PESTANAS_ACTIVIDAD.map(id => [
+      id,
+      // El texto va en su <span>: cg-chips pone delante la marca ✓ y no hay que borrársela.
+      el('button', {
+        attrs: { type: 'button', value: id, 'data-pestana': id },
+        children: [el('span')],
+      }),
+    ])
+  );
+  chips.append(...Object.values(botones));
+  const panel = el('div', { className: 'actividad__panel' });
+  raiz.append(cabecera.nodo, el('div', { className: 'actividad', children: [chips, panel] }));
+
+  const cuentas = { busquedas: 0, descargas: 0, programadas: 0 };
+  const pintarPestanas = () => {
+    for (const id of PESTANAS_ACTIVIDAD) {
+      botones[id].lastElementChild.textContent = cuentas[id]
+        ? `${t(`act.${id}`)} · ${cuentas[id]}`
+        : t(`act.${id}`);
+    }
+  };
+  pintarPestanas();
+
+  const pestanaDeHash = () => {
+    const resto = window.location.hash.replace(/^#\/actividad\/?/, '').split('/')[0];
+    return pestanaActividad(resto);
+  };
+  let pestana = pestanaDeHash();
+  chips.addEventListener('cg-cambiado', e => {
+    const id = e.detail?.chip?.value;
+    if (id && id !== pestana) {
+      window.history.replaceState(null, '', `#/actividad/${id}`);
+      mostrar(id);
+    }
+  });
+
+  const visible = () => !raiz.hidden && document.visibilityState !== 'hidden';
+
+  /* ── Búsquedas: la cola del servidor ───────────────────────────────── */
+  const listaBusquedas = el('ul', { className: 'cs-lista' });
+  let cola = [];
+  async function cargarCola() {
+    try {
+      cola = (await fetch('/api/buscar/cola').then(r => r.json())).busquedas || [];
+    } catch {
+      return;
+    }
+    cuentas.busquedas = cola.filter(b => b.estado !== 'fin').length;
+    pintarPestanas();
+    if (pestana === 'busquedas') pintarCola();
+  }
+  function pintarCola() {
+    if (!cola.length) {
+      listaBusquedas.replaceChildren(
+        vacio(t('act.vacio.busquedas'), t('act.vacio.busquedas.boton'), () => {
+          location.hash = '#/buscar';
+        })
+      );
+      return;
+    }
+    const activas = cola.filter(b => b.estado !== 'fin');
+    const terminadas = cola.filter(b => b.estado === 'fin');
+    listaBusquedas.replaceChildren(
+      ...[
+        ...activas.map(filaBusqueda),
+        terminadas.length
+          ? el('li', {
+              className: 'cs-lista__grupo',
+              text: t('buscar.cola.terminadas', { n: terminadas.length }),
+            })
+          : null,
+        ...terminadas.slice(0, 50).map(filaBusqueda),
+      ].filter(Boolean)
+    );
+  }
+  function filaBusqueda(b) {
+    const estado =
+      b.estado === 'curso'
+        ? t('buscar.cola.curso')
+        : b.estado === 'cola'
+          ? t('buscar.cola.esperando', { n: b.posicion })
+          : b.quitada
+            ? t('buscar.cola.quitada')
+            : tp('buscar.resultados', b.total);
+    const detalle = [
+      estado,
+      b.carpeta ? `→ ${b.carpeta}` : null,
+      b.origen === 'programada' ? t('buscar.cola.programada') : null,
+    ]
+      .filter(Boolean)
+      .join(' · ');
+    const ver = () => {
+      location.hash = '#/buscar';
+      window.dispatchEvent(new CustomEvent('clipscout:ver-busqueda', { detail: b }));
+    };
+    const acciones = [
+      el('button', {
+        className: 'cg-boton',
+        attrs: { type: 'button' },
+        text: t('buscar.cola.ver'),
+        on: { click: ver },
+      }),
+    ];
+    if (b.estado !== 'fin') {
+      acciones.push(
+        el('button', {
+          className: 'cg-boton cg-boton--fantasma',
+          attrs: { type: 'button' },
+          text: t(b.estado === 'cola' ? 'act.quitar' : 'buscar.parar'),
+          on: {
+            click: async () => {
+              await fetch(`/api/buscar/cola/${encodeURIComponent(b.id)}`, {
+                method: 'DELETE',
+              }).catch(() => {});
+              cargarCola();
+            },
+          },
+        })
+      );
+    }
+    return fila({
+      estado: b.estado === 'fin' ? 'hecho' : 'curso',
+      titulo: b.q,
+      detalle,
+      acciones,
+    });
+  }
+
+  /* ── Descargas: los paquetes mandados a JDownloader ────────────────── */
+  const avisoDescargas = el('p', { className: 'cs-nota' });
+  const listaPaquetes = el('ul', { className: 'cs-lista' });
+  const barraDescargas = el('div', {
+    className: 'cs-fila-botones',
+    children: [
+      el('button', {
+        className: 'cg-boton',
+        attrs: { type: 'button' },
+        text: t('aj.paq.actualizar'),
+        on: { click: () => cargarPaquetes(true) },
+      }),
+      el('button', {
+        className: 'cg-boton cg-boton--fantasma',
+        attrs: { type: 'button' },
+        text: t('aj.paq.vaciar'),
+        on: { click: () => vaciarCapturador() },
+      }),
+    ],
+  });
+  let paquetes = [];
+  async function cargarPaquetes(revisar = false) {
+    let datos;
+    try {
+      datos = await ajustes.paquetesJd(revisar);
+    } catch (error) {
+      avisoDescargas.textContent = error.message;
+      return;
+    }
+    avisoDescargas.textContent = datos.error ? t('aj.paq.sinJd', { error: datos.error }) : '';
+    paquetes = datos.paquetes || [];
+    cuentas.descargas = paquetes.filter(p => p.estado !== 'terminado').length;
+    pintarPestanas();
+    if (pestana === 'descargas') pintarPaquetes();
+  }
+  function pintarPaquetes() {
+    if (!paquetes.length) {
+      listaPaquetes.replaceChildren(vacio(t('aj.paq.vacio')));
+      return;
+    }
+    const fecha = ms => new Date(ms).toLocaleString();
+    listaPaquetes.replaceChildren(
+      ...paquetes.slice(0, 50).map(p => {
+        const c = p.contadores;
+        const detalle = [
+          t(`aj.paq.estado.${p.estado}`),
+          p.carpeta || t('aj.prog.sinCarpeta'),
+          fecha(p.creado),
+          c ? t('aj.paq.cuenta', { hechos: c.terminados, total: c.total }) : null,
+          c?.fallidos ? tp('aj.paq.caidos', c.fallidos) : null,
+          p.directos ? tp('aj.paq.directos', p.directos) : null,
+          p.sinDirecto ? tp('aj.paq.sinDirecto', p.sinDirecto) : null,
+          p.escaneado ? t('aj.paq.escaneado') : null,
+        ].filter(Boolean);
+        const acciones = [];
+        if (p.estado === 'error' || c?.fallidos) {
+          acciones.push(
+            el('button', {
+              className: 'cg-boton',
+              attrs: { type: 'button' },
+              text: t('aj.paq.reintentar'),
+              on: {
+                click: async () => {
+                  try {
+                    const r = await ajustes.reintentarPaquete(p.id);
+                    toast(tp('aj.paq.reintentado', r.sustituidas || 0));
+                    cargarPaquetes();
+                  } catch (error) {
+                    toast(error.message, 'error', 6000);
+                  }
+                },
+              },
+            })
+          );
+        }
+        return fila({
+          estado: p.estado === 'terminado' ? 'hecho' : p.estado === 'error' ? 'error' : 'curso',
+          titulo: p.nombre,
+          detalle: detalle.join(' · '),
+          acciones,
+        });
+      })
+    );
+  }
+  async function vaciarCapturador() {
+    const enEspera = paquetes.filter(p => p.estado !== 'terminado').length;
+    const si = await confirmarIrreversible({
+      titulo: t('aj.paq.vaciar'),
+      texto: `${t('aj.paq.vaciarConfirmar')} ${tp('act.paquetesEnEspera', enEspera)}`,
+      aceptar: t('act.vaciar'),
+    });
+    if (!si) return;
+    try {
+      await ajustes.vaciarCapturador();
+      toast(t('aj.paq.vaciado'));
+      cargarPaquetes(true);
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+    }
+  }
+
+  /* ── Programadas ───────────────────────────────────────────────────── */
+  const listaProgramadas = el('ul', { className: 'cs-lista' });
+  const nuevaProgramada = el('button', {
+    className: 'cg-boton cg-boton--principal',
+    attrs: { type: 'button' },
+    text: t('act.prog.nueva'),
+    on: { click: () => formularioProgramada(null) },
+  });
+  let programadas = { programadas: [], enCurso: null };
+  async function cargarProgramadas() {
+    try {
+      programadas = await ajustes.programadas();
+    } catch (error) {
+      listaProgramadas.replaceChildren(el('li', { className: 'cs-nota', text: error.message }));
+      return;
+    }
+    cuentas.programadas = programadas.programadas.filter(p => p.activa).length;
+    pintarPestanas();
+    if (pestana === 'programadas') pintarProgramadas();
+  }
+  const resumen = p => {
+    if (programadas.enCurso === p.id) return t('aj.prog.enCurso');
+    if (!p.ultimo) return t('aj.prog.nunca');
+    const fecha = new Date(p.ultimo.fecha).toLocaleString();
+    return p.ultimo.error
+      ? t('aj.prog.ultimoError', { fecha, error: p.ultimo.error })
+      : t('aj.prog.ultimo', {
+          fecha,
+          encontrados: p.ultimo.encontrados,
+          enviados: p.ultimo.enviados,
+        });
+  };
+  function pintarProgramadas() {
+    if (!programadas.programadas.length) {
+      listaProgramadas.replaceChildren(vacio(t('aj.prog.vacio')));
+      return;
+    }
+    listaProgramadas.replaceChildren(
+      ...programadas.programadas.map(p =>
+        fila({
+          estado: p.activa ? (programadas.enCurso === p.id ? 'curso' : 'hecho') : 'pausa',
+          titulo: p.termino,
+          detalle: [
+            p.carpeta || t('aj.prog.sinCarpeta'),
+            t('aj.prog.cada.n', { n: p.cadaDias }),
+            p.minutosMinimo ? t('aj.prog.masDe', { n: p.minutosMinimo }) : null,
+            p.activa ? null : t('act.prog.pausada'),
+          ]
+            .filter(Boolean)
+            .join(' · '),
+          detalle2: resumen(p),
+          acciones: [
+            el('button', {
+              className: 'cg-boton',
+              attrs: { type: 'button' },
+              text: t('aj.prog.ahora'),
+              on: { click: () => lanzar(p) },
+            }),
+            botonMas(t('act.mas', { nombre: p.termino }), () =>
+              menuAcciones({
+                titulo: p.termino,
+                acciones: [
+                  { texto: t('aj.prog.editar'), fn: () => formularioProgramada(p) },
+                  {
+                    texto: t(p.activa ? 'aj.prog.pausar' : 'aj.prog.reanudar'),
+                    fn: async () => {
+                      await ajustes.guardarProgramada({ id: p.id, activa: !p.activa });
+                      cargarProgramadas();
+                    },
+                  },
+                  { texto: t('aj.prog.quitar'), peligro: true, fn: () => quitarProgramada(p) },
+                ],
+              })
+            ),
+          ],
+        })
+      )
+    );
+  }
+  async function lanzar(p) {
+    try {
+      await ajustes.lanzarProgramada(p.id);
+      toast(t('aj.prog.lanzada'));
+      cargarProgramadas();
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+    }
+  }
+  async function quitarProgramada(p) {
+    const si = await confirmarIrreversible({
+      titulo: t('aj.prog.quitar'),
+      texto: `«${p.termino}». ${t('aj.prog.quitarConfirmar')}`,
+      aceptar: t('aj.prog.quitar'),
+    });
+    if (!si) return;
+    await ajustes.quitarProgramada(p.id);
+    cargarProgramadas();
+  }
+
+  /** Alta o edición de una programada, en una hoja (los diez campos de antes, igual). */
+  function formularioProgramada(p, prellenar = {}) {
+    const v = { ...(p || {}), ...prellenar };
+    const entrada = (valor, placeholder, extra = {}) => {
+      const i = el('input', {
+        className: 'input',
+        attrs: { type: 'text', spellcheck: 'false', placeholder, ...extra },
+      });
+      i.value = valor || '';
+      return i;
+    };
+    const termino = entrada(v.termino, t('aj.prog.termino.ej'));
+    const carpeta = entrada(v.carpeta, t('aj.prog.carpeta.ej'), { list: 'programadas-carpetas' });
+    const carpetas = el('datalist', { attrs: { id: 'programadas-carpetas' } });
+    const persona = entrada(v.persona, t('aj.prog.persona.ej'));
+    const etiqueta = entrada(v.etiqueta, t('aj.prog.etiqueta.ej'));
+    const minutos = el('input', {
+      className: 'input',
+      attrs: { type: 'number', min: '0', max: '600', inputmode: 'numeric' },
+    });
+    minutos.value = String(v.minutosMinimo ?? 0);
+    const sinDuracion = el('input', { attrs: { type: 'checkbox' } });
+    sinDuracion.checked = Boolean(v.sinDuracion);
+    const abierta = el('input', { attrs: { type: 'checkbox' } });
+    abierta.checked = Boolean(v.abierta);
+    const contener = entrada(v.contener, t('aj.prog.contener.ej'));
+    const excluir = entrada(v.excluir, t('aj.prog.excluir.ej'));
+    const cada = el('select', {
+      className: 'input',
+      children: [1, 3, 7, 14, 30].map(n =>
+        el('option', { attrs: { value: n }, text: t('aj.prog.cada.n', { n }) })
+      ),
+    });
+    cada.value = String(v.cadaDias || 7);
+    ajustes
+      .destinos()
+      .then(d => {
+        for (const b of d.bibliotecas || []) {
+          for (const c of b.carpetas || []) {
+            carpetas.append(el('option', { attrs: { value: c.carpeta } }));
+          }
+        }
+      })
+      .catch(() => {});
+    const campo = (etiquetaTexto, input, ayuda) =>
+      el('label', {
+        className: 'field',
+        children: [
+          el('span', { className: 'field__label', text: etiquetaTexto }),
+          input,
+          ayuda ? el('span', { className: 'field__hint', text: ayuda }) : null,
+        ],
+      });
+    const casilla = (input, textoCasilla) =>
+      el('label', {
+        className: 'cs-casilla',
+        children: [input, el('span', { text: textoCasilla })],
+      });
+    const guardar = el('button', {
+      className: 'cg-boton cg-boton--principal',
+      attrs: { type: 'submit', form: 'form-programada' },
+      text: t(p ? 'aj.guardar' : 'aj.prog.agregar'),
+    });
+    const form = el('form', {
+      className: 'ajustes-form cs-form-hoja',
+      attrs: { id: 'form-programada' },
+      children: [
+        campo(t('aj.prog.termino'), termino),
+        campo(t('aj.prog.carpeta'), carpeta, t('aj.prog.carpeta.hint')),
+        carpetas,
+        campo(t('aj.prog.cada'), cada),
+        campo(t('aj.prog.minutos'), minutos),
+        casilla(sinDuracion, t('aj.prog.sinDuracion')),
+        campo(t('aj.prog.contener'), contener, t('aj.prog.contener.hint')),
+        campo(t('aj.prog.excluir'), excluir, t('aj.prog.excluir.hint')),
+        campo(t('aj.prog.persona'), persona),
+        campo(t('aj.prog.etiqueta'), etiqueta),
+        casilla(abierta, t('aj.prog.abierta')),
+      ],
+    });
+    const hoja = abrirHoja({
+      titulo: t(p ? 'aj.prog.editar' : 'act.prog.nueva'),
+      contenido: [form],
+      pie: [guardar],
+    });
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!termino.value.trim()) {
+        termino.focus();
+        return;
+      }
+      try {
+        await ajustes.guardarProgramada({
+          id: p?.id,
+          termino: termino.value,
+          carpeta: carpeta.value,
+          persona: persona.value,
+          etiqueta: etiqueta.value,
+          minutosMinimo: Number(minutos.value) || 0,
+          sinDuracion: sinDuracion.checked,
+          abierta: abierta.checked,
+          contener: contener.value,
+          excluir: excluir.value,
+          cadaDias: Number(cada.value),
+          activa: p ? p.activa : true,
+        });
+        toast(t('aj.prog.guardada'));
+        hoja.cerrar();
+        cargarProgramadas();
+      } catch (error) {
+        toast(error.message, 'error', 6000);
+      }
+    });
+    setTimeout(() => termino.focus(), 300);
+  }
+
+  // Buscar → «Repetir cada…»: una programada con el término, los filtros y la carpeta ya puestos.
+  window.addEventListener('clipscout:programar', e => {
+    location.hash = '#/actividad/programadas';
+    formularioProgramada(null, e.detail || {});
+  });
+
+  /* ── Piezas comunes ────────────────────────────────────────────────── */
+  function fila({ estado, titulo, detalle, detalle2, acciones = [] }) {
+    return el('li', {
+      className: `cs-fila cs-fila--${estado}`,
+      children: [
+        el('span', {
+          className: estado === 'curso' ? 'cs-fila__estado buscar__girando' : 'cs-fila__estado',
+          attrs: { 'aria-hidden': 'true' },
+          text: estado === 'hecho' ? '✓' : estado === 'error' ? '⚠' : estado === 'pausa' ? 'Ⅱ' : '',
+        }),
+        el('div', {
+          className: 'cs-fila__texto',
+          children: [
+            el('strong', { text: titulo }),
+            detalle ? el('span', { text: detalle }) : null,
+            detalle2 ? el('span', { text: detalle2 }) : null,
+          ],
+        }),
+        el('div', { className: 'cs-fila__acciones', children: acciones }),
+      ],
+    });
+  }
+  function botonMas(etiqueta, fn) {
+    const b = el('button', {
+      className: 'cg-boton cg-boton--icono cg-boton--fantasma',
+      attrs: { type: 'button', 'aria-label': etiqueta, title: etiqueta },
+      text: '⋯',
+      on: { click: fn },
+    });
+    return b;
+  }
+  function vacio(texto, boton, fn) {
+    return el('li', {
+      className: 'cs-vacio',
+      children: [
+        el('p', { text: texto }),
+        boton
+          ? el('button', {
+              className: 'cg-boton cg-boton--principal',
+              attrs: { type: 'button' },
+              text: boton,
+              on: { click: fn },
+            })
+          : null,
+      ],
+    });
+  }
+
+  /* ── Pestañas ──────────────────────────────────────────────────────── */
+  function mostrar(id) {
+    pestana = id;
+    for (const [clave, b] of Object.entries(botones)) {
+      b.setAttribute('aria-pressed', String(clave === id));
+    }
+    if (id === 'busquedas') {
+      panel.replaceChildren(listaBusquedas);
+      pintarCola();
+      cargarCola();
+    } else if (id === 'descargas') {
+      // Primero lo enviado; las acciones (actualizar, vaciar) y el aviso del gestor, debajo.
+      panel.replaceChildren(listaPaquetes, avisoDescargas, barraDescargas);
+      pintarPaquetes();
+      cargarPaquetes(true);
+    } else {
+      panel.replaceChildren(
+        el('div', { className: 'cs-fila-botones', children: [nuevaProgramada] }),
+        listaProgramadas
+      );
+      pintarProgramadas();
+      cargarProgramadas();
+    }
+  }
+
+  // Se refresca sola solo mientras se mira (antes la cola se pedía cada 4 s desde Buscar siempre).
+  setInterval(() => {
+    if (!visible()) return;
+    if (pestana === 'busquedas') cargarCola();
+    else if (pestana === 'descargas') cargarPaquetes();
+    else cargarProgramadas();
+  }, 5000);
+
+  alCambiarIdioma(() => {
+    pintarPestanas();
+    nuevaProgramada.textContent = t('act.prog.nueva');
+    barraDescargas.children[0].textContent = t('aj.paq.actualizar');
+    barraDescargas.children[1].textContent = t('aj.paq.vaciar');
+    if (!raiz.hidden) mostrar(pestana);
+  });
+
+  // Los contadores de las pestañas se rellenan al arrancar, aunque se entre por otra.
+  cargarCola();
+  cargarPaquetes();
+  cargarProgramadas();
+
+  return {
+    focus() {
+      const pedida = pestanaDeHash();
+      mostrar(pedida);
+    },
+  };
+}

@@ -1,0 +1,846 @@
+/* clipscout — fase 3, «cómoda con una mano».
+   Lo propio de clipscout sobre el paquete común cg-ui (public/cg/, copia idéntica: no se toca).
+   Va después de main.css: aquí se reordena la página alrededor de la barra inferior, la cabecera
+   de una fila y las hojas; los componentes y sus estilos de base son los de cg-ui. */
+
+/* ── Página: sin la cabecera antigua; cada vista trae su <cg-cabecera> ── */
+body {
+  background: var(--c-bg);
+}
+.main {
+  padding: 0 var(--space-5) var(--space-6);
+}
+.view > cg-cabecera {
+  margin: 0 calc(-1 * var(--space-5)) var(--space-3);
+}
+@media (max-width: 768px) {
+  .main {
+    padding: 0 var(--space-4) var(--space-5);
+  }
+  .view > cg-cabecera {
+    margin: 0 calc(-1 * var(--space-4)) var(--space-2);
+  }
+  .footer {
+    display: none;
+  }
+}
+.cs-cabecera-acciones {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.cs-logo img {
+  display: block;
+  width: 30px;
+  height: 30px;
+}
+
+/* Logo de la barra lateral (escritorio) */
+.cs-marca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+.cs-marca-texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  font-weight: 700;
+}
+.cs-marca-texto small {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cg-tenue);
+}
+
+cg-cabecera[data-sin-atras] > .cg-cabecera-atras {
+  display: none;
+}
+
+/* Menú del logo: las tres apps, guía y salir */
+.cs-apps.cc-apps {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding-top: 4px;
+  padding-bottom: 0;
+  border-radius: 0;
+  background: none;
+}
+.cs-apps .cs-app {
+  line-height: 1.3;
+  box-shadow: none;
+}
+.cs-apps .cs-app img {
+  border-radius: 8px;
+}
+.cs-app {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  padding: 6px 12px;
+  border-radius: var(--cg-radio);
+  color: var(--cg-texto);
+  text-decoration: none;
+}
+a.cs-app:hover {
+  background: var(--cg-superficie-2);
+}
+.cs-app.actual {
+  background: var(--cg-acento-suave);
+}
+.cs-app.apagada {
+  opacity: 0.55;
+}
+.cs-apps .cs-app img {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+.cs-app__texto {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.cs-app__texto small {
+  color: var(--cg-tenue);
+}
+.cs-apps-acciones {
+  display: flex;
+  gap: 10px;
+  padding-top: 12px;
+  padding-bottom: 8px;
+}
+.cs-apps-acciones > * {
+  flex: 1;
+}
+
+/* ── Piezas comunes: listas con filas, menú «⋯», casillas, vacíos ── */
+.cs-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cs-fila {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  min-height: 64px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+.cs-fila__estado {
+  justify-self: center;
+  color: var(--c-success);
+  font-weight: 700;
+}
+.cs-fila--error .cs-fila__estado {
+  color: var(--c-danger);
+}
+.cs-fila--pausa {
+  opacity: 0.7;
+}
+.cs-fila__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cs-fila__texto strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-fila__texto span {
+  color: var(--c-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.cs-fila__acciones {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.cs-lista__grupo {
+  padding: 16px 0 4px;
+  color: var(--c-text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.cs-fila-botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+.cs-nota {
+  color: var(--c-text-muted);
+  font-size: 0.9rem;
+  margin: 4px 0 8px;
+}
+.cs-nota:empty {
+  display: none;
+}
+.cs-vacio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 0;
+  color: var(--c-text-muted);
+}
+.cs-menu-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+}
+.cs-menu-sub {
+  margin: 0 0 8px;
+  color: var(--cg-tenue);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.cs-menu-accion {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: var(--cg-tactil-principal);
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--cg-radio);
+  background: none;
+  color: var(--cg-texto);
+  font: 550 16px var(--cg-letra);
+  text-align: left;
+  cursor: pointer;
+}
+.cs-menu-accion:hover {
+  background: var(--cg-superficie-2);
+}
+.cs-menu-accion small {
+  color: var(--cg-tenue);
+  font-weight: 400;
+  font-size: 13px;
+}
+.cs-menu-accion--peligro {
+  color: var(--cg-mal);
+}
+.cs-casilla {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  cursor: pointer;
+}
+.cs-casilla input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--cg-acento);
+}
+.cs-casilla span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.cs-casilla small {
+  color: var(--cg-tenue);
+  font-size: 13px;
+}
+.cs-hoja-titulo {
+  margin: 4px 0 8px;
+  font-size: 14px;
+  color: var(--cg-tenue);
+}
+.cs-form-hoja {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+cg-hoja .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+cg-hoja .input {
+  width: 100%;
+  min-height: 44px;
+}
+
+/* Interruptor grande (Ajustes → Sitios) */
+.cs-interruptor {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 64px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.cs-interruptor input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.cs-interruptor span {
+  width: 52px;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--c-border-strong);
+  position: relative;
+  transition: background var(--cg-rapido);
+}
+.cs-interruptor span::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  transition: transform var(--cg-rapido);
+}
+.cs-interruptor input:checked + span {
+  background: var(--cg-acento);
+}
+.cs-interruptor input:checked + span::after {
+  transform: translateX(22px);
+}
+.cs-interruptor input:focus-visible + span {
+  outline: 3px solid var(--cg-acento);
+  outline-offset: 2px;
+}
+
+/* ── Buscar ─────────────────────────────────────────────────────────── */
+cg-cabecera.buscar__cabecera {
+  gap: 6px;
+  padding-left: 12px;
+}
+cg-cabecera.buscar__cabecera > .buscar__titulo-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+cg-cabecera.buscar__cabecera > .buscar__fila {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.buscar__cabecera .buscar__entrada {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 14px;
+  font-size: 16px; /* 16 px: el móvil no hace zoom al enfocar */
+  border-radius: var(--cg-radio-total);
+}
+.buscar__boton {
+  flex: none;
+}
+.buscar {
+  max-width: 920px;
+  margin: 0 auto;
+}
+.buscar__otras {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.buscar__inicio {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+}
+.buscar__resumen-inicio {
+  margin: 0;
+  color: var(--c-text-muted);
+}
+.buscar__sitios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+.buscar__chip {
+  min-height: 44px;
+  padding: 6px 14px;
+}
+.buscar__resultados {
+  margin-top: 0;
+  gap: 4px;
+}
+.buscar__fila-marcas {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: calc(-1 * var(--space-4));
+}
+cg-chips.buscar__pestanas {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: calc(-1 * var(--space-4));
+  padding: 2px 0 2px var(--space-4);
+}
+#view-buscar > cg-cabecera {
+  margin-bottom: 0;
+}
+.buscar__boton-filtros {
+  flex: none;
+  padding: 0 14px;
+  margin-right: var(--space-4);
+  border-radius: var(--cg-radio-total);
+  background: var(--cg-texto);
+  border-color: var(--cg-texto);
+  color: var(--cg-fondo);
+}
+.buscar__boton-filtros:hover {
+  background: var(--cg-texto);
+  filter: brightness(1.15);
+}
+.buscar__boton-filtros .cg-icono {
+  width: 20px;
+  height: 20px;
+}
+.buscar__cuenta-filtros {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--cg-acento);
+  color: var(--cg-acento-texto);
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
+.buscar__pestana--error {
+  border-color: var(--c-danger) !important;
+}
+.buscar__marcas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.buscar__marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--cg-acento);
+  border-radius: var(--cg-radio-total);
+  background: var(--cg-acento-suave);
+  color: var(--cg-texto);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.buscar__estado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 4px;
+  min-height: 44px;
+  font-size: 0.9rem;
+  color: var(--c-text-muted);
+}
+.buscar__estado-texto,
+.buscar__contador {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.buscar__estado-texto {
+  padding-left: 0;
+  color: var(--c-text);
+  font-weight: 600;
+}
+.buscar__contador {
+  color: var(--cg-acento);
+  font-weight: 600;
+}
+.buscar__parar {
+  margin-left: auto;
+}
+.buscar__vacio p {
+  margin: 0;
+}
+
+/* Lista compacta: casilla · miniatura · título y datos · «⋯». Unas ocho filas por pantalla. */
+.buscar__rejilla {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.buscar__tarjeta {
+  display: grid;
+  grid-template-columns: 40px 80px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 0 10px;
+  min-height: 62px;
+  padding: 5px 0;
+  border: 0;
+  border-bottom: 1px solid var(--c-border);
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+  /* Lo que queda fuera de la pantalla no se pinta (listas de miles, CS-14). */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 63px;
+}
+.buscar__tarjeta--tengo,
+.buscar__tarjeta--enviado {
+  border-color: var(--c-border);
+}
+.buscar__tarjeta--oculta {
+  opacity: 0.55;
+}
+.buscar__tarjeta--miembro {
+  padding-left: 16px;
+}
+.buscar__casilla {
+  width: 40px;
+  height: 44px;
+  margin-left: -8px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.buscar__casilla::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--c-border-strong);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+.buscar__casilla[aria-checked='true']::before {
+  border-color: var(--cg-acento);
+  background: var(--cg-acento) var(--cg-marca-check) center / 16px no-repeat;
+}
+.buscar__imagen {
+  width: 80px;
+  height: 45px;
+  aspect-ratio: auto;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.buscar__sin {
+  font-size: 1.1rem;
+}
+.buscar__duracion {
+  right: 3px;
+  bottom: 3px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+}
+.buscar__texto {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-height: 48px;
+  padding: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.buscar__texto strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.buscar__meta {
+  color: var(--c-text-muted);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.buscar__marca-estado {
+  color: var(--c-success);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.buscar__tarjeta--oculta .buscar__marca-estado {
+  color: var(--c-danger);
+}
+.buscar__mas {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--c-text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+}
+.buscar__mas:hover {
+  background: var(--c-surface-2);
+}
+/* La selección de cg-ui encoge tarjetas y les pone un círculo: en una lista se usa la casilla. */
+.buscar__rejilla .cg-sel-item,
+.buscar__rejilla.cg-modo-seleccion .cg-sel-item:not(.cg-seleccionado),
+.buscar__rejilla .cg-sel-item.cg-seleccionado {
+  transform: none;
+  outline: 0;
+}
+.buscar__rejilla.cg-modo-seleccion .cg-sel-item::after {
+  display: none;
+}
+.buscar__rejilla .cg-sel-item.cg-seleccionado {
+  background: var(--cg-acento-suave);
+}
+
+/* «Descargar todo», abajo y siempre a mano (encima de la barra de navegación). */
+.buscar__pie-accion {
+  position: sticky;
+  bottom: calc(var(--cg-ocupa-abajo) + 8px);
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--cg-radio-grande);
+  background: color-mix(in srgb, var(--cg-superficie) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--cg-sombra-media);
+}
+html.cg-seleccionando .buscar__pie-accion {
+  display: none;
+}
+/* Con «Descargar todo» a la vista, los avisos salen por encima y no lo tapan. */
+html.cg-con-barra:not(.cg-seleccionando):has(
+    #view-buscar:not([hidden]) .buscar__pie-accion:not([hidden])
+  ) {
+  --cg-hueco-avisos: calc(var(--cg-ocupa-abajo) + 72px);
+}
+.buscar__destino .cg-icono {
+  flex: none;
+}
+.buscar__destino span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.buscar__destino {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.buscar__descargar-todo {
+  flex: 1.3 1 0;
+  white-space: nowrap;
+}
+.buscar__progreso {
+  border: 0;
+  padding: 0 0 8px;
+}
+.buscar__linea {
+  min-height: 36px;
+}
+.buscar__hoja-video video {
+  width: 100%;
+  max-height: 60dvh;
+  border-radius: var(--cg-radio);
+  background: #000;
+}
+.buscar__video {
+  position: static;
+}
+.buscar__sugeridos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.9rem;
+}
+.buscar__varias-texto {
+  width: 100%;
+  min-height: 140px;
+}
+@media (min-width: 769px) {
+  .buscar__fila-marcas {
+    margin-right: 0;
+  }
+  cg-chips.buscar__pestanas {
+    margin: 0;
+    padding: 4px 0;
+  }
+  .buscar__boton-filtros {
+    margin-right: 0;
+  }
+  .buscar__tarjeta {
+    grid-template-columns: 40px 128px minmax(0, 1fr) 44px;
+    min-height: 82px;
+    contain-intrinsic-size: auto 83px;
+  }
+  .buscar__imagen {
+    width: 128px;
+    height: 72px;
+  }
+}
+
+/* ── Actividad ──────────────────────────────────────────────────────── */
+.actividad {
+  max-width: 920px;
+  margin: 0 auto;
+}
+cg-chips.actividad__pestanas {
+  margin: 0 calc(-1 * var(--space-4)) 4px;
+  padding: 0 var(--space-4);
+}
+@media (min-width: 769px) {
+  cg-chips.actividad__pestanas {
+    margin: 0 0 8px;
+    padding: 0;
+  }
+}
+
+/* ── Ajustes: 4 secciones; en el móvil, índice y una pantalla por sección ── */
+.cs-ajustes-indice a {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 48px;
+  white-space: normal;
+}
+.cs-ajustes-indice small {
+  display: none;
+  color: var(--c-text-muted);
+  font-weight: 400;
+}
+@media (max-width: 768px) {
+  .cc-ajustes {
+    display: block;
+  }
+  .cc-ajustes .cs-ajustes-indice {
+    display: none;
+  }
+  .cc-ajustes.cs-ajustes--indice .cs-ajustes-indice {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .cs-ajustes-indice a {
+    min-height: 64px;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--c-border);
+    border-radius: 0;
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .cs-ajustes-indice small {
+    display: block;
+    font-size: 0.85rem;
+  }
+  .cs-ajustes-indice a[aria-current='page'] {
+    background: none;
+    color: var(--c-text);
+  }
+  .cc-ajustes-panel {
+    gap: 12px;
+  }
+  /* Todo lo que se toca, a 44 px como mínimo (las tarjetas de Ajustes venían de escritorio). */
+  .view .button,
+  .view .button--small,
+  .view select.input,
+  .view input.input,
+  .view .ajustes-casilla,
+  .cc-ajustes-panel a.button {
+    min-height: 44px;
+  }
+  .view .ajustes-casilla {
+    display: flex;
+    align-items: center;
+  }
+}
+.cs-sitios {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cs-sitio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+.cs-sitio__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cs-sitio__texto span {
+  color: var(--c-text-muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cs-sitio--apagado .cs-sitio__texto {
+  opacity: 0.6;
+}
+.cs-movido .card__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.cs-movido p {
+  margin: 0;
+  color: var(--c-text-muted);
+}
+@media (max-width: 768px) {
+  /* Tarjetas de Ajustes más apretadas en el móvil: el contenido empieza antes. */
+  .cc-ajustes-panel .card__header {
+    padding: var(--space-4) var(--space-4) 0;
+  }
+  .cc-ajustes-panel .card__body {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+}

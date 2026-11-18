@@ -284,6 +284,11 @@ export const ajustes = {
     request('/ajustes/jdownloader/probar', { method: 'POST', body: JSON.stringify({ url }) }),
   enviarJd: datos =>
     request('/ajustes/jdownloader/enviar', { method: 'POST', body: JSON.stringify(datos) }),
+  enviadosJd: enlaces =>
+    request('/ajustes/jdownloader/enviados', {
+      method: 'POST',
+      body: JSON.stringify({ enlaces }),
+    }),
   guardarAcceso: datos =>
     request('/ajustes/acceso', { method: 'PUT', body: JSON.stringify(datos) }),
   quitarAcceso: datos =>

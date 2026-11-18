@@ -13,6 +13,7 @@ import {
   toast,
   enfocarAlAbrir,
 } from '../dom.js';
+import { crearCabecera } from '../cabecera.js';
 import { ajustes, openVideoStream } from '../api.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
 import { t, tp, texto, atributo, alCambiarIdioma } from '../i18n/index.js';
@@ -877,7 +878,9 @@ export function createVideoView(container) {
     children: [cabeceraResultados, filtros, progresoPanel, grid, listWrap, emptySlot],
   });
 
-  setChildren(container, [formCard, statsCard, resultsCard]);
+  // Fuera del menú (pegar el enlace en Buscar hace lo mismo), pero con su cabecera de una fila.
+  const cabecera = crearCabecera({ tituloClave: 'nav.videos', atras: '#/buscar' });
+  setChildren(container, [cabecera.nodo, formCard, statsCard, resultsCard]);
 
   /** Quita un resultado. Sin confirmación: es reversible (deshacer/restaurar). */
   function ocultar(url) {

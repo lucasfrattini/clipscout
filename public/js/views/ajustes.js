@@ -5,11 +5,15 @@
  * Todo se construye con `el()`: nada de innerHTML (regla del proyecto).
  */
 
-import { ajustes } from '../api.js';
+import { ajustes, getProfiles, saveProfiles } from '../api.js';
+import { altaSitiosDialog } from '../components/altaSitios.js';
 import { confirmDialog } from '../components/dialog.js';
 import { el, toast } from '../dom.js';
 import { alCambiarIdioma, cambiarIdioma, idiomaActual, IDIOMAS, t, tp } from '../i18n/index.js';
 import { cambiarTema, temaGuardado, TEMAS } from '../tema.js';
+import { crearCabecera } from '../cabecera.js';
+import { menuAcciones } from '../hojas.js';
+import { seccionAjustes, SECCIONES_AJUSTES, urlDeApp } from '../unaMano.js';
 
 const APPS = ['clipkeeper', 'clonbuster', 'clipscout'];
 const PUERTOS = { clipkeeper: 8096, clonbuster: 8095, clipscout: 3001 };
@@ -37,60 +41,103 @@ export function createAjustesView(raiz) {
   }
 
   /*
-   * Mismo formato que los Ajustes de clipkeeper y clonbuster: título, menú de
-   * secciones a la izquierda y una sección a la vez (#/ajustes/<sección>).
-   * Solo se construyen las tarjetas de la sección visible.
+   * Fase 3: de 9 secciones a 4 (Búsqueda · Descargas · Clipgeist · Sistema). En el móvil,
+   * #/ajustes es la lista de secciones (filas grandes) y cada una se abre en su pantalla con
+   * «Atrás»; en escritorio, menú a la izquierda y la sección a la derecha, como antes. Las
+   * direcciones viejas (#/ajustes/sitios, /jdownloader…) llevan a la sección nueva.
+   * Los paquetes enviados y las programadas pasaron a Actividad.
    */
-  const SECCIONES = [
-    ['sitios', 'aj.tab.sitios', () => [tarjetaSitios(), tarjetaFiltros()]],
-    ['busqueda', 'aj.tab.busqueda', () => [tarjetaBusqueda(), tarjetaProgramadas()]],
-    ['jdownloader', 'aj.tab.jd', () => [tarjetaJd(), tarjetaPaquetes()]],
-    ['general', 'aj.tab.general', () => [tarjetaGeneral()]],
-    ['conexiones', 'aj.tab.conexiones', () => [tarjetaConexiones()]],
-    ['seguridad', 'aj.tab.seguridad', () => [tarjetaAcceso(), tarjetaSesiones(), tarjetaClave()]],
-    ['copia', 'aj.tab.copia', () => [tarjetaRespaldos()]],
-    ['apariencia', 'aj.tab.apariencia', () => [tarjetaApariencia()]],
-    ['acerca', 'aj.tab.acerca', () => [tarjetaAcercaDe()]],
-  ];
-
-  const seccionActual = () => {
-    const pedida = window.location.hash.replace(/^#\/ajustes\/?/, '').split('/')[0];
-    return SECCIONES.some(([id]) => id === pedida) ? pedida : SECCIONES[0][0];
+  const SECCIONES = {
+    busqueda: () => [
+      tarjetaSitios(),
+      tarjetaFiltros(),
+      tarjetaBusqueda(),
+      avisoMovido('programadas'),
+    ],
+    descargas: () => [tarjetaJd(), avisoMovido('descargas')],
+    clipgeist: () => [tarjetaConexiones(), tarjetaClave()],
+    sistema: () => [
+      tarjetaApariencia(),
+      tarjetaAcceso(),
+      tarjetaSesiones(),
+      tarjetaGeneral(),
+      tarjetaRespaldos(),
+      tarjetaAcercaDe(),
+    ],
   };
+
+  const pedida = () => window.location.hash.replace(/^#\/ajustes\/?/, '').split('/')[0];
+  const esMovil = () => window.matchMedia('(max-width: 768px)').matches;
+  /** La sección a enseñar; '' = el índice (solo en el móvil: en escritorio, la primera). */
+  const seccionActual = () => seccionAjustes(pedida()) || (esMovil() ? '' : SECCIONES_AJUSTES[0]);
+
+  const cabecera = crearCabecera({
+    tituloClave: 'nav.ajustes',
+    id: 'ajustes-heading',
+    atras: '#/ajustes',
+  });
 
   function pintar() {
     const actual = seccionActual();
-    const [, , tarjetas] = SECCIONES.find(([id]) => id === actual);
+    cabecera.poner(actual ? `aj.sec.${actual}` : 'nav.ajustes');
+    cabecera.atras(actual && esMovil() ? '#/ajustes' : null);
+    const menu = el('nav', {
+      className: 'cc-ajustes-menu cs-ajustes-indice',
+      attrs: { 'aria-label': t('nav.ajustes') },
+      children: SECCIONES_AJUSTES.map(id =>
+        el('a', {
+          attrs: {
+            href: `#/ajustes/${id}`,
+            ...(id === actual ? { 'aria-current': 'page' } : {}),
+          },
+          children: [
+            el('span', { className: 'cs-ajustes-indice__nombre', text: t(`aj.sec.${id}`) }),
+            el('small', { text: t(`aj.sec.${id}.detalle`) }),
+          ],
+        })
+      ),
+    });
     raiz.replaceChildren(
-      el('h1', {
-        className: 'cc-pagina-titulo',
-        attrs: { id: 'ajustes-heading' },
-        text: t('nav.ajustes'),
-      }),
+      cabecera.nodo,
       el('div', {
-        className: 'cc-ajustes',
+        className: `cc-ajustes${actual ? '' : ' cs-ajustes--indice'}`,
         children: [
-          el('nav', {
-            className: 'cc-ajustes-menu',
-            attrs: { 'aria-label': t('nav.ajustes') },
-            children: SECCIONES.map(([id, clave]) =>
-              el('a', {
-                attrs: {
-                  href: `#/ajustes/${id}`,
-                  ...(id === actual ? { 'aria-current': 'page' } : {}),
-                },
-                text: t(clave),
-              })
-            ),
+          menu,
+          el('div', {
+            className: 'cc-ajustes-panel',
+            children: actual ? SECCIONES[actual]() : [],
           }),
-          el('div', { className: 'cc-ajustes-panel', children: tarjetas() }),
         ],
       })
     );
   }
 
+  /** Dónde quedó lo que antes estaba aquí. */
+  function avisoMovido(pestana) {
+    return el('section', {
+      className: 'card cs-movido',
+      children: [
+        el('div', {
+          className: 'card__body',
+          children: [
+            el('p', { text: t(`aj.movido.${pestana}`) }),
+            el('a', {
+              className: 'cg-boton',
+              attrs: { href: `#/actividad/${pestana}` },
+              text: t('aj.movido.ir'),
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
   window.addEventListener('hashchange', () => {
     if (general && window.location.hash.startsWith('#/ajustes')) pintar();
+  });
+  // Al cruzar el ancho del móvil cambia la forma (índice + pantalla, o menú + sección).
+  window.matchMedia('(max-width: 768px)').addEventListener('change', () => {
+    if (general && !raiz.hidden) pintar();
   });
 
   /* ── Esta app ──────────────────────────────────────────────────────── */
@@ -566,245 +613,6 @@ export function createAjustesView(raiz) {
     });
   }
 
-  /* ── Búsquedas programadas ─────────────────────────────────────────── */
-
-  function tarjetaProgramadas() {
-    const lista = el('ul', { className: 'programadas' });
-    let editando = null; // la programada que está en el formulario (null = nueva)
-    const entrada = (placeholder, extra = {}) =>
-      el('input', {
-        className: 'input',
-        attrs: { type: 'text', spellcheck: 'false', placeholder, ...extra },
-      });
-    const termino = entrada(t('aj.prog.termino.ej'));
-    const carpeta = entrada(t('aj.prog.carpeta.ej'), { list: 'programadas-carpetas' });
-    const carpetas = el('datalist', { attrs: { id: 'programadas-carpetas' } });
-    const persona = entrada(t('aj.prog.persona.ej'));
-    const etiqueta = entrada(t('aj.prog.etiqueta.ej'));
-    const minutos = el('input', {
-      className: 'input',
-      attrs: { type: 'number', min: '0', max: '600', value: '0' },
-    });
-    const sinDuracion = el('input', { attrs: { type: 'checkbox' } });
-    const abierta = el('input', { attrs: { type: 'checkbox' } });
-    const contener = entrada(t('aj.prog.contener.ej'));
-    const excluir = entrada(t('aj.prog.excluir.ej'));
-    const cada = el('select', {
-      className: 'input',
-      children: [1, 3, 7, 14, 30].map(n =>
-        el('option', { attrs: { value: n }, text: t('aj.prog.cada.n', { n }) })
-      ),
-    });
-    cada.value = '7';
-    ajustes
-      .destinos()
-      .then(d => {
-        for (const b of d.bibliotecas || []) {
-          for (const c of b.carpetas || []) {
-            carpetas.append(el('option', { attrs: { value: c.carpeta } }));
-          }
-        }
-      })
-      .catch(() => {});
-
-    const rellenar = p => {
-      editando = p;
-      termino.value = p?.termino || '';
-      carpeta.value = p?.carpeta || '';
-      persona.value = p?.persona || '';
-      etiqueta.value = p?.etiqueta || '';
-      minutos.value = String(p?.minutosMinimo ?? 0);
-      sinDuracion.checked = Boolean(p?.sinDuracion);
-      abierta.checked = Boolean(p?.abierta);
-      contener.value = p?.contener || '';
-      excluir.value = p?.excluir || '';
-      cada.value = String(p?.cadaDias || 7);
-      guardar.textContent = t(p ? 'aj.guardar' : 'aj.prog.agregar');
-      cancelar.hidden = !p;
-    };
-    const guardar = el('button', {
-      className: 'button button--small',
-      attrs: { type: 'submit' },
-      text: t('aj.prog.agregar'),
-    });
-    const cancelar = el('button', {
-      className: 'button button--small button--secondary',
-      attrs: { type: 'button', hidden: true },
-      text: t('aj.prog.cancelar'),
-      on: { click: () => rellenar(null) },
-    });
-    const form = el('form', {
-      className: 'card__body ajustes-form',
-      children: [
-        campo(t('aj.prog.termino'), termino),
-        campo(t('aj.prog.carpeta'), carpeta, t('aj.prog.carpeta.hint')),
-        carpetas,
-        campo(t('aj.prog.persona'), persona),
-        campo(t('aj.prog.etiqueta'), etiqueta),
-        campo(t('aj.prog.minutos'), minutos),
-        el('label', {
-          className: 'ajustes-casilla',
-          children: [sinDuracion, t('aj.prog.sinDuracion')],
-        }),
-        el('label', {
-          className: 'ajustes-casilla',
-          attrs: { title: t('buscar.webTodo.detalle') },
-          children: [abierta, t('aj.prog.abierta')],
-        }),
-        campo(t('aj.prog.contener'), contener, t('aj.prog.contener.hint')),
-        campo(t('aj.prog.excluir'), excluir, t('aj.prog.excluir.hint')),
-        campo(t('aj.prog.cada'), cada),
-        el('div', { className: 'ajustes-acciones', children: [guardar, cancelar] }),
-      ],
-      on: {
-        submit: async e => {
-          e.preventDefault();
-          try {
-            await ajustes.guardarProgramada({
-              id: editando?.id,
-              termino: termino.value,
-              carpeta: carpeta.value,
-              persona: persona.value,
-              etiqueta: etiqueta.value,
-              minutosMinimo: Number(minutos.value) || 0,
-              sinDuracion: sinDuracion.checked,
-              abierta: abierta.checked,
-              contener: contener.value,
-              excluir: excluir.value,
-              cadaDias: Number(cada.value),
-              activa: editando ? editando.activa : true,
-            });
-            toast(t('aj.prog.guardada'));
-            rellenar(null);
-            cargarLista();
-          } catch (error) {
-            toast(error.message, 'error', 6000);
-          }
-        },
-      },
-    });
-
-    const resumen = p => {
-      if (!p.ultimo) return t('aj.prog.nunca');
-      const fecha = new Date(p.ultimo.fecha).toLocaleString();
-      return p.ultimo.error
-        ? t('aj.prog.ultimoError', { fecha, error: p.ultimo.error })
-        : t('aj.prog.ultimo', {
-            fecha,
-            encontrados: p.ultimo.encontrados,
-            enviados: p.ultimo.enviados,
-          });
-    };
-    const boton = (clave, onClick, extra = 'button--secondary') =>
-      el('button', {
-        className: `button button--small ${extra}`,
-        attrs: { type: 'button' },
-        text: t(clave),
-        on: { click: onClick },
-      });
-
-    async function cargarLista() {
-      let datos;
-      try {
-        datos = await ajustes.programadas();
-      } catch (error) {
-        lista.replaceChildren(el('li', { className: 'ajustes-error', text: error.message }));
-        return;
-      }
-      if (!datos.programadas.length) {
-        lista.replaceChildren(
-          el('li', { className: 'programadas__vacio', text: t('aj.prog.vacio') })
-        );
-        return;
-      }
-      lista.replaceChildren(
-        ...datos.programadas.map(p =>
-          el('li', {
-            className: p.activa ? '' : 'programadas__pausada',
-            children: [
-              el('div', {
-                className: 'programadas__texto',
-                children: [
-                  el('strong', { text: p.termino }),
-                  el('span', {
-                    className: 'field__hint',
-                    text: [
-                      p.carpeta || t('aj.prog.sinCarpeta'),
-                      t('aj.prog.cada.n', { n: p.cadaDias }),
-                      p.minutosMinimo ? t('aj.prog.masDe', { n: p.minutosMinimo }) : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · '),
-                  }),
-                  el('span', {
-                    className: 'field__hint',
-                    text: datos.enCurso === p.id ? t('aj.prog.enCurso') : resumen(p),
-                  }),
-                ],
-              }),
-              el('div', {
-                className: 'ajustes-acciones programadas__acciones',
-                children: [
-                  boton('aj.prog.ahora', async () => {
-                    try {
-                      await ajustes.lanzarProgramada(p.id);
-                      toast(t('aj.prog.lanzada'));
-                      cargarLista();
-                    } catch (error) {
-                      toast(error.message, 'error', 6000);
-                    }
-                  }),
-                  boton(p.activa ? 'aj.prog.pausar' : 'aj.prog.reanudar', async () => {
-                    await ajustes.guardarProgramada({ id: p.id, activa: !p.activa });
-                    cargarLista();
-                  }),
-                  boton('aj.prog.editar', () => {
-                    rellenar(p);
-                    termino.focus();
-                  }),
-                  boton(
-                    'aj.prog.quitar',
-                    async () => {
-                      if (
-                        !(await confirmDialog({
-                          titleKey: 'aj.prog.quitar',
-                          bodyKey: 'aj.prog.quitarConfirmar',
-                          variant: 'danger',
-                        }))
-                      ) {
-                        return;
-                      }
-                      await ajustes.quitarProgramada(p.id);
-                      if (editando?.id === p.id) rellenar(null);
-                      cargarLista();
-                    },
-                    'button--secondary ajustes-peligro'
-                  ),
-                ],
-              }),
-            ],
-          })
-        )
-      );
-    }
-    cargarLista();
-
-    return el('section', {
-      className: 'card',
-      children: [
-        el('div', {
-          className: 'card__header',
-          children: [
-            el('h3', { className: 'card__title', text: t('aj.prog.titulo') }),
-            el('p', { className: 'card__hint', text: t('aj.prog.hint') }),
-          ],
-        }),
-        el('div', { className: 'card__body', children: [lista] }),
-        form,
-      ],
-    });
-  }
-
   /* ── Copias de seguridad ───────────────────────────────────────────── */
 
   function tarjetaRespaldos() {
@@ -1106,145 +914,10 @@ export function createAjustesView(raiz) {
     });
   }
 
-  /* ── Lo mandado a JDownloader ──────────────────────────────────────── */
-
-  function tarjetaPaquetes() {
-    const lista = el('ul', { className: 'ajustes-paquetes' });
-    const aviso = el('p', { className: 'field__hint' });
-    const fecha = ms => new Date(ms).toLocaleString();
-    async function cargarPaquetes(revisar = false) {
-      let datos;
-      try {
-        datos = await ajustes.paquetesJd(revisar);
-      } catch (error) {
-        aviso.textContent = error.message;
-        return;
-      }
-      aviso.textContent = datos.error ? t('aj.paq.sinJd', { error: datos.error }) : '';
-      if (!datos.paquetes.length) {
-        lista.replaceChildren(el('li', { className: 'field__hint', text: t('aj.paq.vacio') }));
-        return;
-      }
-      lista.replaceChildren(
-        ...datos.paquetes.slice(0, 50).map(p => {
-          const c = p.contadores;
-          const detalle = [
-            p.carpeta || t('aj.prog.sinCarpeta'),
-            fecha(p.creado),
-            c ? t('aj.paq.cuenta', { hechos: c.terminados, total: c.total }) : null,
-            c?.fallidos ? tp('aj.paq.caidos', c.fallidos) : null,
-            p.directos ? tp('aj.paq.directos', p.directos) : null,
-            p.sinDirecto ? tp('aj.paq.sinDirecto', p.sinDirecto) : null,
-            p.escaneado ? t('aj.paq.escaneado') : null,
-          ].filter(Boolean);
-          const acciones = [];
-          if (p.estado === 'error' || c?.fallidos) {
-            acciones.push(
-              el('button', {
-                className: 'button button--small button--secondary',
-                attrs: { type: 'button' },
-                text: t('aj.paq.reintentar'),
-                on: {
-                  click: async () => {
-                    try {
-                      const r = await ajustes.reintentarPaquete(p.id);
-                      toast(tp('aj.paq.reintentado', r.sustituidas || 0));
-                      cargarPaquetes();
-                    } catch (error) {
-                      toast(error.message, 'error', 6000);
-                    }
-                  },
-                },
-              })
-            );
-          }
-          return el('li', {
-            className: `ajustes-paquetes__fila ajustes-paquetes__fila--${p.estado}`,
-            children: [
-              el('span', {
-                className: `ajustes-paquetes__estado ajustes-paquetes__estado--${p.estado}`,
-                text: t(`aj.paq.estado.${p.estado}`),
-              }),
-              el('div', {
-                className: 'programadas__texto',
-                children: [
-                  el('strong', { text: p.nombre }),
-                  el('span', { className: 'field__hint', text: detalle.join(' · ') }),
-                ],
-              }),
-              el('div', { className: 'ajustes-acciones', children: acciones }),
-            ],
-          });
-        })
-      );
-    }
-    cargarPaquetes(true);
-    // Mientras se ve, se refresca solo (lo que guarda el servidor; él ya pregunta a JDownloader).
-    const reloj = setInterval(() => {
-      if (!lista.isConnected) return clearInterval(reloj);
-      if (document.visibilityState !== 'hidden') cargarPaquetes();
-    }, 10000);
-    const boton = (clave, onClick, extra = 'button--secondary') =>
-      el('button', {
-        className: `button button--small ${extra}`,
-        attrs: { type: 'button' },
-        text: t(clave),
-        on: { click: onClick },
-      });
-    return el('section', {
-      className: 'card',
-      attrs: { id: 'ajustes-paquetes' },
-      children: [
-        el('div', {
-          className: 'card__header',
-          children: [
-            el('h3', { className: 'card__title', text: t('aj.paq.titulo') }),
-            el('p', { className: 'card__hint', text: t('aj.paq.hint') }),
-          ],
-        }),
-        el('div', {
-          className: 'card__body',
-          children: [
-            el('div', {
-              className: 'ajustes-acciones',
-              children: [
-                boton('aj.paq.actualizar', () => cargarPaquetes(true)),
-                boton(
-                  'aj.paq.vaciar',
-                  async () => {
-                    if (
-                      !(await confirmDialog({
-                        titleKey: 'aj.paq.vaciar',
-                        bodyKey: 'aj.paq.vaciarConfirmar',
-                        variant: 'danger',
-                      }))
-                    ) {
-                      return;
-                    }
-                    try {
-                      await ajustes.vaciarCapturador();
-                      toast(t('aj.paq.vaciado'));
-                      cargarPaquetes(true);
-                    } catch (error) {
-                      toast(error.message, 'error', 6000);
-                    }
-                  },
-                  'button--secondary ajustes-peligro'
-                ),
-              ],
-            }),
-            aviso,
-            lista,
-          ],
-        }),
-      ],
-    });
-  }
-
   /* ── Sitios: opciones por sitio ────────────────────────────────────── */
 
   function tarjetaSitios() {
-    const lista = el('ul', { className: 'ajustes-sitios' });
+    const lista = el('ul', { className: 'cs-sitios' });
     async function cargarSitios() {
       let datos;
       try {
@@ -1254,74 +927,138 @@ export function createAjustesView(raiz) {
         return;
       }
       if (!datos.sitios.length) {
-        lista.replaceChildren(el('li', { className: 'field__hint', text: t('aj.sitios.vacio') }));
+        lista.replaceChildren(
+          el('li', { className: 'cs-vacio', children: [el('p', { text: t('aj.sitios.vacio') })] })
+        );
         return;
       }
-      lista.replaceChildren(
-        ...datos.sitios.map(s => {
-          const directo = el('input', { attrs: { type: 'checkbox' } });
-          directo.checked = s.jdDirecto;
-          directo.addEventListener('change', async () => {
-            try {
-              await ajustes.guardarSitio(s.dominio, { jdDirecto: directo.checked });
-              toast(t('aj.guardado'));
-            } catch (error) {
-              directo.checked = !directo.checked;
-              toast(error.message, 'error', 6000);
-            }
-          });
-          // «No buscar por defecto»: sale apagado en Buscar y las búsquedas que no eligen sitios
-          // (varias, programadas, otras apps) se lo saltan.
-          const fuera = el('input', { attrs: { type: 'checkbox' } });
-          fuera.checked = s.fueraPorDefecto;
-          fuera.addEventListener('change', async () => {
-            try {
-              await ajustes.guardarSitio(s.dominio, { fueraPorDefecto: fuera.checked });
-              toast(t('aj.guardado'));
-            } catch (error) {
-              fuera.checked = !fuera.checked;
-              toast(error.message, 'error', 6000);
-            }
-          });
-          const e = s.estadisticas || {};
-          const cifras = s.estadisticas
-            ? [
-                tp('aj.sitios.busquedas', e.busquedas || 0),
-                tp('aj.sitios.resultados', e.resultados || 0),
-                e.resultados
-                  ? t('aj.sitios.conDuracion', {
-                      n: Math.round((100 * (e.conDuracion || 0)) / e.resultados),
-                    })
-                  : null,
-                e.bloqueos ? tp('aj.sitios.bloqueos', e.bloqueos) : null,
-                tp('aj.sitios.enviados', e.enviadosJd || 0),
-                e.yaLoTenias ? tp('aj.sitios.yaLoTenias', e.yaLoTenias) : null,
-                e.fallidosJd ? tp('aj.sitios.fallidos', e.fallidosJd) : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')
-            : t('aj.sitios.sinDatos');
-          return el('li', {
-            className: 'ajustes-sitios__fila',
+      lista.replaceChildren(...datos.sitios.map(filaSitio));
+    }
+
+    /**
+     * Una fila por sitio: nombre, dominio y dos cifras; un interruptor grande (buscar en él por
+     * defecto: la única forma de apagar un sitio, guardada en el servidor) y «⋯» con el resto.
+     */
+    function filaSitio(s) {
+      const e = s.estadisticas || {};
+      const cifras = s.estadisticas
+        ? [
+            tp('aj.sitios.busquedas', e.busquedas || 0),
+            tp('aj.sitios.resultados', e.resultados || 0),
+            e.resultados
+              ? t('aj.sitios.conDuracion', {
+                  n: Math.round((100 * (e.conDuracion || 0)) / e.resultados),
+                })
+              : null,
+            e.bloqueos ? tp('aj.sitios.bloqueos', e.bloqueos) : null,
+            tp('aj.sitios.enviados', e.enviadosJd || 0),
+            e.yaLoTenias ? tp('aj.sitios.yaLoTenias', e.yaLoTenias) : null,
+            e.fallidosJd ? tp('aj.sitios.fallidos', e.fallidosJd) : null,
+          ].filter(Boolean)
+        : [t('aj.sitios.sinDatos')];
+      const interruptor = el('input', {
+        attrs: {
+          type: 'checkbox',
+          role: 'switch',
+          'aria-label': t('aj.sitios.activo', { nombre: s.nombre }),
+        },
+      });
+      interruptor.checked = !s.fueraPorDefecto;
+      interruptor.addEventListener('change', async () => {
+        try {
+          await ajustes.guardarSitio(s.dominio, { fueraPorDefecto: !interruptor.checked });
+          s.fueraPorDefecto = !interruptor.checked;
+          toast(
+            t(interruptor.checked ? 'aj.sitios.encendido' : 'aj.sitios.apagado', {
+              nombre: s.nombre,
+            })
+          );
+        } catch (error) {
+          interruptor.checked = !interruptor.checked;
+          toast(error.message, 'error', 6000);
+        }
+      });
+      const mas = el('button', {
+        className: 'cg-boton cg-boton--icono cg-boton--fantasma',
+        attrs: {
+          type: 'button',
+          'aria-haspopup': 'dialog',
+          'aria-label': t('aj.sitios.mas', { nombre: s.nombre }),
+          title: t('aj.sitios.mas', { nombre: s.nombre }),
+        },
+        text: '⋯',
+        on: {
+          click: () =>
+            menuAcciones({
+              titulo: s.nombre,
+              subtitulo: `${s.dominio} · ${cifras.join(' · ')}`,
+              acciones: [
+                {
+                  texto: t('aj.sitios.editar'),
+                  detalle: t('aj.sitios.editar.detalle'),
+                  fn: () => {
+                    location.hash = `#/explorer/${s.id}`;
+                  },
+                },
+                {
+                  texto: t(s.jdDirecto ? 'aj.sitios.directo.quitar' : 'aj.sitios.directo.poner'),
+                  detalle: t('aj.sitios.directo.hint'),
+                  fn: async () => {
+                    try {
+                      await ajustes.guardarSitio(s.dominio, { jdDirecto: !s.jdDirecto });
+                      s.jdDirecto = !s.jdDirecto;
+                      toast(t('aj.guardado'));
+                    } catch (error) {
+                      toast(error.message, 'error', 6000);
+                    }
+                  },
+                },
+                { texto: t('aj.sitios.borrar'), peligro: true, fn: () => borrarSitio(s) },
+              ],
+            }),
+        },
+      });
+      return el('li', {
+        className: `cs-sitio${s.fueraPorDefecto ? ' cs-sitio--apagado' : ''}`,
+        children: [
+          el('div', {
+            className: 'cs-sitio__texto',
             children: [
               el('strong', { text: s.nombre }),
-              el('span', { className: 'field__hint', text: s.dominio }),
-              el('span', { className: 'ajustes-sitios__cifras', text: cifras }),
-              el('label', {
-                className: 'ajustes-casilla',
-                attrs: { title: t('aj.sitios.directo.hint') },
-                children: [directo, t('aj.sitios.directo')],
-              }),
-              el('label', {
-                className: 'ajustes-casilla',
-                attrs: { title: t('aj.sitios.fuera.hint') },
-                children: [fuera, t('aj.sitios.fuera')],
-              }),
+              el('span', { text: [s.dominio, ...cifras.slice(0, 2)].join(' · ') }),
             ],
-          });
-        })
-      );
+          }),
+          el('label', { className: 'cs-interruptor', children: [interruptor, el('span')] }),
+          mas,
+        ],
+      });
     }
+
+    /** Borrar un sitio no se deshace (su configuración se pierde): mantener pulsado. */
+    async function borrarSitio(s) {
+      const si = await window.cgConfirmar({
+        titulo: t('aj.sitios.borrar'),
+        texto: t('aj.sitios.borrarConfirmar', { nombre: s.nombre, dominio: s.dominio }),
+        aceptar: t('aj.sitios.borrar'),
+        peligro: true,
+        mantener: true,
+      });
+      if (!si) return;
+      try {
+        const { profiles = [] } = await getProfiles();
+        // El id es la posición en la lista (CS-07): se comprueba que sigue siendo el mismo dominio.
+        const perfil = profiles[s.id];
+        if (!perfil || !String(perfil.config?.searchUrl || '').includes(s.dominio)) {
+          throw new Error(t('aj.sitios.cambio'));
+        }
+        await saveProfiles(profiles.filter((_, i) => i !== s.id));
+        toast(t('aj.sitios.borrado', { nombre: s.nombre }));
+        cargarSitios();
+      } catch (error) {
+        toast(error.message, 'error', 6000);
+      }
+    }
+
     cargarSitios();
     return el('section', {
       className: 'card',
@@ -1329,33 +1066,42 @@ export function createAjustesView(raiz) {
       children: [
         el('div', {
           className: 'card__header',
-          children: [
-            el('h3', { className: 'card__title', text: t('aj.sitios.titulo') }),
-            el('p', { className: 'card__hint', text: t('aj.sitios.hint') }),
-          ],
+          children: [el('h3', { className: 'card__title', text: t('aj.sitios.titulo') })],
         }),
         el('div', {
           className: 'card__body',
           children: [
             lista,
+            // La explicación, debajo: en el móvil los sitios tienen que verse nada más entrar.
+            el('p', { className: 'cs-nota', text: t('aj.sitios.hint.corto') }),
             el('div', {
-              className: 'ajustes-acciones',
+              className: 'cs-fila-botones',
               children: [
                 el('button', {
-                  className: 'button button--small button--secondary ajustes-peligro',
+                  className: 'cg-boton cg-boton--principal',
+                  attrs: { type: 'button' },
+                  text: t('buscar.agregarSitios'),
+                  on: {
+                    click: async () => {
+                      const n = await altaSitiosDialog();
+                      if (n > 0) cargarSitios();
+                    },
+                  },
+                }),
+                el('button', {
+                  className: 'cg-boton cg-boton--fantasma',
                   attrs: { type: 'button' },
                   text: t('aj.sitios.cero'),
                   on: {
                     click: async () => {
-                      if (
-                        !(await confirmDialog({
-                          titleKey: 'aj.sitios.cero',
-                          bodyKey: 'aj.sitios.ceroConfirmar',
-                          variant: 'danger',
-                        }))
-                      ) {
-                        return;
-                      }
+                      const si = await window.cgConfirmar({
+                        titulo: t('aj.sitios.cero'),
+                        texto: t('aj.sitios.ceroConfirmar'),
+                        aceptar: t('aj.sitios.cero'),
+                        peligro: true,
+                        mantener: true,
+                      });
+                      if (!si) return;
                       await ajustes.ponerACeroEstadisticas();
                       cargarSitios();
                     },
@@ -1724,8 +1470,10 @@ export function createAjustesView(raiz) {
 }
 
 /**
- * Selector común de Clipgeist en la cabecera: las tres apps siempre, la actual
- * resaltada y las que no están conectadas, apagadas (igual en las tres apps).
+ * Las tres apps de Clipgeist, en el menú del logo (hoja #hoja-apps): la actual marcada y las que no
+ * están conectadas, apagadas. La dirección de cada una es la guardada, pero vista DESDE ESTE
+ * NAVEGADOR: si es «localhost» o el nombre del contenedor, se usa la máquina desde la que se mira
+ * clipscout (antes, desde el móvil apuntaban al propio teléfono y no abrían nada).
  */
 export function initCrewCabecera(contenedor) {
   const pintar = async () => {
@@ -1736,51 +1484,60 @@ export function initCrewCabecera(contenedor) {
       conexiones = [];
     }
     const icono = app =>
-      el('img', { attrs: { src: `/img/crew/${app}.png`, alt: app, width: 30, height: 30 } });
+      el('img', { attrs: { src: `/img/crew/${app}.png`, alt: app, width: 36, height: 36 } });
+    const contenido = (app, detalle) => [
+      icono(app),
+      el('span', {
+        className: 'cs-app__texto',
+        children: [el('strong', { text: app }), el('small', { text: detalle })],
+      }),
+    ];
     contenedor.replaceChildren(
       ...['clipscout', 'clonbuster', 'clipkeeper'].map(app => {
         if (app === 'clipscout') {
           return el('span', {
-            className: 'cc-app actual',
-            attrs: { title: t('crew.actual', { app }) },
-            children: [icono(app)],
+            className: 'cc-app cs-app actual',
+            attrs: { 'aria-current': 'page' },
+            children: contenido(app, t('crew.estasAqui')),
           });
         }
         const c = conexiones.find(x => x.app === app);
         return c
           ? el('a', {
-              className: 'cc-app',
-              attrs: { href: c.url, title: t('crew.ir', { nombre: c.nombre }) },
-              children: [icono(app)],
+              className: 'cc-app cs-app',
+              attrs: {
+                href: urlDeApp(c.url, window.location.hostname),
+                title: t('crew.ir', { nombre: c.nombre }),
+              },
+              children: contenido(app, c.nombre || t('crew.ir', { nombre: app })),
             })
           : el('span', {
-              className: 'cc-app apagada',
-              attrs: { title: t('crew.noConectada', { app }) },
-              children: [icono(app)],
+              className: 'cc-app cs-app apagada',
+              children: contenido(app, t('crew.sinConectar')),
             });
       })
     );
   };
   window.addEventListener(EVENTO, pintar);
-  botonSalirCabecera(contenedor.parentElement);
+  botonSalir(contenedor.parentElement.querySelector('.cs-apps-acciones'));
   return pintar();
 }
 
 /**
- * «Salir» en la cabecera, en el mismo sitio que en clipkeeper y clonbuster.
- * Solo si hay contraseña: sin ella no hay sesión que cerrar.
+ * «Salir», en el menú del logo (en el mismo sitio en las tres apps). Solo si hay contraseña: sin
+ * ella no hay sesión que cerrar.
  */
-async function botonSalirCabecera(destino) {
+async function botonSalir(destino) {
   let estado = {};
   try {
     estado = await (await fetch('/api/auth/estado')).json();
   } catch {
     return;
   }
-  if (!estado.protegido || destino.querySelector('.cc-boton-cabecera')) return;
+  if (!destino || !estado.protegido || destino.querySelector('.cs-salir')) return;
   destino.append(
     el('button', {
-      className: 'cc-boton-cabecera',
+      className: 'cg-boton cs-salir',
       attrs: {
         type: 'button',
         title: estado.usuario ? t('cab.cerrarSesion', { usuario: estado.usuario }) : '',

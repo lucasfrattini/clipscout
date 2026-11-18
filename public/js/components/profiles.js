@@ -242,5 +242,18 @@ export function createProfileBar({ getConfig, applyConfig }) {
 
   load();
 
-  return { root, refresh: load };
+  /**
+   * Abre una configuración guardada por su posición (Ajustes → Sitios → «Editar» lleva a
+   * #/explorer/<n>). Devuelve su nombre, o null si ya no existe.
+   */
+  async function elegirPorIndice(indice) {
+    await load(); // la lista puede haber cambiado desde que se abrió la página
+    const profile = profiles[indice];
+    if (!profile) return null;
+    refreshSelect(profile.name);
+    applyConfig(profile.config);
+    return profile.name;
+  }
+
+  return { root, refresh: load, elegirPorIndice };
 }

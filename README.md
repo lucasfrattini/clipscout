@@ -74,18 +74,18 @@ progress, real cancellation and export.
 - **Send to JDownloader**: one click sends the results to JDownloader 2 as a
   single package, into the folder you choose — see
   [Sending to JDownloader](#sending-to-jdownloader). clipscout follows each
-  package (_Settings_): when JDownloader can't open a page it sends the direct
+  package (_Activity → Downloads_): when JDownloader can't open a page it sends the direct
   file instead, and when a package finishes it asks clipkeeper to scan that
   folder.
-- **Play in place**: a ▶ button plays a result inside its card. The video is streamed through
-  your server (seeking works), so the browser never talks to the site.
-- **Scheduled searches** (_Settings_): a saved search repeats every few days and sends only
+- **Play in place**: **⋯ → Play** plays a result in a sheet, without leaving the list. The video is
+  streamed through your server (seeking works), so the browser never talks to the site.
+- **Scheduled searches** (_Activity → Scheduled_, or **Repeat every week…** from the result filters): a saved search repeats every few days and sends only
   what is new to JDownloader — with a minimum length, words it must or must not contain, and
   a person or category for clipkeeper. The same video found on several sites is sent once.
   Starts empty.
 - **Works with Clipgeist**: lists your clipkeeper folders as download
   destinations and tells you which videos you already have.
-- **Per-site numbers** (_Settings → Sites_): searches, results, how many with
+- **Per-site numbers** (_Settings → Search → Sites_, in each site's **⋯**): searches, results, how many with
   length, blocks, sent, already owned and failed downloads.
 - **Outbound proxy** (`OUTBOUND_PROXY`) for networks that block some sites.
 - **Safe to run**: SSRF protection, per-host throttling, rate limiting, memory
@@ -188,8 +188,9 @@ others know (for example, "do I already have this?" before downloading).
 
 **Connect them** — every app has a **Settings** tab:
 
-1. In app B, open **Settings → Security → Admin key** and copy it (it is used once, to register).
-2. In app A, open **Settings → Connected apps → + Add connection**, pick B, check the suggested URL
+1. In app B, open **Settings → Security → Admin key** (in clipscout, **Settings → Clipgeist**) and
+   copy it (it is used once, to register).
+2. In app A, open **Settings → Connected apps → + Add connection** (clipscout: **Settings → Clipgeist**), pick B, check the suggested URL
    (`http://<server-ip>:<port>`), paste B's key, press **Test**, then **Save**.
 3. With _Also connect in the opposite direction_ ticked (the default), B is connected back to A
    automatically. From then on each app keeps only a **connection key** (`cgc_…`) that the other
@@ -244,7 +245,7 @@ without copying links by hand.
   Check it from the clipscout machine: `curl http://<jdownloader-ip>:3128/jd/version` should
   answer with a number.
 
-**2. Connect it in clipscout**: **Settings → JDownloader**, paste
+**2. Connect it in clipscout**: **Settings → Downloads**, paste
 `http://<jdownloader-ip>:3128`, press **Test** and **Save**. Optional:
 
 - **Start downloads right away** (autostart), or leave them in JDownloader's link grabber.
@@ -272,13 +273,13 @@ What happens then:
 > `/api/crew/v1/...` endpoints (and, for JDownloader, to its API). The SSRF protection that keeps crawls away from private addresses
 > is unchanged.
 
-| Variable          | Default          | What it does                                                                                                                                                                                                                |
-| ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OUTBOUND_PROXY`  | _(empty)_        | Optional outbound proxy for crawls and the browser, e.g. `http://192.168.1.10:8118` (the Privoxy of a VPN container). Useful when your ISP blocks a site                                                                    |
-| `ADMIN_PASSWORD`  | _(empty)_        | Fixes the password from the environment (only its hash is kept in memory), username in `ADMIN_USER` (default `admin`, case-insensitive). Otherwise it is set in Settings → Security. Scripts use the `X-Api-Key` admin key. |
-| `DATA_DIR`        | `data/`          | Folder for all of clipscout's data. When set, `crew.json` and `profiles.json` live inside it too (unless `CREW_PATH`/`PROFILES_PATH` say otherwise). Not set: nothing changes                                               |
-| `CREW_PATH`       | `data/crew.json` | API key, instance name and connections                                                                                                                                                                                      |
-| `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another Clipgeist app                                                                                                                                                                               |
+| Variable          | Default          | What it does                                                                                                                                                                                                                       |
+| ----------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OUTBOUND_PROXY`  | _(empty)_        | Optional outbound proxy for crawls and the browser, e.g. `http://192.168.1.10:8118` (the Privoxy of a VPN container). Useful when your ISP blocks a site                                                                           |
+| `ADMIN_PASSWORD`  | _(empty)_        | Fixes the password from the environment (only its hash is kept in memory), username in `ADMIN_USER` (default `admin`, case-insensitive). Otherwise it is set in Settings → System → Access. Scripts use the `X-Api-Key` admin key. |
+| `DATA_DIR`        | `data/`          | Folder for all of clipscout's data. When set, `crew.json` and `profiles.json` live inside it too (unless `CREW_PATH`/`PROFILES_PATH` say otherwise). Not set: nothing changes                                                      |
+| `CREW_PATH`       | `data/crew.json` | API key, instance name and connections                                                                                                                                                                                             |
+| `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another Clipgeist app                                                                                                                                                                                      |
 
 ---
 
@@ -292,7 +293,7 @@ docker compose up -d --build
 
 Your saved configurations survive updates. clipscout makes a **daily backup** of its own files
 (`data/*.json`: connections, sites, scheduled searches, filters, statistics) in `data/respaldos/`
-and keeps the last `RESPALDOS_DIAS` days (7). **Settings → Backups** lists them and lets you
+and keeps the last `RESPALDOS_DIAS` days (7). **Settings → System → Backups** lists them and lets you
 download or restore one (restoring first saves the current state, so it can be undone). The
 download leaves out the password hash and every key (the local copies keep them, readable only by
 the owner, so they can restore the install). Keep a copy of `.env` yourself.
@@ -311,7 +312,7 @@ you want to keep them. Paused explorations are kept in memory and are lost on re
 
 ## Exposing it on the internet
 
-clipscout asks for a user and password (sessions are kept on the server: **Settings → Security**
+clipscout asks for a user and password (sessions are kept on the server: **Settings → System**
 lists them and closes them). It only answers host names it knows (an IP, `localhost`, the
 computer's name, the hosts of its connections, or `CLIPGEIST_HOSTS`) and rejects actions sent
 from other websites. Without HTTPS the password travels in clear text: if you open it to the
@@ -369,7 +370,23 @@ running after you log out, use a process manager such as systemd or pm2.
 To add sites, press **+ Add sites**, paste their addresses (one per line) and
 a term those sites have; the test result tells you which ones work.
 
-**Advanced** is the full explorer, for going deep on one site by hand:
+The app has three places, at the bottom of the screen on a phone and as a side bar on a computer:
+**Search**, **Activity** (queued searches, packages sent to JDownloader and scheduled searches)
+and **Settings** (Search · Downloads · Clipgeist · System). It is made to be used with one hand:
+
+- The search box sits in the top row; search options (which sites, pages per site, several
+  searches at once) are behind the sliders button, and result filters open in a sheet from the
+  **Filters** button. Only the active filters stay on screen, each with its ✕.
+- Results are a compact list (about eight per phone screen). **Long-press** a row, or tick its box,
+  to select several; the bottom bar then offers **Download**, **All** and **Remove**. Removing is
+  undone with **Undo**.
+- What you **already have** (clipkeeper) and what you **already sent** to JDownloader are hidden
+  by default, with a counter to show them, and never go into **Download all**.
+- The clipscout logo opens the other Clipgeist apps (using the address you are browsing from,
+  so it works from a phone), the guide and **Log out**.
+
+The **site editor** (it used to be **Advanced**: _Settings → Search → Sites → ⋯ → Edit_, or
+`#/explorer`) is the full explorer, for going deep on one site by hand:
 
 1. **Addresses to explore** — the page where the walk starts. You can use
    `{q}` where the search term goes and `{page}` where the page number goes.
@@ -426,7 +443,7 @@ account (or the same one as another Clipgeist app), JDownloader, one to three si
 apps, and a QR code to open it from your phone. Existing installs never see it. To stop it
 cleanly, `POST /api/apagar` (from the same machine with `X-Clipgeist: 1`, a session or the admin
 key) or send SIGTERM: running and queued searches are saved and resume on the next start.
-**Settings → About** shows the version, the licence and the third-party components.
+**Settings → System → About** shows the version, the licence and the third-party components.
 
 No build step and no framework: `public/` is served as-is. How the code is
 organised, the API and the design decisions are in

@@ -415,6 +415,18 @@ router.get(
   })
 );
 
+/**
+ * ¿Cuáles de estas fichas se mandaron ya a JDownloader, y cuándo? (CS-N7: Buscar las oculta por
+ * defecto y las saca de «Descargar todo»). Solo lee lo apuntado en los paquetes.
+ */
+router.post(
+  '/ajustes/jdownloader/enviados',
+  manejar(async req => {
+    const enlaces = Array.isArray(req.body?.enlaces) ? req.body.enlaces.slice(0, 500) : [];
+    return { enviados: paquetesJd.enviadosDe(await paquetesJd.listar(), enlaces.map(String)) };
+  })
+);
+
 /** Reintentar lo caído de un paquete: fichero directo fresco, aunque ya se hubiera intentado. */
 router.post(
   '/ajustes/jdownloader/paquetes/:id/reintentar',

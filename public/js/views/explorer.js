@@ -3,6 +3,7 @@ import { openScrapeStream, detectConfig, pauseScrape } from '../api.js';
 import { createProgressPanel } from '../components/progress.js';
 import { createResultList } from '../components/resultList.js';
 import { createProfileBar, configFromUrl } from '../components/profiles.js';
+import { crearCabecera } from '../cabecera.js';
 import {
   PRESETS_EXTENSION,
   presetCompatibleDe,
@@ -1105,7 +1106,14 @@ export function createExplorerView(container, { limits }) {
     ],
   });
 
-  setChildren(container, explorerShell);
+  // «Avanzado» ya no está en el menú: es el editor de un sitio, al que se llega desde Ajustes →
+  // Búsqueda → Sitios → «Editar» (#/explorer/<n>). #/explorer a secas sigue funcionando.
+  const cabecera = crearCabecera({
+    tituloClave: 'explorer.editor',
+    id: 'explorer-cabecera',
+    atras: '#/ajustes/busqueda',
+  });
+  setChildren(container, [cabecera.nodo, explorerShell]);
   actualizarCarril('configurar');
 
   // ── Sincronización de la interfaz con los campos ────────────────────
@@ -2118,8 +2126,16 @@ export function createExplorerView(container, { limits }) {
   // formulario recordado con extensiones enseñaría "solo enlaces".
   sincronizarUI();
 
+  let editando = null;
   return {
-    focus() {
+    async focus() {
+      const pedido = window.location.hash.replace(/^#\/explorer\/?/, '').split('/')[0];
+      if (/^\d+$/.test(pedido) && pedido !== editando) {
+        editando = pedido;
+        const nombre = await profileBar.elegirPorIndice(Number(pedido));
+        if (nombre) toast(t('explorer.editando', { nombre }));
+        else toast(t('explorer.noExiste'), 'error', 6000);
+      } else if (!/^\d+$/.test(pedido)) editando = null;
       enfocarAlAbrir(fields.searchUrl);
     },
     teardown() {
