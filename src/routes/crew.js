@@ -18,6 +18,8 @@ const respaldos = require('../services/respaldos');
 const { listarSitios } = require('../services/busqueda');
 const { hostDe } = require('../services/web');
 const sesiones = require('../services/sesiones');
+const errores = require('../lib/errores');
+const logger = require('../lib/logger');
 
 /**
  * Rutas de Clipgeist.
@@ -41,13 +43,15 @@ const manejar = fn => async (req, res) => {
   try {
     res.json(await fn(req, res));
   } catch (error) {
-    // `error` además de `detail`: el mismo formato que el resto de la API (CS-18).
-    if (error instanceof crew.ErrorCrew) {
-      return res.status(error.status).json({ detail: error.message, error: error.message });
-    }
-    res
-      .status(500)
-      .json({ detail: 'Error interno.', error: 'Error interno.', code: 'INTERNAL_ERROR' });
+    // Formato común (SU-10): `{codigo, detail, params}` (lo completa lib/errores). Lo no previsto,
+    // `error_interno` con identificador en la respuesta y en el registro.
+    if (error instanceof crew.ErrorCrew) return errores.responder(req, res, error, logger);
+    return errores.responder(
+      req,
+      res,
+      { status: 500, message: error?.message, stack: error?.stack },
+      logger
+    );
   }
 };
 
@@ -57,9 +61,10 @@ const manejar = fn => async (req, res) => {
  */
 function requiereClave(req, res, next) {
   if (!req.clave) {
-    return res
-      .status(401)
-      .json({ detail: 'Clave de API incorrecta o ausente (cabecera X-Api-Key).' });
+    return res.status(401).json({
+      codigo: 'clave_invalida',
+      detail: 'Clave de API incorrecta o ausente (cabecera X-Api-Key).',
+    });
   }
   return next();
 }

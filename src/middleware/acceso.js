@@ -8,6 +8,8 @@ const acceso = require('../services/acceso');
 const crew = require('../services/crew');
 const sesiones = require('../services/sesiones');
 const { isPrivateAddress } = require('../lib/ssrf');
+const errores = require('../lib/errores');
+const logger = require('../lib/logger');
 
 /**
  * Acceso a clipscout (fase 1 de seguridad, común a las tres apps de Clipgeist: docs/CREW.md).
@@ -45,6 +47,7 @@ const LIBRES = new Set([
 const EXENTAS_HOST = new Set(['/api/health', '/api/salud']);
 const CAMBIAN = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const RUTAS_LANZADOR = new Set(['/api/apagar', '/api/estado-trabajos']);
+const CON_SESION_EN_PROTOCOLO = new Set(['/api/crew/v1/copia', '/api/crew/v1/copia/restaurar']);
 
 /**
  * Lo único que puede pedir otra app con una clave de conexión (además de nada fuera de
@@ -295,7 +298,7 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
     if (req.method === 'GET' && (req.get('accept') || '').includes('text/html')) {
       return res.status(503).type('text/plain; charset=utf-8').send(detalle);
     }
-    return res.status(503).json({ detail: detalle });
+    return res.status(503).json({ codigo: 'ajustes_ilegibles', detail: detalle });
   }
 
   const libre = req =>
@@ -310,10 +313,12 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
     try {
       // 1. Host
       if (!EXENTAS_HOST.has(req.path) && !(await hostPermitido(req))) {
-        return res
-          .status(421)
-          .type('text/plain; charset=utf-8')
-          .send('Esta dirección no está permitida. Añádela en CLIPGEIST_HOSTS.');
+        const texto = 'Esta dirección no está permitida. Añádela en CLIPGEIST_HOSTS.';
+        // Un navegador ve el texto; un script o la otra app, el error con código (SU-10).
+        if ((req.get('accept') || '').includes('text/html')) {
+          return res.status(421).type('text/plain; charset=utf-8').send(texto);
+        }
+        return res.status(421).json({ codigo: 'host_no_permitido', detail: texto });
       }
 
       let error = null;
@@ -322,7 +327,7 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       } catch (e) {
         error = e;
       }
-      if (error && !acceso.activo() && req.path !== '/api/health') return cerrada(req, res, error);
+      if (error && !acceso.activo() && !EXENTAS_HOST.has(req.path)) return cerrada(req, res, error);
 
       // 2. Clave
       const clave = await claveDe(req);
@@ -339,11 +344,13 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
         req.clave = clave;
         return next();
       }
-      // El protocolo entre apps solo con clave (su propio 401, con el formato del protocolo).
-      if (req.path.startsWith('/api/crew/v1/')) {
-        return res
-          .status(401)
-          .json({ detail: 'Clave de API incorrecta o ausente (cabecera X-Api-Key).' });
+      // El protocolo entre apps solo con clave (su propio 401, con el formato del protocolo). La
+      // copia de la suite (SU-20) vale también con sesión: la descarga la interfaz.
+      if (req.path.startsWith('/api/crew/v1/') && !CON_SESION_EN_PROTOCOLO.has(req.path)) {
+        return res.status(401).json({
+          codigo: 'clave_invalida',
+          detail: 'Clave de API incorrecta o ausente (cabecera X-Api-Key).',
+        });
       }
 
       // 5. Origen (todo lo que sigue va sin clave: cookie, o sin contraseña desde el equipo)
@@ -353,7 +360,9 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
         (CAMBIAN.has(req.method) && !origenPropio(req)) ||
         (cruzada && req.path.startsWith('/api/') && req.path !== '/api/health')
       ) {
-        return res.status(403).json({ detail: 'Petición desde otra web rechazada.' });
+        return res
+          .status(403)
+          .json({ codigo: 'origen_rechazado', detail: 'Petición desde otra web rechazada.' });
       }
 
       // El lanzador y el instalador (sin sesión) pueden pedir el apagado ordenado y preguntar si
@@ -384,6 +393,7 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
           return res.redirect(302, '/login');
         }
         return res.status(401).json({
+          codigo: 'sin_usuario',
           detail: 'Aún no hay usuario: créalo desde la pantalla de acceso.',
           primer_arranque: true,
         });
@@ -393,6 +403,13 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       if (await sesionDe(req, res)) return next();
       if (req.method === 'GET' && (req.get('accept') || '').includes('text/html')) {
         return res.redirect(302, '/login');
+      }
+      // Con una clave que no vale (y sin sesión), el motivo es la clave, no la sesión.
+      if (clave?.tipo === 'mala') {
+        return res.status(401).json({
+          codigo: 'clave_invalida',
+          detail: 'Clave de API incorrecta o ausente (cabecera X-Api-Key).',
+        });
       }
       return res.status(401).json({ detail: 'Hace falta usuario y contraseña.' });
     } catch (e) {
@@ -407,15 +424,19 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       if (!acceso.activo()) return cerrada(req, res, error);
     }
     if (!acceso.activo()) {
-      return res
-        .status(409)
-        .json({ detail: 'Aún no hay usuario: créalo primero.', primer_arranque: true });
+      return res.status(409).json({
+        codigo: 'sin_usuario',
+        detail: 'Aún no hay usuario: créalo primero.',
+        primer_arranque: true,
+      });
     }
     if (frenada(req, res)) return undefined;
     const { usuario = '', contrasena = '' } = req.body || {};
     if (!(await acceso.verificar(usuario, contrasena))) {
       await apuntarFallo(req);
-      return res.status(401).json({ detail: 'Usuario o contraseña incorrectos.' });
+      return res
+        .status(401)
+        .json({ codigo: 'credenciales_incorrectas', detail: 'Usuario o contraseña incorrectos.' });
     }
     fallos.delete(ipDe(req));
     await abrirSesion(req, res, acceso.usuario());
@@ -428,7 +449,9 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
     try {
       await acceso.cargar();
       if (acceso.activo()) {
-        return res.status(409).json({ detail: 'Ya hay un usuario: entra con él.' });
+        return res
+          .status(409)
+          .json({ codigo: 'ya_hay_usuario', detail: 'Ya hay un usuario: entra con él.' });
       }
       const cuerpo = req.body || {};
       // «Usar la misma cuenta que <app>»: primero el código (desde fuera), para que esto no sirva
@@ -448,9 +471,11 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
         );
         if (!valida) {
           await apuntarFallo(req);
-          return res
-            .status(401)
-            .json({ detail: `Usuario o contraseña incorrectos en ${cuerpo.cuentaDe}.` });
+          return res.status(401).json({
+            codigo: 'credenciales_incorrectas',
+            detail: `Usuario o contraseña incorrectos en ${cuerpo.cuentaDe}.`,
+            params: { app: cuerpo.cuentaDe },
+          });
         }
       }
       const r = await acceso.configurar(cuerpo, { local: esLocal(req) });
@@ -459,7 +484,7 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       return res.json(r);
     } catch (error) {
       if (error.status === 403) await apuntarFallo(req);
-      return res.status(error.status || 500).json({ detail: error.message });
+      return errores.responder(req, res, error, logger);
     }
   }
 

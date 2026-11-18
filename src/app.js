@@ -9,6 +9,8 @@ const thumbnailRoutes = require('./routes/thumbnail');
 const mediaRoutes = require('./routes/media');
 const { createRateLimiter } = require('./middleware/rateLimit');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const errores = require('./lib/errores');
+const logger = require('./lib/logger');
 
 const { crearAcceso } = require('./middleware/acceso');
 const credenciales = require('./services/acceso');
@@ -30,6 +32,10 @@ function createApp() {
    */
   app.set('trust proxy', config.security.trustProxy);
   app.disable('x-powered-by');
+
+  // Errores con código (SU-10): envuelve `res.json` antes que nada, así también salen con
+  // `{codigo, detail, params}` los rechazos de la guardia de acceso.
+  app.use(errores.formatoErrores);
 
   // Acceso (sesiones, claves, host y origen: middleware/acceso.js). Va lo primero para que nada se
   // sirva sin él.
@@ -93,7 +99,7 @@ function createApp() {
       await acceso.trasCambiarContrasena(req, res);
       res.json(r);
     } catch (error) {
-      res.status(error.status || 500).json({ detail: error.message });
+      errores.responder(req, res, error, logger);
     }
   };
   app.put(

@@ -4,6 +4,7 @@ const express = require('express');
 
 const config = require('../config');
 const logger = require('../lib/logger');
+const errores = require('../lib/errores');
 const { buscarEnTodos, listarSitios } = require('../services/busqueda');
 const fondo = require('../services/busquedasFondo');
 const { firmarDatos } = require('../lib/firmaProxy');
@@ -149,7 +150,7 @@ router.post('/buscar/iniciar', (req, res) => {
     const cuerpo = req.body || {};
     res.json({ id: fondo.iniciar(entradaDe(cuerpo), { carpeta: carpetaDe(cuerpo.carpeta) }) });
   } catch (error) {
-    res.status(error.status || 500).json({ error: error.message });
+    errores.responder(req, res, error, logger);
   }
 });
 
@@ -163,7 +164,7 @@ router.post('/buscar/varias', (req, res) => {
   const lista = Array.isArray(cuerpo.busquedas) ? cuerpo.busquedas : [];
   if (lista.length === 0) return res.status(400).json({ error: 'No hay búsquedas.' });
   const ids = [];
-  const errores = [];
+  const fallidas = [];
   for (const b of lista.slice(0, config.busqueda.fondoMaxEnCola)) {
     try {
       const entrada = entradaDe({
@@ -173,10 +174,17 @@ router.post('/buscar/varias', (req, res) => {
       });
       ids.push(fondo.iniciar(entrada, { carpeta: carpetaDe(b?.carpeta) }));
     } catch (error) {
-      errores.push({ q: String(b?.q || b?.url || ''), error: error.message });
+      fallidas.push({ q: String(b?.q || b?.url || ''), error: error.message });
     }
   }
-  res.status(ids.length ? 200 : 409).json({ ids, errores });
+  if (ids.length) return res.json({ ids, errores: fallidas });
+  // Ninguna entró (cola llena, o todas sin nada que buscar): 409 con el motivo de la primera.
+  return res.status(409).json({
+    codigo: 'ocupado',
+    detail: fallidas[0]?.error || 'No se pudo encolar ninguna búsqueda.',
+    ids,
+    errores: fallidas,
+  });
 });
 
 /** GET /api/buscar/cola — en marcha, esperando y terminadas recientes. */
