@@ -3,6 +3,7 @@
 const express = require('express');
 
 const config = require('../config');
+const { firmarDatos } = require('../lib/firmaProxy');
 const logger = require('../lib/logger');
 const { AppError } = require('../lib/errors');
 const { extractVideos, extractVideosBatch } = require('../services/video');
@@ -46,7 +47,7 @@ router.post('/video/extract', async (req, res, next) => {
     // vacío cae al `url` de siempre, que es la retrocompatibilidad.
     if (Array.isArray(urls) && urls.length > 0) {
       const result = await extractVideosBatch(urls, opciones);
-      res.json({ success: true, ...result });
+      res.json(firmarDatos({ success: true, ...result }));
       return;
     }
 
@@ -55,7 +56,7 @@ router.post('/video/extract', async (req, res, next) => {
     }
 
     const result = await extractVideos(url, opciones);
-    res.json({ success: true, ...result });
+    res.json(firmarDatos({ success: true, ...result }));
   } catch (error) {
     next(error);
   }
@@ -106,9 +107,10 @@ router.get('/video/stream', async (req, res) => {
   const controller = new AbortController();
   let clientGone = false;
 
+  // Las direcciones de imagen y vídeo van firmadas para el intermediario (CS-S8).
   const send = payload => {
     if (clientGone || res.writableEnded) return;
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    res.write(`data: ${JSON.stringify(firmarDatos(payload))}\n\n`);
   };
 
   // Comentario SSE periódico para que proxies no cierren la conexión

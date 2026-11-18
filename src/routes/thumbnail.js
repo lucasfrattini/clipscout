@@ -5,6 +5,24 @@ const express = require('express');
 const config = require('../config');
 const { AppError } = require('../lib/errors');
 const { obtenerMiniatura } = require('../services/thumbnails');
+const { puedeIntermediar, dominioBase } = require('../lib/firmaProxy');
+
+/** Dominios base de los sitios configurados (para el intermediario sin firma, CS-S8). */
+async function dominiosSitios() {
+  const { readProfiles } = require('../services/profiles');
+  const perfiles = await readProfiles().catch(() => []);
+  const dominios = new Set();
+  for (const p of perfiles) {
+    try {
+      dominios.add(
+        dominioBase(new URL(String(p.config.searchUrl || '').replace(/\{q\}/g, 'q')).hostname)
+      );
+    } catch {
+      // sin dirección válida: no cuenta
+    }
+  }
+  return dominios;
+}
 
 const router = express.Router();
 
@@ -35,9 +53,19 @@ router.get('/thumbnail', async (req, res, next) => {
       throw new AppError('Las miniaturas están desactivadas', 404, 'THUMBNAILS_DISABLED');
     }
 
-    const { url } = req.query || {};
+    const { url, s } = req.query || {};
     if (typeof url !== 'string' || url.trim() === '') {
       throw new AppError('Se requiere una URL', 400, 'URL_REQUIRED');
+    }
+    // CS-S8: solo lo que entregó el propio servidor (firmado) o de un sitio configurado.
+    const permitido = puedeIntermediar({
+      url: url.trim(),
+      firma: s,
+      admin: req.clave?.tipo === 'admin',
+      dominiosSitios: await dominiosSitios(),
+    });
+    if (!permitido) {
+      throw new AppError('Esa imagen no la entregó este servidor', 403, 'PROXY_NO_FIRMADO');
     }
 
     const controller = new AbortController();

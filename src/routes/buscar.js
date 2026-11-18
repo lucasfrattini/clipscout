@@ -6,6 +6,7 @@ const config = require('../config');
 const logger = require('../lib/logger');
 const { buscarEnTodos, listarSitios } = require('../services/busqueda');
 const fondo = require('../services/busquedasFondo');
+const { firmarDatos } = require('../lib/firmaProxy');
 const directo = require('../services/directo');
 const { hostDe } = require('../services/web');
 
@@ -44,8 +45,10 @@ router.get('/buscar/stream', async (req, res) => {
   res.flushHeaders?.();
 
   const controller = new AbortController();
+  // Direcciones de imagen y vídeo firmadas para el intermediario (CS-S8). Se firma al mandar,
+  // no al guardar: lo retomado tras un reinicio también sale firmado.
   const send = payload => {
-    if (!res.writableEnded) res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    if (!res.writableEnded) res.write(`data: ${JSON.stringify(firmarDatos(payload))}\n\n`);
   };
   const latido = setInterval(() => {
     if (!res.writableEnded) res.write(': keepalive\n\n');
@@ -210,8 +213,10 @@ router.get('/buscar/trabajos/:id/stream', (req, res) => {
     'X-Accel-Buffering': 'no',
   });
   res.flushHeaders?.();
+  // Direcciones de imagen y vídeo firmadas para el intermediario (CS-S8). Se firma al mandar,
+  // no al guardar: lo retomado tras un reinicio también sale firmado.
   const send = payload => {
-    if (!res.writableEnded) res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    if (!res.writableEnded) res.write(`data: ${JSON.stringify(firmarDatos(payload))}\n\n`);
   };
   const latido = setInterval(() => {
     if (!res.writableEnded) res.write(': keepalive\n\n');

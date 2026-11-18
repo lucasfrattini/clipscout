@@ -35,7 +35,8 @@ test('caché negativa: el segundo intento no llega al sitio y el error dice que 
   assert.equal(pedidas, 1, 'la segunda no salió hacia el sitio');
 
   const r = await fetch(
-    `http://127.0.0.1:${app.address().port}/api/thumbnail?url=${encodeURIComponent(imagen)}`
+    `http://127.0.0.1:${app.address().port}/api/thumbnail?url=${encodeURIComponent(imagen)}` +
+      `&s=${require('../src/lib/firmaProxy').firmar(imagen)}`
   );
   assert.equal(r.status, 404);
   assert.match(r.headers.get('cache-control') || '', /max-age=300/);

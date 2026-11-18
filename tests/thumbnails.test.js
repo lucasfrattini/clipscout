@@ -173,8 +173,15 @@ test('el endpoint sirve la imagen desde nuestro origen', async t => {
 
   cache.entradas.clear();
 
-  const destino = encodeURIComponent(`http://127.0.0.1:${origen.puerto}/x.png`);
-  const res = await fetch(`http://127.0.0.1:${nuestro.puerto}/api/thumbnail?url=${destino}`);
+  const directa = `http://127.0.0.1:${origen.puerto}/x.png`;
+  const destino = encodeURIComponent(directa);
+  // CS-S8: solo con la firma que el servidor puso al entregar la dirección.
+  const { firmar } = require('../src/lib/firmaProxy');
+  const sinFirma = await fetch(`http://127.0.0.1:${nuestro.puerto}/api/thumbnail?url=${destino}`);
+  assert.strictEqual(sinFirma.status, 403);
+  const res = await fetch(
+    `http://127.0.0.1:${nuestro.puerto}/api/thumbnail?url=${destino}&s=${firmar(directa)}`
+  );
 
   assert.strictEqual(res.status, 200);
   assert.strictEqual(res.headers.get('content-type'), 'image/png');

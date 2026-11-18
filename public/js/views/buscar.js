@@ -1782,7 +1782,7 @@ export function createBuscarView(root) {
       r.thumbnail && !miniaturasRotas.has(r.thumbnail)
         ? el('img', {
             attrs: {
-              src: `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}`,
+              src: `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}&s=${r.thumbnailFirma || ''}`,
               alt: '',
               loading: 'lazy',
               decoding: 'async',
@@ -1929,7 +1929,7 @@ export function createBuscarView(root) {
         autoplay: '',
         playsinline: '',
         preload: 'metadata',
-        src: `/api/media?url=${encodeURIComponent(r.url)}&ref=${encodeURIComponent(r.sourceUrl || '')}`,
+        src: `/api/media?url=${encodeURIComponent(r.url)}&ref=${encodeURIComponent(r.sourceUrl || '')}&s=${r.urlFirma || ''}`,
       },
       on: { error: () => toast(t('buscar.videoError'), 'error', 6000) },
     });

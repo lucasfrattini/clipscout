@@ -7,6 +7,24 @@ const config = require('../config');
 const { AppError } = require('../lib/errors');
 const { buildHeaders, peticionSegura } = require('../lib/http');
 const { assertUrlIsSafe } = require('../lib/ssrf');
+const { puedeIntermediar, dominioBase } = require('../lib/firmaProxy');
+
+/** Dominios base de los sitios configurados (para el intermediario sin firma, CS-S8). */
+async function dominiosSitios() {
+  const { readProfiles } = require('../services/profiles');
+  const perfiles = await readProfiles().catch(() => []);
+  const dominios = new Set();
+  for (const p of perfiles) {
+    try {
+      dominios.add(
+        dominioBase(new URL(String(p.config.searchUrl || '').replace(/\{q\}/g, 'q')).hostname)
+      );
+    } catch {
+      // sin dirección válida: no cuenta
+    }
+  }
+  return dominios;
+}
 
 const router = express.Router();
 
@@ -30,12 +48,22 @@ const CABECERAS = ['content-type', 'content-length', 'content-range', 'accept-ra
  * solo contenido de vídeo.
  */
 router.get('/media', async (req, res, next) => {
-  const { url, ref } = req.query || {};
+  const { url, ref, s } = req.query || {};
   try {
     if (typeof url !== 'string' || !/^https?:\/\//i.test(url.trim())) {
       throw new AppError('Se requiere la URL del vídeo', 400, 'URL_REQUIRED');
     }
     const destino = url.trim();
+    // CS-S8: solo lo que entregó el propio servidor (firmado) o de un sitio configurado.
+    const permitido = puedeIntermediar({
+      url: destino,
+      firma: s,
+      admin: req.clave?.tipo === 'admin',
+      dominiosSitios: await dominiosSitios(),
+    });
+    if (!permitido) {
+      throw new AppError('Ese vídeo no lo entregó este servidor', 403, 'PROXY_NO_FIRMADO');
+    }
     await assertUrlIsSafe(destino);
     const referer = typeof ref === 'string' && /^https?:\/\//i.test(ref) ? ref : undefined;
 
@@ -72,6 +100,20 @@ router.get('/media', async (req, res, next) => {
     }
     res.set('Cache-Control', 'no-store');
     res.set('Referrer-Policy', 'no-referrer');
+    // CS-S8: tope de tamaño y de tiempo por petición (el reproductor pide por trozos con Range:
+    // uno solo nunca debería acercarse). Pasado el tope se corta.
+    let pasados = 0;
+    const cortar = () => {
+      respuesta.data.destroy();
+      res.destroy();
+    };
+    const reloj = setTimeout(cortar, config.media.maxMs);
+    reloj.unref?.();
+    respuesta.data.on('data', trozo => {
+      pasados += trozo.length;
+      if (pasados > config.media.maxBytes) cortar();
+    });
+    respuesta.data.on('close', () => clearTimeout(reloj));
     respuesta.data.on('error', () => res.destroy());
     respuesta.data.pipe(res);
   } catch (error) {

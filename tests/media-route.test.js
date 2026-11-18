@@ -64,12 +64,17 @@ test('/api/media pasa el vídeo con Range y Referer, y rechaza lo que no es víd
     config.security.blockPrivateAddresses = antes;
     await Promise.all([app.cerrar(), origen.cerrar()]);
   });
+  // CS-S8: con la firma que el servidor puso al entregar la dirección.
+  const { firmar } = require('../src/lib/firmaProxy');
   const pedir = (ruta, ref, headers = {}) =>
     fetch(
       `${app.url}/api/media?url=${encodeURIComponent(origen.url + ruta)}` +
-        (ref ? `&ref=${encodeURIComponent(ref)}` : ''),
+        (ref ? `&ref=${encodeURIComponent(ref)}` : '') +
+        `&s=${firmar(origen.url + ruta)}`,
       { headers }
     );
+  const sinFirma = await fetch(`${app.url}/api/media?url=${encodeURIComponent(origen.url)}/v.mp4`);
+  assert.equal(sinFirma.status, 403, 'sin firma ni sitio configurado, no');
 
   const parcial = await pedir('/v.mp4', 'http://ficha.example/v/1', { Range: 'bytes=100-199' });
   assert.equal(parcial.status, 206);

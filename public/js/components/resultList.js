@@ -760,7 +760,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
         ? el('img', {
             className: 'result-item__thumb',
             attrs: {
-              src: `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}`,
+              src: `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}&s=${info.thumbnailFirma || ''}`,
               alt: '',
               loading: 'lazy',
               decoding: 'async',
@@ -910,7 +910,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
         ? el('img', {
             className: 'miembro__thumb',
             attrs: {
-              src: `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}`,
+              src: `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}&s=${info.thumbnailFirma || ''}`,
               alt: '',
               loading: 'lazy',
               decoding: 'async',

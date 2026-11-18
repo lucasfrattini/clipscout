@@ -451,6 +451,9 @@ const config = {
   media: {
     // Hasta que el sitio EMPIEZA a responder; el streaming en sí no tiene tope
     timeoutMs: intFromEnv('MEDIA_TIMEOUT_MS', 20000),
+    // CS-S8: tope por petición (con Range el reproductor pide trozos): bytes y tiempo
+    maxBytes: intFromEnv('MEDIA_MAX_BYTES', 4 * 1024 * 1024 * 1024),
+    maxMs: intFromEnv('MEDIA_MAX_MS', 2 * 60 * 60 * 1000),
     // Cada salto en el vídeo es una petición: va con su propio límite
     rateLimit: {
       windowMs: intFromEnv('MEDIA_RATE_WINDOW_MS', 60 * 1000),

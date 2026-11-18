@@ -87,3 +87,27 @@ test('CS-S7: tamaño (HEAD) y miniaturas pasan por la misma validación', async 
 test('CS-S7: un bucle de redirecciones se corta', async () => {
   await assert.rejects(fetchHtml(`${base}/bucle`), /redirecciones/);
 });
+
+test('CS-S8: firma de lo entregado, dominio de un sitio configurado o clave de administración', () => {
+  const {
+    firmar,
+    firmaValida,
+    firmarDatos,
+    puedeIntermediar,
+    dominioBase,
+  } = require('../src/lib/firmaProxy');
+  const url = 'https://img.cdn.example/a.jpg';
+  assert.ok(firmaValida(url, firmar(url)));
+  assert.ok(!firmaValida('https://img.cdn.example/b.jpg', firmar(url)));
+  assert.ok(!firmaValida(url, 'x'.repeat(22)));
+  const datos = firmarDatos({ type: 'resultados', items: [{ url, thumbnail: url, title: 't' }] });
+  assert.equal(datos.items[0].urlFirma, firmar(url));
+  assert.equal(datos.items[0].thumbnailFirma, firmar(url));
+  assert.equal(datos.items[0].titleFirma, undefined);
+  assert.equal(dominioBase('a.b.ejemplo.com'), 'ejemplo.com');
+  assert.equal(dominioBase('x.ejemplo.co.uk'), 'ejemplo.co.uk');
+  const sitios = new Set(['ejemplo.com']);
+  assert.ok(puedeIntermediar({ url: 'https://cdn.ejemplo.com/v.mp4', dominiosSitios: sitios }));
+  assert.ok(!puedeIntermediar({ url: 'https://otro.example/v.mp4', dominiosSitios: sitios }));
+  assert.ok(puedeIntermediar({ url: 'https://otro.example/v.mp4', admin: true }));
+});

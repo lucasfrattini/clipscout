@@ -3,6 +3,7 @@
 const express = require('express');
 
 const config = require('../config');
+const { firmarDatos } = require('../lib/firmaProxy');
 const logger = require('../lib/logger');
 const { parseExtensionList } = require('../lib/url');
 const { crawl, crawlMany, normalizeCrawlParamsList } = require('../services/scraper');
@@ -75,28 +76,32 @@ router.post('/scrape', async (req, res, next) => {
 
     if (lista.length === 1) {
       const result = await crawl({ ...compartida, extensions }, { signal: controller.signal });
-      return res.json({
-        success: true,
-        ...result,
-        // Una dirección analizada, salvo que el cliente cancelara a mitad.
-        direccionesAnalizadas: result.aborted ? 0 : 1,
-        searchUrl: compartida.searchUrl,
-        ...eco,
-      });
+      return res.json(
+        firmarDatos({
+          success: true,
+          ...result,
+          // Una dirección analizada, salvo que el cliente cancelara a mitad.
+          direccionesAnalizadas: result.aborted ? 0 : 1,
+          searchUrl: compartida.searchUrl,
+          ...eco,
+        })
+      );
     }
 
     const result = await crawlMany(
       { listaParams: lista, extensions },
       { signal: controller.signal }
     );
-    return res.json({
-      success: true,
-      ...result,
-      // El estado para continuar no viaja al cliente; el POST no tiene pausa.
-      estadoReanudar: undefined,
-      searchUrls: lista.map(p => p.searchUrl),
-      ...eco,
-    });
+    return res.json(
+      firmarDatos({
+        success: true,
+        ...result,
+        // El estado para continuar no viaja al cliente; el POST no tiene pausa.
+        estadoReanudar: undefined,
+        searchUrls: lista.map(p => p.searchUrl),
+        ...eco,
+      })
+    );
   } catch (error) {
     next(error);
   }
@@ -147,9 +152,10 @@ router.get('/scrape/stream', async (req, res) => {
   const controller = new AbortController();
   let clientGone = false;
 
+  // Las direcciones de imagen y vídeo van firmadas para el intermediario (CS-S8).
   const send = payload => {
     if (clientGone || res.writableEnded) return;
-    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    res.write(`data: ${JSON.stringify(firmarDatos(payload))}\n\n`);
   };
 
   // Comentario SSE periódico para que proxies no cierren la conexión

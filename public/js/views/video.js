@@ -918,7 +918,7 @@ export function createVideoView(container) {
     return el('img', {
       className: 'result-item__thumb',
       attrs: {
-        src: `/api/thumbnail?url=${encodeURIComponent(video.thumbnailUrl)}`,
+        src: `/api/thumbnail?url=${encodeURIComponent(video.thumbnailUrl)}&s=${video.thumbnailUrlFirma || ''}`,
         alt: '',
         loading: 'lazy',
         decoding: 'async',
