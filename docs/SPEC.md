@@ -32,7 +32,7 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | SIT-1  | Estadísticas por sitio persistentes (búsquedas, resultados, con duración, bloqueos, JD, ya lo tenías).           | `estadisticas.test.js`                       |
 | BUS-10 | «También en toda la web» está desmarcada por defecto (Buscar y programadas); se respeta si se marcó.             | `programadas.test.js`, manual                |
 | RES-1  | Copia diaria de data/*.json con N días; ver, descargar y restaurar (guardando antes lo actual).                  | `respaldos.test.js`                          |
-| CRW-2  | Con CLIPGEIST_CLAVE y CLIPGEIST_*_URL se conecta sola a las otras apps (idempotente, sin tocar lo manual).         | `autoconexion.test.js`                       |
+| CRW-2  | Con CLIPGEIST_CLAVE y CLIPGEIST_*_URL se conecta sola a las otras apps (idempotente, sin tocar lo manual).       | `autoconexion.test.js`                       |
 | FIL-1  | Las palabras siempre bloqueadas se aplican a Buscar, a las programadas y a todo envío a JD.                      | `filtros.test.js`                            |
 | JD-1   | Enviar a JDownloader pregunta tipo y nombre de la carpeta, salvo destino fijado.                                 | manual                                       |
 | JD-2   | La ventana DEBE proponer carpetas existentes y personas o etiquetas del catálogo sin carpeta propia.             | `carpetas.test.js`                           |
@@ -43,12 +43,15 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | ACC-1  | Sin contraseña (ni `ADMIN_PASSWORD` ni la de Ajustes) no hay acceso que pedir; con ella, a `/login`.             | `admin-password.test.js`                     |
 | ACC-2  | El usuario se acepta sin distinguir mayúsculas; la contraseña sí las distingue.                                  | `admin-password.test.js`                     |
 | ACC-3  | La sesión es una cookie HttpOnly firmada; HTTP Basic sigue valiendo para clientes de API.                        | `admin-password.test.js`                     |
-| ACC-4  | Tras 8 fallos por dirección de socket, 429 durante 5 min.                                                        | `admin-password.test.js`                     |
+| ACC-4  | Tras 8 fallos por dirección de socket (formulario y HTTP Basic: un contador), 429 durante 5 min.                 | `admin-password`, `acceso-basic-freno`       |
 | ACC-6  | La contraseña se pone, cambia o quita en Ajustes → Acceso (scrypt); ADMIN_PASSWORD manda si existe.              | `acceso-ajustes.test.js`                     |
 | ACC-5  | `/api/health` y el protocolo no piden contraseña.                                                                | `admin-password.test.js`                     |
+| ACC-7  | crew.json ilegible y sin copia buena: app CERRADA (503), fichero intacto; nunca abierta.                         | `ajustes-corruptos.test.js`                  |
+| DAT-1  | data/*.json: temporal único + rename y `.bak` de la anterior; si se daña, vuelve el `.bak`.                      | `ajustes-corruptos.test.js`                  |
+| PRG-1  | Una programada manda cada vídeo una vez (identidad del enlace y repetidos), en la vuelta y entre vueltas.        | `programadas.test.js`                        |
 | CRW-1  | Implementa el protocolo v1 de CREW.md.                                                                           | `tests/` de crew                             |
 | I18N-1 | Toda cadena existe en `es.js` y `en.js`.                                                                         | `i18n.test.js`                               |
 
 ## Datos
 
-Sin base de datos. `data/profiles.json`, `data/crew.json`, `data/busquedas.json` (búsquedas en curso y recientes) y ajustes, fuera de git y de la imagen.
+Sin base de datos. `data/profiles.json`, `data/crew.json`, `data/busquedas.json` (búsquedas en curso y recientes), `data/programadas-enviados.json` (lo ya enviado por las programadas) y ajustes, fuera de git y de la imagen.

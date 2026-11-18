@@ -1,11 +1,11 @@
 'use strict';
 
 const fs = require('node:fs/promises');
-const path = require('node:path');
 
 const config = require('../config');
 const { AppError } = require('../lib/errors');
 const logger = require('../lib/logger');
+const { escribirTexto } = require('../lib/ficheroJson');
 
 /**
  * Perfiles de sitios guardados en el servidor.
@@ -126,10 +126,7 @@ async function writeProfiles(rawProfiles) {
   const payload = JSON.stringify({ version: 1, profiles }, null, 2);
 
   try {
-    await fs.mkdir(path.dirname(target), { recursive: true });
-    const temp = `${target}.tmp`;
-    await fs.writeFile(temp, `${payload}\n`, 'utf8');
-    await fs.rename(temp, target);
+    await escribirTexto(target, `${payload}\n`, { copia: true });
   } catch (error) {
     logger.error('No se pudo guardar el fichero de perfiles', { error: error.message });
     throw new AppError('No se pudieron guardar los perfiles', 500, 'PROFILES_WRITE_FAILED');

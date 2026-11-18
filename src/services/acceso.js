@@ -39,8 +39,14 @@ const igualTiempo = (a, b) => {
 /** Lee lo guardado una vez (las peticiones esperan a esto antes de decidir si pasan). */
 function cargar({ forzar = false } = {}) {
   if (!cargado || forzar) {
-    cargado = crew.datos().then(d => {
+    const intento = crew.datos().then(d => {
       guardado = d.acceso?.hash ? { usuario: d.acceso.usuario, hash: d.acceso.hash } : null;
+    });
+    cargado = intento;
+    // Un fallo (crew.json ilegible) no se queda guardado: la próxima petición vuelve a probar,
+    // y en cuanto se arregla el fichero la app se abre sola, sin reiniciar.
+    intento.catch(() => {
+      if (cargado === intento) cargado = null;
     });
   }
   return cargado;
@@ -79,24 +85,31 @@ const claveFirma = (u, hash) =>
 const firmarSesion = (u, hash, caduca) =>
   `${caduca}.${crypto.createHmac('sha256', claveFirma(u, hash)).update(String(caduca)).digest('hex')}`;
 
-// Verificar con scrypt cuesta ~50 ms: con HTTP Basic sería en CADA petición. Se recuerda el
-// resultado (por huella, nunca la contraseña) hasta que cambie lo guardado.
+// Verificar con scrypt cuesta ~50 ms de CPU. Se hace fuera del hilo principal (crypto.scrypt
+// asíncrono), para que adivinar contraseñas no congele el servidor, y se recuerda el resultado
+// (por huella, nunca la contraseña) hasta que cambie lo guardado: con HTTP Basic llega en CADA
+// petición.
 const verificadas = new Map();
+const scrypt = (contrasena, sal) =>
+  new Promise((resolver, rechazar) =>
+    crypto.scrypt(String(contrasena), sal, 32, PARAMS, (error, clave) =>
+      error ? rechazar(error) : resolver(clave.toString('hex'))
+    )
+  );
 
 /** ¿Usuario y contraseña correctos? El usuario no distingue mayúsculas; la contraseña sí. */
-function verificar(u, contrasena) {
+async function verificar(u, contrasena) {
   if (!activo()) return false;
   const usuarioBien = igualTiempo(String(u).trim().toLowerCase(), usuario().toLowerCase());
   if (delEntorno()) {
     return igualTiempo(contrasena, config.security.adminPassword) && usuarioBien;
   }
-  const huella = crypto
-    .createHash('sha256')
-    .update(`${guardado.hash}\n${u}\n${contrasena}`)
-    .digest('hex');
+  const { hash } = guardado;
+  const huella = crypto.createHash('sha256').update(`${hash}\n${u}\n${contrasena}`).digest('hex');
   if (verificadas.has(huella)) return verificadas.get(huella);
-  const [, sal, esperado] = guardado.hash.split('$');
-  const bien = igualTiempo(derivar(contrasena, Buffer.from(sal, 'hex')), esperado) && usuarioBien;
+  const [, sal, esperado] = hash.split('$');
+  const bien =
+    igualTiempo(await scrypt(contrasena, Buffer.from(sal, 'hex')), esperado) && usuarioBien;
   if (verificadas.size > 100) verificadas.clear();
   verificadas.set(huella, bien);
   return bien;
@@ -117,7 +130,7 @@ async function configurar({ usuario: nuevoUsuario = '', contrasena = '', actual 
       409
     );
   }
-  if (guardado && !verificar(guardado.usuario, actual)) {
+  if (guardado && !(await verificar(guardado.usuario, actual))) {
     throw new crew.ErrorCrew('La contraseña actual no es correcta.', 400);
   }
   const u = String(nuevoUsuario).trim().slice(0, 80);
@@ -146,7 +159,7 @@ async function quitar({ actual = '' } = {}) {
     );
   }
   if (!guardado) return estado();
-  if (!verificar(guardado.usuario, actual)) {
+  if (!(await verificar(guardado.usuario, actual))) {
     throw new crew.ErrorCrew('La contraseña actual no es correcta.', 400);
   }
   await crew.cambiar(d => {

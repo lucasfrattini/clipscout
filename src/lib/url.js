@@ -213,6 +213,34 @@ function getHostname(rawUrl) {
   }
 }
 
+/** Parámetros de seguimiento: no cambian qué página es. */
+const SEGUIMIENTO = /^(utm_[a-z]+|fbclid|gclid|mc_[a-z]+|ref|ref_src|igshid)$/i;
+
+/**
+ * Identidad de un enlace para «¿es el mismo?»: la misma ficha escrita de varias formas (http o
+ * https, con o sin «www.», barra final, #fragmento, parámetros de seguimiento o en otro orden)
+ * da la misma clave. La ruta conserva mayúsculas: en muchos sitios forma parte del id.
+ * Si no parsea, el texto tal cual (recortado).
+ */
+function claveEnlace(rawUrl) {
+  const texto = String(rawUrl || '').trim();
+  let u;
+  try {
+    u = new URL(texto);
+  } catch {
+    return texto;
+  }
+  if (!['http:', 'https:'].includes(u.protocol)) return texto;
+  const host = u.hostname.toLowerCase().replace(/^www\./, '');
+  const puerto = u.port && !['80', '443'].includes(u.port) ? `:${u.port}` : '';
+  const ruta = u.pathname.replace(/\/+$/, '') || '/';
+  const params = [...u.searchParams.entries()]
+    .filter(([k]) => !SEGUIMIENTO.test(k))
+    .sort(([a, x], [b, y]) => (a === b ? x.localeCompare(y) : a.localeCompare(b)));
+  const query = params.length ? `?${new URLSearchParams(params).toString()}` : '';
+  return `${host}${puerto}${ruta}${query}`;
+}
+
 module.exports = {
   toAbsoluteUrl,
   buildPageUrl,
@@ -226,4 +254,5 @@ module.exports = {
   hasExtension,
   getExtension,
   getHostname,
+  claveEnlace,
 };

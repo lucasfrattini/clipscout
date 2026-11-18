@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const config = require('../config');
 const logger = require('../lib/logger');
+const { escribirTexto } = require('../lib/ficheroJson');
 const { ErrorCrew } = require('./crew');
 
 /**
@@ -12,7 +13,7 @@ const { ErrorCrew } = require('./crew');
  * se conservan `RESPALDOS_DIAS` días. Desde Ajustes se pueden ver, descargar y restaurar.
  *
  * Qué entra: crew.json (clave, conexiones, JDownloader, programadas, filtros, opciones de sitios),
- * profiles.json (los sitios), estadisticas.json y jd-paquetes.json. NO entra busquedas.json: es
+ * profiles.json (los sitios), estadisticas.json, jd-paquetes.json y programadas-enviados.json. NO entra busquedas.json: es
  * estado pasajero (se vacía solo en una hora) y el que más pesa.
  *
  * Ojo al descargar: crew.json lleva la clave de API y las de las conexiones. Es lo que hace falta
@@ -29,6 +30,7 @@ function ficheros() {
     'profiles.json': config.profiles.path,
     'estadisticas.json': path.join(config.datos.dir, 'estadisticas.json'),
     'jd-paquetes.json': path.join(config.datos.dir, 'jd-paquetes.json'),
+    'programadas-enviados.json': path.join(config.datos.dir, 'programadas-enviados.json'),
   };
 }
 
@@ -139,9 +141,7 @@ async function restaurar(id) {
     // Que sea JSON válido ANTES de pisar nada.
     const texto = await fs.readFile(origen, 'utf8');
     JSON.parse(texto);
-    await fs.mkdir(path.dirname(rutas[nombre]), { recursive: true });
-    await fs.writeFile(`${rutas[nombre]}.tmp`, texto, 'utf8');
-    await fs.rename(`${rutas[nombre]}.tmp`, rutas[nombre]);
+    await escribirTexto(rutas[nombre], texto);
   }
   await podar();
   // Lo que se tiene en memoria se vuelve a leer del disco.

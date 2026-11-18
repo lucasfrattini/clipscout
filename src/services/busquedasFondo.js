@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const config = require('../config');
 const logger = require('../lib/logger');
+const { escribirTexto, escribirTextoSync } = require('../lib/ficheroJson');
 const { buscarEnTodos, buscarEnlace } = require('./busqueda');
 const filtrosGlobales = require('./filtrosGlobales');
 const duraciones = require('./duraciones');
@@ -101,11 +102,7 @@ function guardarAhora() {
   guardando = guardando.then(async () => {
     if (!sucio || congelado) return;
     sucio = false;
-    const destino = fichero();
-    await fs.promises.mkdir(path.dirname(destino), { recursive: true });
-    const temporal = `${destino}.tmp`;
-    await fs.promises.writeFile(temporal, JSON.stringify(foto()), 'utf8');
-    await fs.promises.rename(temporal, destino);
+    await escribirTexto(fichero(), JSON.stringify(foto()));
   });
   return guardando;
 }
@@ -117,11 +114,8 @@ function guardarAhora() {
 function guardarAlApagar() {
   if (congelado) return;
   clearTimeout(relojGuardado);
-  const destino = fichero();
   try {
-    fs.mkdirSync(path.dirname(destino), { recursive: true });
-    fs.writeFileSync(`${destino}.tmp`, JSON.stringify(foto()), 'utf8');
-    fs.renameSync(`${destino}.tmp`, destino);
+    escribirTextoSync(fichero(), JSON.stringify(foto()));
   } catch (error) {
     logger.warn(`No se pudieron guardar las búsquedas al apagar: ${error.message}`);
   }

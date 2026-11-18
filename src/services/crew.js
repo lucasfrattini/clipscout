@@ -1,11 +1,11 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const config = require('../config');
 const logger = require('../lib/logger');
+const { escribirJson, leerJson, ErrorIlegible } = require('../lib/ficheroJson');
 
 /**
  * Protocolo Clipgeist v1: conexión con las otras apps de la familia.
@@ -46,23 +46,37 @@ class ErrorCrew extends Error {
 
 let cola = Promise.resolve();
 
+/**
+ * Lee data/crew.json. Si no existe, `{}` (instalación nueva). Si está dañado, se recupera la
+ * última versión buena (`crew.json.bak`, que se guarda en cada escritura) y el dañado queda
+ * apartado como `crew.json.corrupto-<fecha>`. Sin copia buena LANZA (503) y no toca nada: antes
+ * se asumía «vacío», la app quedaba sin contraseña y la siguiente escritura borraba contraseña,
+ * conexiones, programadas y ajustes.
+ */
 async function leer() {
   try {
-    return JSON.parse(await fs.readFile(config.crew.path, 'utf8'));
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      logger.warn('crew.json ilegible, se recrea', { error: error.message });
+    const r = await leerJson(config.crew.path);
+    if (r.recuperado) {
+      logger.warn(
+        `crew.json estaba dañado (${r.causa.message}): se recuperó la copia anterior ` +
+          `(crew.json.bak); el dañado quedó en ${path.basename(r.apartado)}`
+      );
     }
-    return {};
+    return r.datos || {};
+  } catch (error) {
+    if (!(error instanceof ErrorIlegible)) throw error;
+    logger.error(`crew.json ilegible y sin copia buena: la app queda cerrada (${error.message})`);
+    throw new ErrorCrew(
+      'No se pueden leer los ajustes (data/crew.json está dañado y no hay copia buena en ' +
+        'crew.json.bak). Por seguridad la app queda cerrada: arregla el fichero o copia encima ' +
+        'uno de data/respaldos/<fecha>/crew.json.',
+      503
+    );
   }
 }
 
 async function escribir(datos) {
-  const destino = config.crew.path;
-  await fs.mkdir(path.dirname(destino), { recursive: true });
-  const temporal = `${destino}.tmp`;
-  await fs.writeFile(temporal, `${JSON.stringify(datos, null, 2)}\n`, 'utf8');
-  await fs.rename(temporal, destino);
+  await escribirJson(config.crew.path, datos, { copia: true });
 }
 
 /** Lee, aplica `fn` y escribe, en serie: dos peticiones a la vez no se pisan. */

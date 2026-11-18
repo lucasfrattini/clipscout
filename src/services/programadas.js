@@ -1,8 +1,12 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const path = require('node:path');
 
+const config = require('../config');
 const logger = require('../lib/logger');
+const { crearAlmacen } = require('../lib/almacen');
+const { claveEnlace } = require('../lib/url');
 const crew = require('./crew');
 const fondo = require('./busquedasFondo');
 const jd = require('./jdownloader');
@@ -15,9 +19,11 @@ const { palabras, textoDe, contieneAlguna, bloqueadaPor } = require('../lib/filt
  * JDownloader SOLO lo nuevo — lo que no se mandó ya en una vuelta anterior y lo que clipkeeper
  * no tiene.
  *
- * Se guardan en data/crew.json (`programadas`), con los enlaces ya enviados aparte
- * (`programadasEnviados`, por búsqueda y con tope) para no repetirlos. Empieza vacío: el
- * usuario las da de alta en Ajustes.
+ * Se guardan en data/crew.json (`programadas`). Lo ya enviado va en su PROPIO fichero
+ * (data/programadas-enviados.json: por búsqueda, con tope), no junto a la contraseña y las
+ * claves: es estado de trabajo que crece, y crew.json se lee varias veces por petición. Se guarda
+ * la identidad del enlace (`claveEnlace`), no el texto: la misma ficha escrita de otra forma no
+ * se vuelve a mandar. Empieza vacío: el usuario las da de alta en Ajustes.
  *
  * Cada vuelta es una búsqueda normal en segundo plano (busquedasFondo): se ve en la cola de Buscar
  * como cualquier otra y respeta el mismo tope de búsquedas a la vez: si no hay hueco, espera en
@@ -29,6 +35,41 @@ const MAX_ENVIADOS = 5000; // enlaces recordados por búsqueda
 const MAX_PROGRAMADAS = 100;
 
 let enCurso = null; // id de la programada que se está ejecutando (una a la vez)
+
+const almacenEnviados = crearAlmacen(
+  () => path.join(config.datos.dir, 'programadas-enviados.json'),
+  () => ({ version: 1, porBusqueda: {} })
+);
+
+/**
+ * Hasta 2.16 lo enviado vivía en crew.json (`programadasEnviados`): se pasa a su fichero y se
+ * quita de crew.json. Idempotente (une lo que haya), y en este orden — primero se escribe el
+ * fichero nuevo, luego se borra lo viejo —, así que un corte a medias no pierde nada. Vuelve a
+ * servir si se restaura una copia de seguridad antigua.
+ */
+async function migrarEnviados() {
+  const viejos = (await crew.datos()).programadasEnviados;
+  if (!viejos || typeof viejos !== 'object') return 0;
+  await almacenEnviados.cambiar(e => {
+    e.porBusqueda = e.porBusqueda || {};
+    for (const [id, lista] of Object.entries(viejos)) {
+      if (!Array.isArray(lista)) continue;
+      const union = new Set([...lista.map(claveEnlace), ...(e.porBusqueda[id] || [])]);
+      e.porBusqueda[id] = [...union].slice(-MAX_ENVIADOS);
+    }
+  });
+  await crew.cambiar(d => {
+    delete d.programadasEnviados;
+  });
+  logger.info(`Programadas: lo ya enviado pasa a programadas-enviados.json`);
+  return Object.keys(viejos).length;
+}
+
+async function enviadosDe(id) {
+  await migrarEnviados();
+  const { porBusqueda = {} } = await almacenEnviados.leer();
+  return new Set(porBusqueda[id] || []);
+}
 
 function limpiar(entrada = {}, anterior = {}) {
   const texto = (v, max = 200) =>
@@ -81,22 +122,62 @@ async function guardar(entrada) {
 }
 
 async function quitar(id) {
-  return crew.cambiar(d => {
-    d.programadas = (d.programadas || []).filter(p => p.id !== id);
-    if (d.programadasEnviados) delete d.programadasEnviados[id];
-    return { ok: true };
-  });
+  return crew
+    .cambiar(d => {
+      d.programadas = (d.programadas || []).filter(p => p.id !== id);
+      if (d.programadasEnviados) delete d.programadasEnviados[id];
+      return { ok: true };
+    })
+    .then(async r => {
+      await almacenEnviados.cambiar(e => {
+        if (e.porBusqueda) delete e.porBusqueda[id];
+      });
+      return r;
+    });
 }
 
 /**
  * Qué resultados se mandan. Pura, para poder probarla: no sabe nada de red.
- * Devuelve los elegidos (un elemento por ficha) y cuántos se descartaron y por qué.
+ *
+ * Un VÍDEO se manda una vez: se comparan enlaces por su identidad (`claveEnlace`: misma ficha
+ * con o sin «www.», barra final, parámetros de seguimiento…) y, con `grupos` (los repetidos que
+ * la búsqueda detectó: el mismo vídeo en varios sitios o fichas), de cada grupo sale solo el
+ * primero que pasa los filtros. Si cualquier miembro del grupo se mandó en una vuelta anterior
+ * (`yaEnviados`, claves), no se manda ninguno.
+ *
+ * Devuelve los elegidos (con `claves`: todo lo que hay que recordar como enviado al mandarlo) y
+ * cuántos se descartaron y por qué.
  */
-function filtrar(items, prog, yaEnviados = new Set(), bloqueadas = filtrosGlobales.bloqueadas()) {
+function filtrar(
+  items,
+  prog,
+  yaEnviados = new Set(),
+  bloqueadas = filtrosGlobales.bloqueadas(),
+  grupos = []
+) {
   const contener = palabras(prog.contener);
   const excluir = palabras(prog.excluir);
   const minimo = (prog.minutosMinimo || 0) * 60;
+  const enviados = new Set([...yaEnviados].map(claveEnlace));
+  // Grupo de cada enlace (por la url del resultado), y todas las claves de cada grupo (también
+  // las de las fichas, que es lo que se manda).
+  const grupoDe = new Map();
+  (Array.isArray(grupos) ? grupos : []).forEach((g, i) => {
+    for (const u of g?.miembros || []) grupoDe.set(claveEnlace(u), i);
+  });
+  const enlaceDe = it => it?.sourceUrl || it?.url;
+  const grupoDeItem = it =>
+    grupoDe.get(claveEnlace(it?.url)) ?? grupoDe.get(claveEnlace(enlaceDe(it)));
+  const clavesGrupo = new Map();
+  for (const it of items) {
+    const g = grupoDeItem(it);
+    if (g === undefined || !enlaceDe(it)) continue;
+    if (!clavesGrupo.has(g)) clavesGrupo.set(g, new Set());
+    clavesGrupo.get(g).add(claveEnlace(enlaceDe(it)));
+    if (it.url) clavesGrupo.get(g).add(claveEnlace(it.url));
+  }
   const vistos = new Set();
+  const gruposElegidos = new Set();
   const elegidos = [];
   const descartes = {
     repetido: 0,
@@ -107,13 +188,16 @@ function filtrar(items, prog, yaEnviados = new Set(), bloqueadas = filtrosGlobal
     bloqueada: 0,
   };
   for (const it of items) {
-    const link = it?.sourceUrl || it?.url;
-    if (!link || vistos.has(link)) {
+    const link = enlaceDe(it);
+    const clave = link ? claveEnlace(link) : '';
+    const g = link ? grupoDeItem(it) : undefined;
+    if (!link || vistos.has(clave) || (g !== undefined && gruposElegidos.has(g))) {
       descartes.repetido += 1;
       continue;
     }
-    vistos.add(link);
-    if (yaEnviados.has(link)) {
+    vistos.add(clave);
+    const claves = g === undefined ? [clave] : [...clavesGrupo.get(g)];
+    if (claves.some(k => enviados.has(k))) {
       descartes.enviado += 1;
       continue;
     }
@@ -137,7 +221,8 @@ function filtrar(items, prog, yaEnviados = new Set(), bloqueadas = filtrosGlobal
       descartes.contener += 1;
       continue;
     }
-    elegidos.push({ link, item: it });
+    if (g !== undefined) gruposElegidos.add(g);
+    elegidos.push({ link, item: it, claves });
   }
   return { elegidos, descartes };
 }
@@ -151,6 +236,7 @@ function buscar(termino, carpeta = '', abierta = false) {
   );
   return new Promise(resolver => {
     const items = [];
+    let grupos = [];
     let error = null;
     let baja = null;
     let terminado = false;
@@ -158,10 +244,12 @@ function buscar(termino, carpeta = '', abierta = false) {
       if (terminado) return;
       terminado = true;
       baja?.();
-      resolver({ items, error });
+      resolver({ items, grupos, error });
     };
     baja = fondo.suscribir(id, 0, e => {
       if (e.type === 'resultados') items.push(...(e.items || []));
+      // Los repetidos (mismo vídeo en varios sitios) llegan al final, antes del `fin`.
+      else if (e.type === 'duplicados') grupos = e.grupos || [];
       // La duración que llega después cuenta para la duración mínima.
       else if (e.type === 'duracion') {
         for (const d of e.items || []) {
@@ -220,17 +308,23 @@ async function lanzar(id) {
     throw new crew.ErrorCrew(error.message, error.status || 500);
   }
   enCurso = id;
-  return { terminada: terminar(id, prog, d, busqueda) };
+  return { terminada: terminar(id, prog, busqueda) };
 }
 
 /** Filtra lo encontrado, lo manda y guarda el resumen en `ultimo`. */
-async function terminar(id, prog, d, busqueda) {
+async function terminar(id, prog, busqueda) {
   const fecha = new Date().toISOString();
   let ultimo;
   try {
-    const { items, error } = await busqueda;
-    const enviados = new Set((d.programadasEnviados || {})[id] || []);
-    const { elegidos, descartes } = filtrar(items, prog, enviados);
+    const { items, grupos, error } = await busqueda;
+    const enviados = await enviadosDe(id);
+    const { elegidos, descartes } = filtrar(
+      items,
+      prog,
+      enviados,
+      filtrosGlobales.bloqueadas(),
+      grupos
+    );
     const { quedan, tengo } = await quitarLoQueTengo(elegidos, prog.persona);
     descartes.tengo = tengo;
     let mandados = 0;
@@ -245,10 +339,16 @@ async function terminar(id, prog, d, busqueda) {
               }
             : null;
         for (let i = 0; i < quedan.length; i += 500) {
-          const tanda = quedan.slice(i, i + 500).map(e => e.link);
-          await jd.enviar({ links: tanda, carpeta: prog.carpeta, paquete: prog.termino, regla });
+          const tanda = quedan.slice(i, i + 500);
+          await jd.enviar({
+            links: tanda.map(e => e.link),
+            carpeta: prog.carpeta,
+            paquete: prog.termino,
+            regla,
+          });
           mandados += tanda.length;
-          tanda.forEach(l => enviados.add(l));
+          // Todo el grupo cuenta como enviado: en la próxima vuelta no sale por otro sitio.
+          tanda.forEach(e => e.claves.forEach(k => enviados.add(k)));
         }
       } catch (e) {
         fallo = e.message;
@@ -261,8 +361,10 @@ async function terminar(id, prog, d, busqueda) {
         p.ultimaVez = fecha;
         p.ultimo = ultimo;
       }
-      datos.programadasEnviados = datos.programadasEnviados || {};
-      datos.programadasEnviados[id] = [...enviados].slice(-MAX_ENVIADOS);
+    });
+    await almacenEnviados.cambiar(e => {
+      e.porBusqueda = e.porBusqueda || {};
+      e.porBusqueda[id] = [...enviados].slice(-MAX_ENVIADOS);
     });
     logger.info(`Programada «${prog.termino}»: ${items.length} resultados, ${mandados} enviados`);
   } finally {
@@ -298,10 +400,22 @@ async function comprobar() {
 let reloj = null;
 function arrancar() {
   if (reloj) return;
+  migrarEnviados().catch(error => logger.warn(`Programadas: ${error.message}`));
   reloj = setInterval(() => {
     comprobar().catch(error => logger.warn(`Búsquedas programadas: ${error.message}`));
   }, CADA_MS);
   reloj.unref?.();
 }
 
-module.exports = { listar, guardar, quitar, lanzar, filtrar, toca, comprobar, arrancar };
+module.exports = {
+  listar,
+  guardar,
+  quitar,
+  lanzar,
+  filtrar,
+  toca,
+  comprobar,
+  arrancar,
+  migrarEnviados,
+  enviadosDe,
+};

@@ -81,7 +81,8 @@ progress, real cancellation and export.
   your server (seeking works), so the browser never talks to the site.
 - **Scheduled searches** (_Settings_): a saved search repeats every few days and sends only
   what is new to JDownloader — with a minimum length, words it must or must not contain, and
-  a person or category for clipkeeper. Starts empty.
+  a person or category for clipkeeper. The same video found on several sites is sent once.
+  Starts empty.
 - **Works with Clipgeist**: lists your clipkeeper folders as download
   destinations and tells you which videos you already have.
 - **Per-site numbers** (_Settings → Sites_): searches, results, how many with
@@ -288,6 +289,11 @@ Your saved configurations survive updates. clipscout makes a **daily backup** of
 and keeps the last `RESPALDOS_DIAS` days (7). **Settings → Backups** lists them and lets you
 download or restore one (restoring first saves the current state, so it can be undone). The
 download contains your API keys: keep it somewhere safe. Keep a copy of `.env` yourself.
+
+Every data file is written atomically and keeps its previous version as `<file>.bak`. If
+`data/crew.json` gets damaged, clipscout restores that copy and keeps the damaged one as
+`crew.json.corrupto-<date>`. With no good copy it stays **locked** (HTTP 503) instead of opening
+without a password, and never overwrites the file: fix it or copy one from `data/respaldos/`.
 
 Searches that were running or queued when the server stops are saved in `data/busquedas.json` and
 resume on their own after a restart (only the sites that hadn't finished). Explorer results are
