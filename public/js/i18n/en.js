@@ -1196,7 +1196,7 @@ export const en = {
   'proxy.sitio': 'the outbound proxy is not responding',
   'aj.proxy.titulo': 'Outbound proxy',
   'aj.proxy.hint':
-    'Where searches go out through (OUTBOUND_PROXY). Checked automatically every minute.',
+    'Where searches go out through (a proxy or the VPN). Checked automatically every minute.',
   'aj.proxy.sin': 'No proxy: searches go out directly.',
   'aj.proxy.ok': '✓ Responding ({ms} ms).',
   'aj.proxy.mal':
@@ -1366,4 +1366,19 @@ export const en = {
     'The browser only allows them over https or when clipscout is opened on this same computer.',
   'aj.notif.denegado':
     'Notifications are blocked for this page: allow them in the browser settings.',
+  'aj.proxy.direccion': 'Proxy address',
+  'aj.proxy.direccion.hint':
+    'http://host:port (or http://user:password@host:port). Empty and Save: no proxy.',
+  'aj.proxy.entorno': 'Use the environment one',
+  'aj.proxy.delEntorno': 'Comes from OUTBOUND_PROXY (environment). Whatever you save here wins.',
+  'aj.proxy.probar': 'Test',
+  'aj.proxy.probando': 'Testing…',
+  'aj.proxy.salida': 'You go out to the internet through the proxy with address {ip}.',
+  'aj.proxy.salidaDirecta': 'No proxy: you go out to the internet with address {ip}.',
+  'aj.proxy.salidaNo': 'The outgoing address could not be found.',
+  'aj.proxy.guardado': 'Proxy saved: in use now (the internal browser, once running searches end).',
+  'aj.proxy.reescribe': 'Type the full address, with the password, to change it.',
+  'aj.priv.ip_salida': 'The outgoing address',
+  'aj.priv.ip_salida.que':
+    'Only when you press “Test” on the outbound proxy: it returns the address you go out with.',
 };

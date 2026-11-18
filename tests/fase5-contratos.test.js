@@ -520,6 +520,7 @@ test('F: la lista de lo que sale del equipo dice lo configurado, sin credenciale
   assert.deepEqual(Object.keys(por).sort(), [
     'apps',
     'gestor',
+    'ip_salida',
     'proxy',
     'sitios',
     'versiones',

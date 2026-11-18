@@ -138,9 +138,104 @@ async function probar({ timeoutMs = config.proxySalida.timeoutMs } = {}) {
   return leer();
 }
 
-/** El último estado, sin probar. */
+/** El último estado, sin probar. `origen`: de dónde sale la dirección (Ajustes o el entorno). */
 function leer() {
-  return { ...estado, configurado: configurado(), proxy: proxyVisible() };
+  return { ...estado, configurado: configurado(), proxy: proxyVisible(), origen };
+}
+
+/* ── CS-N11: el proxy desde Ajustes, y la dirección de salida ─────────── */
+
+const ENTORNO = (process.env.NODE_TEST_CONTEXT ? '' : process.env.OUTBOUND_PROXY || '').trim();
+let origen = ENTORNO ? 'entorno' : '';
+
+/** Una dirección de proxy válida (http o https, con host), o lanza 400. */
+function validarUrl(url) {
+  const crew = require('./crew');
+  let u;
+  try {
+    u = new URL(String(url).trim());
+  } catch {
+    throw new crew.ErrorCrew('La dirección del proxy no es válida (http://equipo:puerto).');
+  }
+  if (!['http:', 'https:'].includes(u.protocol) || !u.hostname) {
+    throw new crew.ErrorCrew('El proxy tiene que ser http:// o https:// con equipo y puerto.');
+  }
+  return u.href.replace(/\/$/, '');
+}
+
+/** Pone en marcha un proxy (o ninguno) en caliente: agentes, vigilancia y navegador. */
+function aplicar(url, nuevoOrigen) {
+  require('../lib/http').usarProxy(url);
+  origen = url ? nuevoOrigen : '';
+  parar();
+  estado = {
+    configurado: Boolean(url),
+    ok: null,
+    comprobado: null,
+    ms: null,
+    error: '',
+    codigo: '',
+  };
+  vigilar();
+  // El navegador interno lee el proxy al arrancar: se cierra cuando no haya búsquedas.
+  require('./ajustesBusqueda').cerrarNavegadorCuandoLibre();
+}
+
+/** Al arrancar: lo guardado en Ajustes manda sobre OUTBOUND_PROXY. */
+async function cargarGuardado() {
+  const d = await require('./crew').datos();
+  const guardado = d.proxySalida;
+  if (guardado && typeof guardado.url === 'string') aplicar(guardado.url, 'ajustes');
+}
+
+/**
+ * PUT /api/ajustes/proxy {url}: guarda y aplica. `url: ''` = sin proxy (aunque el entorno tenga
+ * uno); `url: null` = olvidar lo de Ajustes y volver a lo del entorno.
+ */
+async function guardar({ url } = {}) {
+  const crew = require('./crew');
+  if (url === null) {
+    await crew.cambiar(d => {
+      delete d.proxySalida;
+    });
+    aplicar(ENTORNO, 'entorno');
+    return leer();
+  }
+  const limpia = String(url || '').trim() ? validarUrl(url) : '';
+  await crew.cambiar(d => {
+    d.proxySalida = { url: limpia, fecha: new Date().toISOString() };
+  });
+  aplicar(limpia, 'ajustes');
+  return leer();
+}
+
+/**
+ * La dirección con la que se sale a internet AHORA (por el proxy si lo hay): se pregunta a
+ * `config.proxySalida.urlIp`. Nunca lanza: `{ip}` o `{error}`.
+ */
+async function direccionSalida() {
+  const url = config.proxySalida.urlIp;
+  if (!url) return { ip: '', error: 'sin_servicio' };
+  try {
+    const { peticionSegura } = require('../lib/http');
+    const r = await peticionSegura(url, {
+      timeout: config.proxySalida.timeoutMs * 2,
+      responseType: 'text',
+      maxContentLength: 64 * 1024,
+    });
+    const texto = String(r.data || '');
+    let ip = /(?:^|\n)ip=([0-9a-f.:]+)/i.exec(texto)?.[1] || '';
+    if (!ip) {
+      try {
+        ip = String(JSON.parse(texto).ip || '');
+      } catch {
+        ip = '';
+      }
+    }
+    return ip ? { ip } : { ip: '', error: 'sin_respuesta' };
+  } catch (error) {
+    return { ip: '', error: error.message || 'sin_respuesta' };
+  }
 }
 
 /**
@@ -176,4 +271,17 @@ function _reiniciar() {
 /** El mensaje que llega a cada sitio que se salta por el proxy caído. */
 const ERROR_PROXY = 'proxy_caido';
 
-module.exports = { probar, leer, asegurar, vigilar, parar, configurado, ERROR_PROXY, _reiniciar };
+module.exports = {
+  probar,
+  leer,
+  asegurar,
+  vigilar,
+  parar,
+  configurado,
+  guardar,
+  cargarGuardado,
+  direccionSalida,
+  validarUrl,
+  ERROR_PROXY,
+  _reiniciar,
+};

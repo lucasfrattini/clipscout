@@ -376,7 +376,7 @@ function bloqueVersion(estado) {
   return { caja, pintar };
 }
 
-const TIPOS_SALIENTES = ['sitios', 'web', 'gestor', 'proxy', 'apps', 'versiones'];
+const TIPOS_SALIENTES = ['sitios', 'web', 'gestor', 'proxy', 'ip_salida', 'apps', 'versiones'];
 
 function listaSalientes(salientes) {
   const por = Object.fromEntries(salientes.map(s => [s.tipo, s]));

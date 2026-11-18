@@ -143,4 +143,12 @@ async function probar(url, motores) {
   }
 }
 
-module.exports = { leer, cargar, guardar, probar, limpiarDominios, limpiarMotores };
+module.exports = {
+  leer,
+  cargar,
+  guardar,
+  probar,
+  limpiarDominios,
+  limpiarMotores,
+  cerrarNavegadorCuandoLibre,
+};

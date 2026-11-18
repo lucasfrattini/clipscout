@@ -205,6 +205,12 @@ async function salientes() {
         activo: Boolean(config.outboundProxy),
         url: sinCredenciales(config.outboundProxy),
       },
+      // CS-N11: «Probar» del proxy pregunta aquí la dirección de salida (solo al pulsarlo).
+      {
+        tipo: 'ip_salida',
+        activo: Boolean(config.proxySalida.urlIp),
+        url: config.proxySalida.urlIp,
+      },
       {
         tipo: 'apps',
         activo: conexiones.length > 0,

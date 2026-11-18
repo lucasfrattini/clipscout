@@ -326,6 +326,9 @@ const config = {
   // sitio: fallan al momento con «el proxy de salida no responde».
   proxySalida: {
     destinoPrueba: (process.env.OUTBOUND_PROXY_PRUEBA || 'example.com:443').trim(),
+    // «Probar» en Ajustes enseña la dirección de salida: se pide a este servicio (solo al pulsar;
+    // responde «ip=…» o {"ip": "…"}). Vacío = no se pregunta.
+    urlIp: (process.env.OUTBOUND_PROXY_URL_IP ?? 'https://1.1.1.1/cdn-cgi/trace').trim(),
     timeoutMs: intFromEnv('OUTBOUND_PROXY_PRUEBA_TIMEOUT_MS', 5000),
     // Una prueba más reciente que esto vale antes de una búsqueda
     vigenciaMs: intFromEnv('OUTBOUND_PROXY_PRUEBA_VIGENCIA_MS', 30000),

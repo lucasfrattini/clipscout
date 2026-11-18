@@ -123,6 +123,13 @@ function sinSecretos(crew) {
   const limpio = { ...crew };
   delete limpio.acceso;
   delete limpio.api_key;
+  // El proxy de Ajustes puede llevar usuario y contraseña: la dirección sí, ellos no.
+  if (limpio.proxySalida?.url) {
+    limpio.proxySalida = {
+      ...limpio.proxySalida,
+      url: String(limpio.proxySalida.url).replace(/\/\/[^@/]*@/, '//'),
+    };
+  }
   if (Array.isArray(limpio.conexiones)) {
     limpio.conexiones = limpio.conexiones.map(c => {
       const resto = { ...c };

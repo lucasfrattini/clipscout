@@ -663,13 +663,44 @@ export function createAjustesView(raiz) {
   function tarjetaProxy() {
     const estadoP = el('p', { className: 'ajustes-resultado', attrs: { 'aria-live': 'polite' } });
     const cuando = el('p', { className: 'field__hint' });
-    const probar = el('button', {
+    // CS-N11: la dirección del proxy se escribe aquí (antes solo con OUTBOUND_PROXY).
+    const direccion = el('input', {
+      className: 'input',
+      attrs: {
+        type: 'url',
+        spellcheck: 'false',
+        autocomplete: 'off',
+        placeholder: 'http://equipo:8888',
+        'aria-label': t('aj.proxy.direccion'),
+      },
+    });
+    const salida = el('p', { className: 'field__hint', attrs: { 'aria-live': 'polite' } });
+    const origenP = el('p', { className: 'field__hint' });
+    const guardarP = el('button', {
+      className: 'cg-boton cg-boton--principal',
+      attrs: { type: 'button' },
+      text: t('aj.guardar'),
+    });
+    const volver = el('button', {
       className: 'cg-boton',
       attrs: { type: 'button', hidden: '' },
-      text: t('aj.con.probar'),
+      text: t('aj.proxy.entorno'),
+    });
+    const probar = el('button', {
+      className: 'cg-boton',
+      attrs: { type: 'button' },
+      text: t('aj.proxy.probar'),
     });
     const pintarEstado = e => {
-      probar.hidden = !e.configurado;
+      // La dirección guardada lleva la contraseña oculta: no se pisa lo que se esté escribiendo.
+      if (document.activeElement !== direccion) direccion.value = e.proxy || '';
+      origenP.textContent = e.origen === 'entorno' ? t('aj.proxy.delEntorno') : '';
+      volver.hidden = e.origen !== 'ajustes';
+      if (e.salida) {
+        salida.textContent = e.salida.ip
+          ? t(e.configurado ? 'aj.proxy.salida' : 'aj.proxy.salidaDirecta', { ip: e.salida.ip })
+          : t('aj.proxy.salidaNo');
+      }
       cuando.textContent = e.comprobado
         ? t('aj.proxy.cuando', { cuando: new Date(e.comprobado).toLocaleString() })
         : '';
@@ -689,14 +720,36 @@ export function createAjustesView(raiz) {
     };
     probar.addEventListener('click', async () => {
       probar.disabled = true;
+      salida.textContent = t('aj.proxy.probando');
       try {
-        pintarEstado(await ajustes.probarProxy());
+        const r = await ajustes.probarProxy();
+        if (!r.salida) salida.textContent = ''; // el proxy no responde: lo dice el estado
+        pintarEstado(r);
       } catch (error) {
+        salida.textContent = '';
         toast(error.message, 'error', 6000);
       } finally {
         probar.disabled = false;
       }
     });
+    const guardarCon = async valor => {
+      guardarP.disabled = true;
+      try {
+        pintarEstado(await ajustes.guardarProxy(valor));
+        salida.textContent = '';
+        toast(t('aj.proxy.guardado'), 'success');
+      } catch (error) {
+        toast(error.message, 'error', 6000);
+      } finally {
+        guardarP.disabled = false;
+      }
+    };
+    // Si no se tocó la dirección (lleva *** en lugar de la contraseña), no se guarda encima.
+    guardarP.addEventListener('click', () => {
+      if (direccion.value.includes('***@')) return toast(t('aj.proxy.reescribe'), 'error', 6000);
+      return guardarCon(direccion.value.trim());
+    });
+    volver.addEventListener('click', () => guardarCon(null));
     ajustes
       .proxy()
       .then(pintarEstado)
@@ -715,9 +768,19 @@ export function createAjustesView(raiz) {
         el('div', {
           className: 'card__body',
           children: [
+            el('label', {
+              className: 'field',
+              children: [
+                el('span', { className: 'field__label', text: t('aj.proxy.direccion') }),
+                direccion,
+                el('span', { className: 'field__hint', text: t('aj.proxy.direccion.hint') }),
+              ],
+            }),
+            origenP,
             estadoP,
             cuando,
-            el('div', { className: 'ajustes-acciones', children: [probar] }),
+            salida,
+            el('div', { className: 'ajustes-acciones', children: [guardarP, probar, volver] }),
           ],
         }),
       ],

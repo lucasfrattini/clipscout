@@ -40,7 +40,12 @@ require('./src/services/filtrosGlobales')
   .catch(error => logger.warn('No se pudieron cargar los filtros', error.message));
 
 // ¿Responde el proxy de salida? Se mira ya y luego cada minuto (si hay proxy).
-require('./src/services/proxySalida').vigilar();
+// El de Ajustes (CS-N11) manda sobre OUTBOUND_PROXY.
+const proxySalida = require('./src/services/proxySalida');
+proxySalida
+  .cargarGuardado()
+  .catch(error => logger.warn('No se pudo cargar el proxy de Ajustes', error.message))
+  .finally(() => proxySalida.vigilar());
 
 // Búsquedas que estaban en marcha o en cola antes del reinicio: se retoman solas.
 const fondo = require('./src/services/busquedasFondo');

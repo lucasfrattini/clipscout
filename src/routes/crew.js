@@ -331,10 +331,23 @@ router.get(
   manejar(() => proxySalida.leer())
 );
 
-/** Prueba ya (Ajustes → Sistema → «Probar»). */
+/** CS-N11: el proxy desde Ajustes (`url: ''` sin proxy, `null` volver al del entorno). */
+router.put(
+  '/ajustes/proxy',
+  manejar(req => proxySalida.guardar(req.body || {}))
+);
+
+/**
+ * Prueba ya (Ajustes → Sistema → «Probar»): el túnel y, si responde (o sin proxy), la dirección
+ * con la que se sale a internet.
+ */
 router.post(
   '/ajustes/proxy/probar',
-  manejar(() => proxySalida.probar())
+  manejar(async () => {
+    const r = await proxySalida.probar();
+    if (r.configurado && r.ok === false) return r;
+    return { ...r, salida: await proxySalida.direccionSalida() };
+  })
 );
 
 /* ── Filtros globales (palabras siempre bloqueadas) ─────────────────── */

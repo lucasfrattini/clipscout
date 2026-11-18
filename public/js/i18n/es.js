@@ -1202,7 +1202,8 @@ export const es = {
   'proxy.revisar': 'Revisar',
   'proxy.sitio': 'el proxy de salida no responde',
   'aj.proxy.titulo': 'Proxy de salida',
-  'aj.proxy.hint': 'Por dónde salen las búsquedas (OUTBOUND_PROXY). Se comprueba solo cada minuto.',
+  'aj.proxy.hint':
+    'Por dónde salen las búsquedas (un proxy o la VPN). Se comprueba solo cada minuto.',
   'aj.proxy.sin': 'Sin proxy: las búsquedas salen directas.',
   'aj.proxy.ok': '✓ Responde ({ms} ms).',
   'aj.proxy.mal':
@@ -1372,4 +1373,20 @@ export const es = {
     'El navegador solo las permite con https o abriendo clipscout en este mismo equipo.',
   'aj.notif.denegado':
     'Las notificaciones están bloqueadas para esta página: actívalas en los ajustes del navegador.',
+  'aj.proxy.direccion': 'Dirección del proxy',
+  'aj.proxy.direccion.hint':
+    'http://equipo:puerto (o http://usuario:contraseña@equipo:puerto). Vacío y Guardar: sin proxy.',
+  'aj.proxy.entorno': 'Usar el del entorno',
+  'aj.proxy.delEntorno': 'Viene de OUTBOUND_PROXY (entorno). Lo que guardes aquí manda.',
+  'aj.proxy.probar': 'Probar',
+  'aj.proxy.probando': 'Probando…',
+  'aj.proxy.salida': 'Sales a internet por el proxy con la dirección {ip}.',
+  'aj.proxy.salidaDirecta': 'Sin proxy: sales a internet con la dirección {ip}.',
+  'aj.proxy.salidaNo': 'No se pudo saber la dirección de salida.',
+  'aj.proxy.guardado':
+    'Proxy guardado: ya se usa (el navegador interno, al acabar las búsquedas en marcha).',
+  'aj.proxy.reescribe': 'Escribe la dirección entera, con la contraseña, para cambiarla.',
+  'aj.priv.ip_salida': 'La dirección de salida',
+  'aj.priv.ip_salida.que':
+    'Solo al pulsar «Probar» en el proxy de salida: devuelve con qué dirección sales a internet.',
 };

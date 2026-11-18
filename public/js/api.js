@@ -349,6 +349,7 @@ export const ajustes = {
   busqueda: () => request('/ajustes/busqueda'),
   proxy: () => request('/ajustes/proxy'),
   probarProxy: () => request('/ajustes/proxy/probar', { method: 'POST', body: '{}' }),
+  guardarProxy: url => request('/ajustes/proxy', { method: 'PUT', body: JSON.stringify({ url }) }),
   guardarBusqueda: datos =>
     request('/ajustes/busqueda', { method: 'PUT', body: JSON.stringify(datos) }),
   probarBusqueda: datos =>

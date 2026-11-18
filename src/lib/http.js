@@ -67,7 +67,17 @@ let httpsAgent = directoHttps;
  * resuelve los nombres, así que `secureLookup` ya no ve la IP final: queda `assertUrlIsSafe`,
  * que resuelve y valida ANTES de cada petición y de cada redirección.
  */
-if (config.outboundProxy) {
+/**
+ * CS-N11: el proxy se puede cambiar desde Ajustes sin reiniciar: se cambian los agentes (los
+ * piden `agentesPara`/`agentesSeguros` en cada petición). Sin dirección, salida directa.
+ */
+function usarProxy(url) {
+  config.outboundProxy = String(url || '').trim();
+  if (!config.outboundProxy) {
+    httpAgent = directoHttp;
+    httpsAgent = directoHttps;
+    return;
+  }
   const { HttpProxyAgent } = require('http-proxy-agent');
   const { HttpsProxyAgent } = require('https-proxy-agent');
   httpAgent = new HttpProxyAgent(config.outboundProxy, { keepAlive: true });
@@ -76,6 +86,7 @@ if (config.outboundProxy) {
     proxy: config.outboundProxy.replace(/\/\/[^@]*@/, '//***@'),
   });
 }
+if (config.outboundProxy) usarProxy(config.outboundProxy);
 
 /**
  * ¿Este destino va SIN el proxy? Algunos sitios bloquean justo la salida de la VPN y desde la
@@ -323,6 +334,7 @@ function agentesSeguros() {
 }
 
 module.exports = {
+  usarProxy,
   peticionSegura,
   guardRedirect,
   sinProxy,
