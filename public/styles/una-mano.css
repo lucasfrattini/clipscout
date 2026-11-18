@@ -357,6 +357,25 @@ cg-cabecera.buscar__cabecera > .buscar__fila {
   max-width: 920px;
   margin: 0 auto;
 }
+/* Proxy de salida caído: aviso fijo arriba de Buscar (punto 5 de la fase 4). */
+.cs-aviso-proxy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: var(--cg-radio, 10px);
+  border-left: 4px solid var(--cg-aviso);
+  background: var(--cg-aviso-suave);
+  font-weight: 600;
+}
+.cs-aviso-proxy[hidden] {
+  display: none;
+}
+.cs-aviso-proxy__texto {
+  flex: 1 1 200px;
+}
 .buscar__otras {
   display: flex;
   align-items: center;

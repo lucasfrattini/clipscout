@@ -57,6 +57,7 @@ export function createAjustesView(raiz) {
     descargas: () => [tarjetaJd(), avisoMovido('descargas')],
     clipgeist: () => [tarjetaConexiones(), tarjetaClave()],
     sistema: () => [
+      tarjetaProxy(),
       tarjetaApariencia(),
       tarjetaAcceso(),
       tarjetaSesiones(),
@@ -798,6 +799,72 @@ export function createAjustesView(raiz) {
                 el('li', { children: [enlace('https://clipgeist.com/', 'aj.acerca.web')] }),
               ],
             }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  /* ── Proxy de salida: ¿responde? ───────────────────────────────────── */
+
+  function tarjetaProxy() {
+    const estadoP = el('p', { className: 'ajustes-resultado', attrs: { 'aria-live': 'polite' } });
+    const cuando = el('p', { className: 'field__hint' });
+    const probar = el('button', {
+      className: 'cg-boton',
+      attrs: { type: 'button', hidden: '' },
+      text: t('aj.con.probar'),
+    });
+    const pintarEstado = e => {
+      probar.hidden = !e.configurado;
+      cuando.textContent = e.comprobado
+        ? t('aj.proxy.cuando', { cuando: new Date(e.comprobado).toLocaleString() })
+        : '';
+      let clase = '';
+      let txt;
+      if (!e.configurado) txt = t('aj.proxy.sin');
+      else if (e.ok === null) txt = t('aj.proxy.sinProbar');
+      else if (e.ok) {
+        clase = ' ajustes-resultado--ok';
+        txt = t('aj.proxy.ok', { ms: e.ms ?? '—' });
+      } else {
+        clase = ' ajustes-resultado--mal';
+        txt = t('aj.proxy.mal', { error: e.error || '—' });
+      }
+      estadoP.className = `ajustes-resultado${clase}`;
+      estadoP.textContent = e.configurado && e.proxy ? `${e.proxy} — ${txt}` : txt;
+    };
+    probar.addEventListener('click', async () => {
+      probar.disabled = true;
+      try {
+        pintarEstado(await ajustes.probarProxy());
+      } catch (error) {
+        toast(error.message, 'error', 6000);
+      } finally {
+        probar.disabled = false;
+      }
+    });
+    ajustes
+      .proxy()
+      .then(pintarEstado)
+      .catch(() => {});
+    return el('section', {
+      className: 'card',
+      attrs: { id: 'ajustes-proxy' },
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.proxy.titulo') }),
+            el('p', { className: 'card__hint', text: t('aj.proxy.hint') }),
+          ],
+        }),
+        el('div', {
+          className: 'card__body',
+          children: [
+            estadoP,
+            cuando,
+            el('div', { className: 'ajustes-acciones', children: [probar] }),
           ],
         }),
       ],

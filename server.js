@@ -39,6 +39,9 @@ require('./src/services/filtrosGlobales')
   .cargar()
   .catch(error => logger.warn('No se pudieron cargar los filtros', error.message));
 
+// ¿Responde el proxy de salida? Se mira ya y luego cada minuto (si hay proxy).
+require('./src/services/proxySalida').vigilar();
+
 // Búsquedas que estaban en marcha o en cola antes del reinicio: se retoman solas.
 const fondo = require('./src/services/busquedasFondo');
 fondo

@@ -1194,4 +1194,15 @@ export const es = {
   'buscar.marca.webTodo': 'En toda la web',
   'buscar.estado.parada': 'Búsqueda parada',
   'buscar.filtros.listo': 'Listo',
+  'proxy.caido': 'El proxy de salida no responde: las búsquedas fallarán',
+  'proxy.revisar': 'Revisar',
+  'proxy.sitio': 'el proxy de salida no responde',
+  'aj.proxy.titulo': 'Proxy de salida',
+  'aj.proxy.hint': 'Por dónde salen las búsquedas (OUTBOUND_PROXY). Se comprueba solo cada minuto.',
+  'aj.proxy.sin': 'Sin proxy: las búsquedas salen directas.',
+  'aj.proxy.ok': '✓ Responde ({ms} ms).',
+  'aj.proxy.mal':
+    '✗ No responde: {error}. Mientras siga así, los sitios que salen por él fallan al momento; los de «Sitios sin VPN» se buscan igual.',
+  'aj.proxy.sinProbar': 'Aún sin comprobar.',
+  'aj.proxy.cuando': 'Comprobado: {cuando}',
 };

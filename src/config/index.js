@@ -297,6 +297,17 @@ const config = {
         .replace(/^\*?\./, '')
     )
     .filter(Boolean),
+  // ¿Responde el proxy de salida? (services/proxySalida.js). Se le pide un túnel hacia
+  // `destinoPrueba` (host:puerto); si no lo abre en `timeoutMs`, las búsquedas no esperan a cada
+  // sitio: fallan al momento con «el proxy de salida no responde».
+  proxySalida: {
+    destinoPrueba: (process.env.OUTBOUND_PROXY_PRUEBA || 'example.com:443').trim(),
+    timeoutMs: intFromEnv('OUTBOUND_PROXY_PRUEBA_TIMEOUT_MS', 5000),
+    // Una prueba más reciente que esto vale antes de una búsqueda
+    vigenciaMs: intFromEnv('OUTBOUND_PROXY_PRUEBA_VIGENCIA_MS', 30000),
+    // Comprobación periódica mientras la app está en marcha
+    cadaMs: intFromEnv('OUTBOUND_PROXY_PRUEBA_CADA_MS', 60000),
+  },
 
   browser: {
     enabled: boolFromEnv('BROWSER_ENABLED', true),

@@ -7,6 +7,7 @@ const crew = require('../services/crew');
 const config = require('../config');
 const jd = require('../services/jdownloader');
 const { buscarEnTodos } = require('../services/busqueda');
+const proxySalida = require('../services/proxySalida');
 const ajustesBusqueda = require('../services/ajustesBusqueda');
 const programadas = require('../services/programadas');
 const filtrosGlobales = require('../services/filtrosGlobales');
@@ -303,6 +304,20 @@ router.post(
     const actual = await ajustesBusqueda.leer();
     return ajustesBusqueda.probar(b.searxngUrl || actual.searxngUrl, b.motores ?? actual.motores);
   })
+);
+
+/* ── Proxy de salida: ¿responde? ─────────────────────────────────────── */
+
+/** El último estado conocido (sin probar): lo usan Buscar y Ajustes para avisar. */
+router.get(
+  '/ajustes/proxy',
+  manejar(() => proxySalida.leer())
+);
+
+/** Prueba ya (Ajustes → Sistema → «Probar»). */
+router.post(
+  '/ajustes/proxy/probar',
+  manejar(() => proxySalida.probar())
 );
 
 /* ── Filtros globales (palabras siempre bloqueadas) ─────────────────── */

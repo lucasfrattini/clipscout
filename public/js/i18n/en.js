@@ -1187,4 +1187,16 @@ export const en = {
   'buscar.marca.webTodo': 'Whole web',
   'buscar.estado.parada': 'Search stopped',
   'buscar.filtros.listo': 'Done',
+  'proxy.caido': 'The outbound proxy is not responding: searches will fail',
+  'proxy.revisar': 'Check',
+  'proxy.sitio': 'the outbound proxy is not responding',
+  'aj.proxy.titulo': 'Outbound proxy',
+  'aj.proxy.hint':
+    'Where searches go out through (OUTBOUND_PROXY). Checked automatically every minute.',
+  'aj.proxy.sin': 'No proxy: searches go out directly.',
+  'aj.proxy.ok': '✓ Responding ({ms} ms).',
+  'aj.proxy.mal':
+    '✗ Not responding: {error}. Until it is back, sites that go through it fail right away; those in «Sites without VPN» are searched as usual.',
+  'aj.proxy.sinProbar': 'Not checked yet.',
+  'aj.proxy.cuando': 'Checked: {cuando}',
 };

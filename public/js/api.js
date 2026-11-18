@@ -273,6 +273,8 @@ export const ajustes = {
   ponerACeroEstadisticas: () => request('/ajustes/sitios/estadisticas', { method: 'DELETE' }),
   jdownloader: () => request('/ajustes/jdownloader'),
   busqueda: () => request('/ajustes/busqueda'),
+  proxy: () => request('/ajustes/proxy'),
+  probarProxy: () => request('/ajustes/proxy/probar', { method: 'POST', body: '{}' }),
   guardarBusqueda: datos =>
     request('/ajustes/busqueda', { method: 'PUT', body: JSON.stringify(datos) }),
   probarBusqueda: datos =>

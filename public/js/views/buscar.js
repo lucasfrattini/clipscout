@@ -336,6 +336,35 @@ export function createBuscarView(root) {
     ],
   });
 
+  /*
+   * Proxy de salida caído (la VPN de detrás no responde): aviso fijo arriba en vez de que cada
+   * sitio tarde su tiempo máximo en dar «error». El servidor lo comprueba cada minuto; aquí se
+   * pregunta al abrir, al buscar y mientras se mira la pantalla.
+   */
+  const avisoProxy = el('div', {
+    className: 'cs-aviso-proxy',
+    attrs: { role: 'alert', hidden: '' },
+    children: [
+      el('span', { className: 'cs-aviso-proxy__texto', text: t('proxy.caido') }),
+      el('a', {
+        className: 'cg-boton',
+        attrs: { href: '#/ajustes/sistema' },
+        text: t('proxy.revisar'),
+      }),
+    ],
+  });
+  function pintarProxy(e) {
+    // El motivo (rechazada, sin respuesta…) se ve en Ajustes → Sistema: aquí, corto.
+    avisoProxy.hidden = !(e && e.configurado && e.ok === false);
+  }
+  async function comprobarProxy() {
+    try {
+      pintarProxy(await fetch('/api/ajustes/proxy').then(x => x.json()));
+    } catch {
+      // sin respuesta del servidor: ya lo dirá la propia búsqueda
+    }
+  }
+
   // Otras búsquedas en marcha (la cola entera está en Actividad).
   const otras = el('a', { className: 'buscar__otras', attrs: { href: '#/actividad', hidden: '' } });
 
@@ -448,7 +477,7 @@ export function createBuscarView(root) {
     cabecera,
     el('div', {
       className: 'buscar',
-      children: [otras, zonaInicio, zonaResultados],
+      children: [avisoProxy, otras, zonaInicio, zonaResultados],
     }),
     barraSeleccion
   );
@@ -1269,8 +1298,13 @@ export function createBuscarView(root) {
     }
   }
   // Solo mientras se mira Buscar (antes, cada 4 s aunque no hubiera nada, CS-18).
+  let vueltasCola = 0;
   const relojCola = setInterval(() => {
-    if (!root.hidden && document.visibilityState !== 'hidden') refrescarCola();
+    if (root.hidden || document.visibilityState === 'hidden') return;
+    refrescarCola();
+    // El proxy, cada minuto (el servidor lo prueba solo; aquí solo se lee su estado).
+    vueltasCola = (vueltasCola + 1) % 12;
+    if (vueltasCola === 0) comprobarProxy();
   }, 5000);
 
   /** Mirar otra búsqueda del servidor (desde Actividad o al reengancharse). */
@@ -1346,7 +1380,7 @@ export function createBuscarView(root) {
         estado.set(m.sitio, {
           ...estado.get(m.sitio),
           fase: m.error ? 'error' : 'fin',
-          error: m.error,
+          error: m.error === 'proxy_caido' ? t('proxy.sitio') : m.error,
           bloqueo: m.bloqueo,
           recortado: m.recortado,
         });
@@ -1360,6 +1394,8 @@ export function createBuscarView(root) {
             r.duration = d.duration;
           }
         }
+      } else if (m.type === 'proxy_caido') {
+        pintarProxy({ configurado: true, ok: false, error: m.error });
       } else if (m.type === 'listado_disponible') {
         listados.set(m.sitio, m.url);
       } else if (m.type === 'sitios_sugeridos') {
@@ -1965,6 +2001,7 @@ export function createBuscarView(root) {
     }
   }
 
+  comprobarProxy();
   cargarSitios().then(() => {
     refrescarCola();
     const hash = window.location.hash;
@@ -1973,7 +2010,10 @@ export function createBuscarView(root) {
   });
 
   return {
-    focus: () => enfocarAlAbrir(entrada),
+    focus: () => {
+      comprobarProxy();
+      enfocarAlAbrir(entrada);
+    },
     // Al irse a otra pantalla la selección no sigue tapando la barra de navegación.
     ocultar: () => seleccion?.limpiar(),
     // Solo deja de mirar: la búsqueda sigue en el servidor.

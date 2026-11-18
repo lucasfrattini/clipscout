@@ -12,6 +12,9 @@ const { detectConfig } = require('./detector');
 const { extractVideos } = require('./video');
 const estadisticas = require('./estadisticas');
 const directo = require('./directo');
+const proxySalida = require('./proxySalida');
+const { ERROR_PROXY } = proxySalida;
+const { sinProxy } = require('../lib/http');
 
 /**
  * Búsqueda en TODOS los sitios guardados a la vez.
@@ -50,6 +53,18 @@ async function sinLosDeFuera(lista) {
   return lista.filter(
     s => !directo.fueraPorDefecto(hostDe(s.perfil.config.searchUrl || ''), opciones)
   );
+}
+
+/**
+ * ¿Está caído el proxy de salida? Si lo está, avisa por el stream (`proxy_caido`, para el aviso de
+ * la pantalla) y devuelve true. Sin proxy configurado, o si no se pudo probar, false.
+ */
+async function proxyNoResponde(emit) {
+  if (!proxySalida.configurado()) return false;
+  const e = await proxySalida.asegurar().catch(() => null);
+  if (!e || e.ok !== false) return false;
+  emit({ type: 'proxy_caido', error: e.error });
+  return true;
 }
 
 /** Id del «sitio» que agrupa lo encontrado en toda la web (no es una configuración guardada). */
@@ -157,9 +172,18 @@ async function buscarEnTodos(
     ],
   });
 
+  // Proxy de salida caído: los sitios que salen por él fallan ya, con un motivo claro, en vez de
+  // esperar cada uno su tiempo máximo. Los de «Sitios sin VPN» van directos y se buscan igual.
+  const proxyCaido = await proxyNoResponde(emit);
+
   const resumen = await mapLimit(elegidos, config.busqueda.sitiosALaVez, async sitio => {
     if (signal?.aborted) return { id: sitio.id, total: 0, cancelado: true };
     const c = sitio.perfil.config;
+    if (proxyCaido && !sinProxy(c.searchUrl || '')) {
+      emit({ type: 'sitio_inicio', sitio: sitio.id });
+      emit({ type: 'sitio_fin', sitio: sitio.id, total: 0, error: ERROR_PROXY });
+      return { id: sitio.id, total: 0, error: ERROR_PROXY };
+    }
     emit({ type: 'sitio_inicio', sitio: sitio.id });
     let total = 0;
     let conDuracion = 0;
@@ -259,7 +283,11 @@ async function buscarEnTodos(
     }
   });
 
-  if (conAbierta && !signal?.aborted) {
+  if (conAbierta && !signal?.aborted && proxyCaido) {
+    emit({ type: 'sitio_inicio', sitio: ID_WEB_ABIERTA });
+    emit({ type: 'sitio_fin', sitio: ID_WEB_ABIERTA, total: 0, error: ERROR_PROXY });
+    resumen.push({ id: ID_WEB_ABIERTA, total: 0, error: ERROR_PROXY });
+  } else if (conAbierta && !signal?.aborted) {
     const excluir = new Set(todos.map(s => hostDe(s.perfil.config.searchUrl)).filter(Boolean));
     const r = await buscarEnAbierta(q, { excluir, signal, emit, todosLosItems });
     resumen.push(r);
@@ -364,10 +392,16 @@ async function buscarEnlace(
   emit({ type: 'sitios', sitios: nombres });
   const todosLosItems = [...itemsPrevios];
   const resumen = [];
+  const proxyCaido = await proxyNoResponde(emit);
   for (const [i, u] of lista.entries()) {
     if (signal?.aborted) break;
     const id = idDe(i);
     emit({ type: 'sitio_inicio', sitio: id });
+    if (proxyCaido && !sinProxy(u)) {
+      emit({ type: 'sitio_fin', sitio: id, total: 0, error: ERROR_PROXY });
+      resumen.push({ id, total: 0, error: ERROR_PROXY });
+      continue;
+    }
     let total = 0;
     const publicar = items => {
       if (items.length === 0) return;
