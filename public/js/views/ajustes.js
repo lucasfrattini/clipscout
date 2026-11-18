@@ -47,7 +47,7 @@ export function createAjustesView(raiz) {
     ['jdownloader', 'aj.tab.jd', () => [tarjetaJd(), tarjetaPaquetes()]],
     ['general', 'aj.tab.general', () => [tarjetaGeneral()]],
     ['conexiones', 'aj.tab.conexiones', () => [tarjetaConexiones()]],
-    ['seguridad', 'aj.tab.seguridad', () => [tarjetaAcceso(), tarjetaClave()]],
+    ['seguridad', 'aj.tab.seguridad', () => [tarjetaAcceso(), tarjetaSesiones(), tarjetaClave()]],
     ['copia', 'aj.tab.copia', () => [tarjetaRespaldos()]],
     ['apariencia', 'aj.tab.apariencia', () => [tarjetaApariencia()]],
   ];
@@ -253,7 +253,108 @@ export function createAjustesView(raiz) {
     return el('section', { className: 'card', children: [cabecera, form] });
   }
 
-  /* ── Clave de API ──────────────────────────────────────────────────── */
+  /* ── Sesiones abiertas ─────────────────────────────────────────────── */
+
+  function tarjetaSesiones() {
+    const lista = el('ul', { className: 'ajustes-conexiones ajustes-sesiones' });
+    const fecha = iso => new Date(iso).toLocaleString(idiomaActual());
+    const cargarSesiones = async () => {
+      let sesiones = [];
+      try {
+        ({ sesiones } = await ajustes.sesiones());
+      } catch (error) {
+        toast(error.message, 'error', 6000);
+        return;
+      }
+      if (sesiones.length === 0) {
+        lista.replaceChildren(
+          el('li', { className: 'ajustes-conexiones__vacio', text: t('aj.ses.vacio') })
+        );
+        return;
+      }
+      lista.replaceChildren(
+        ...sesiones.map(s =>
+          el('li', {
+            children: [
+              el('div', {
+                className: 'ajustes-conexiones__datos',
+                children: [
+                  el('b', {
+                    text: s.esta ? `${s.dispositivo} · ${t('aj.ses.esta')}` : s.dispositivo,
+                  }),
+                  el('span', {
+                    className: 'field__hint',
+                    text: t('aj.ses.ultima', { fecha: fecha(s.ultima), ip: s.ip || '?' }),
+                  }),
+                ],
+              }),
+              s.esta
+                ? null
+                : el('button', {
+                    className: 'button button--secondary button--small',
+                    attrs: { type: 'button' },
+                    text: t('aj.ses.cerrar'),
+                    on: {
+                      click: async () => {
+                        try {
+                          await ajustes.cerrarSesion(s.id);
+                          toast(t('aj.ses.cerrada'));
+                        } catch (error) {
+                          toast(error.message, 'error', 6000);
+                        }
+                        cargarSesiones();
+                      },
+                    },
+                  }),
+            ],
+          })
+        )
+      );
+    };
+    if (estadoAcceso.protegido) cargarSesiones();
+    else {
+      lista.replaceChildren(
+        el('li', { className: 'ajustes-conexiones__vacio', text: t('aj.ses.vacio') })
+      );
+    }
+    return el('section', {
+      className: 'card',
+      children: [
+        el('div', {
+          className: 'card__header card__header--con-cierre',
+          children: [
+            el('div', {
+              children: [
+                el('h3', { className: 'card__title', text: t('aj.ses.titulo') }),
+                el('p', { className: 'card__hint', text: t('aj.ses.hint') }),
+              ],
+            }),
+            estadoAcceso.protegido
+              ? el('button', {
+                  className: 'button button--secondary button--small ajustes-peligro',
+                  attrs: { type: 'button' },
+                  text: t('aj.ses.cerrarDemas'),
+                  on: {
+                    click: async () => {
+                      try {
+                        const r = await ajustes.cerrarDemas();
+                        toast(t('aj.ses.cerradas', { n: r.cerradas }));
+                      } catch (error) {
+                        toast(error.message, 'error', 6000);
+                      }
+                      cargarSesiones();
+                    },
+                  },
+                })
+              : null,
+          ],
+        }),
+        el('div', { className: 'card__body', children: [lista] }),
+      ],
+    });
+  }
+
+  /* ── Clave de administración ───────────────────────────────────────── */
 
   function tarjetaClave() {
     const valor = el('code', {
@@ -1387,6 +1488,13 @@ export function createAjustesView(raiz) {
               className: 'field__hint',
               children: [`${c.app} · `, el('a', { attrs: { href: c.url }, text: c.url })],
             }),
+            el('span', {
+              className: 'field__hint',
+              text: [
+                t(c.clave_conexion ? 'aj.con.claveConexion' : 'aj.con.claveAntigua'),
+                c.entrada ? '' : ` · ${t('aj.con.sinEntrada')}`,
+              ].join(''),
+            }),
             error,
           ],
         }),
@@ -1400,6 +1508,34 @@ export function createAjustesView(raiz) {
               text: t('aj.con.probar'),
               on: { click: comprobar },
             }),
+            c.entrada
+              ? el('button', {
+                  className: 'button button--secondary button--small',
+                  attrs: { type: 'button' },
+                  text: t('aj.con.revocar'),
+                  on: {
+                    click: async () => {
+                      if (
+                        !(await confirmDialog({
+                          titleKey: 'aj.con.revocar',
+                          bodyKey: 'aj.con.revocarConfirmar',
+                          bodyParams: { nombre: c.nombre },
+                          variant: 'danger',
+                        }))
+                      ) {
+                        return;
+                      }
+                      try {
+                        await ajustes.revocar(c.id);
+                        toast(t('aj.con.revocada'));
+                      } catch (error) {
+                        toast(error.message, 'error', 6000);
+                      }
+                      pintar();
+                    },
+                  },
+                })
+              : null,
             el('button', {
               className: 'button button--secondary button--small ajustes-peligro',
               attrs: { type: 'button' },

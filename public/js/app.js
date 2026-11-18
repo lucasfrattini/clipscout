@@ -157,6 +157,7 @@ async function main() {
   document.getElementById('guia').addEventListener('click', mostrarGuia);
   await aceptarAviso();
   if (!window.guiaVista('clipscout')) mostrarGuia();
+  avisoSinCifrar();
 
   // Abortar los streams en curso al cerrar la pestaña, para que el servidor
   // no siga scrapeando en vano.
@@ -254,6 +255,46 @@ function aceptarAviso() {
     document.body.append(fondo);
     casilla.focus();
   });
+}
+
+/**
+ * Banda discreta si se entra desde internet (IP pública) sin HTTPS: la contraseña viaja en claro.
+ * Lo decide el servidor (/api/auth/estado). «Entendido» la oculta 30 días en este navegador.
+ */
+const CLAVE_CIFRADO = 'cs-aviso-cifrado';
+async function avisoSinCifrar() {
+  let estado;
+  try {
+    estado = await (await fetch('/api/auth/estado')).json();
+  } catch {
+    return;
+  }
+  if (!estado?.avisoCifrado) return;
+  try {
+    const visto = Number(localStorage.getItem(CLAVE_CIFRADO) || 0);
+    if (Date.now() - visto < 30 * 24 * 60 * 60 * 1000) return;
+  } catch {
+    /* sin almacenamiento: se muestra */
+  }
+  const banda = document.createElement('div');
+  banda.className = 'aviso-cifrado';
+  banda.setAttribute('role', 'status');
+  const texto = document.createElement('span');
+  texto.textContent = t('aviso.cifrado');
+  const boton = document.createElement('button');
+  boton.type = 'button';
+  boton.className = 'button button--small button--secondary';
+  boton.textContent = t('aviso.cerrar');
+  boton.addEventListener('click', () => {
+    try {
+      localStorage.setItem(CLAVE_CIFRADO, String(Date.now()));
+    } catch {
+      /* solo por esta vez */
+    }
+    banda.remove();
+  });
+  banda.append(texto, boton);
+  document.body.prepend(banda);
 }
 
 /** Guía de bienvenida (public/js/guia.js): la primera vez sola, luego con el «?» de la cabecera. */

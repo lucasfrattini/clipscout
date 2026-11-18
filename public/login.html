@@ -31,6 +31,17 @@
           <span id="etq-clave"></span>
           <input type="password" id="clave" autocomplete="current-password" required />
         </label>
+        <label id="caja-codigo" hidden>
+          <span id="etq-codigo"></span>
+          <input
+            type="text"
+            id="codigo"
+            autocomplete="one-time-code"
+            autocapitalize="characters"
+            spellcheck="false"
+            placeholder="XXXX-XXXX"
+          />
+        </label>
         <p class="acceso-error" id="error" role="alert"></p>
         <button id="entrar"></button>
       </form>

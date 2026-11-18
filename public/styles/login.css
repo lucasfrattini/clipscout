@@ -42,6 +42,10 @@ body {
   color: var(--cc-tenue);
   margin: 0 0 8px;
 }
+.acceso label[hidden] {
+  display: none;
+}
+
 .acceso label {
   display: flex;
   flex-direction: column;

@@ -4,6 +4,38 @@ import { t } from './i18n/index.js';
 
 const BASE = '/api';
 
+/**
+ * Todas las llamadas de la interfaz a esta misma app llevan `X-Clipgeist: 1`: el servidor rechaza
+ * lo que cambia algo si no viene de la propia app (contra webs que intentan accionarla). Se pone
+ * aquí y, por si alguna vista usa `fetch` directamente, también en el `fetch` de la página para
+ * las direcciones de esta misma app.
+ */
+const CABECERA = { 'X-Clipgeist': '1' };
+if (typeof window !== 'undefined' && window.fetch && !window.fetch.clipgeist) {
+  const original = window.fetch.bind(window);
+  const propia = entrada => {
+    try {
+      const url = new URL(
+        entrada instanceof Request ? entrada.url : String(entrada),
+        location.href
+      );
+      return url.origin === location.origin;
+    } catch {
+      return false;
+    }
+  };
+  const conCabecera = (entrada, opciones = {}) => {
+    if (!propia(entrada)) return original(entrada, opciones);
+    const cabeceras = new Headers(
+      opciones.headers || (entrada instanceof Request ? entrada.headers : {})
+    );
+    if (!cabeceras.has('X-Clipgeist')) cabeceras.set('X-Clipgeist', '1');
+    return original(entrada, { ...opciones, headers: cabeceras });
+  };
+  conCabecera.clipgeist = true;
+  window.fetch = conCabecera;
+}
+
 class ApiError extends Error {
   constructor(message, code, status) {
     super(message);
@@ -21,7 +53,7 @@ async function request(path, options = {}) {
     // llegar como JSON.
     response = await fetch(`${BASE}${path}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      headers: { 'Content-Type': 'application/json', ...CABECERA, ...(options.headers || {}) },
     });
   } catch (error) {
     // Un abort deliberado (AbortController, ver `extractVideos`) no es un
@@ -228,6 +260,10 @@ export const ajustes = {
     request('/ajustes/conexiones', { method: 'POST', body: JSON.stringify(datos) }),
   estado: id => request(`/ajustes/conexiones/${id}/estado`),
   quitar: id => request(`/ajustes/conexiones/${id}`, { method: 'DELETE' }),
+  revocar: id => request(`/ajustes/conexiones/${id}/revocar`, { method: 'POST', body: '{}' }),
+  sesiones: () => request('/ajustes/sesiones'),
+  cerrarSesion: id => request(`/ajustes/sesiones/${id}`, { method: 'DELETE' }),
+  cerrarDemas: () => request('/ajustes/sesiones/cerrar-demas', { method: 'POST', body: '{}' }),
   yaLoTengo: (titulos, duraciones, persona = '', { enlaces = [], contar = false } = {}) =>
     request('/ajustes/ya-lo-tengo', {
       method: 'POST',

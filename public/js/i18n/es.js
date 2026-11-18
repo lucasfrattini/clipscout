@@ -557,9 +557,9 @@ export const es = {
     'La dirección por la que las otras apps llegan a esta. Si la dejas vacía se usa la que usas tú ahora: {url}',
   'aj.guardar': 'Guardar',
   'aj.guardado': 'Ajustes guardados',
-  'aj.clave.titulo': 'Clave de API',
+  'aj.clave.titulo': 'Clave de administración',
   'aj.clave.hint':
-    'Las otras apps de Clipgeist la necesitan para conectarse con esta: pégala en su sección Ajustes → Conexiones.',
+    'Abre toda la API de esta app (para tus scripts). No la pegues en otras apps: para eso están las conexiones; al conectar, se usa una sola vez y cada app se queda con su propia clave de conexión.',
   'aj.clave.mostrar': 'Mostrar',
   'aj.clave.ocultar': 'Ocultar',
   'aj.clave.copiar': 'Copiar',
@@ -567,7 +567,7 @@ export const es = {
   'aj.clave.noCopia': 'No se pudo copiar automáticamente: selecciónala y cópiala a mano.',
   'aj.clave.regenerar': 'Regenerar',
   'aj.clave.confirmar':
-    '¿Generar una clave nueva? Las apps conectadas con la clave actual dejarán de poder hablar con esta hasta que las vuelvas a conectar.',
+    '¿Generar una clave de administración nueva? Tus scripts y las apps que aún la usen (versiones antiguas) dejarán de poder hablar con esta hasta que les pongas la nueva. Las conexiones con claves de conexión no se ven afectadas.',
   'aj.clave.nueva': 'Clave nueva generada',
   'aj.con.titulo': 'Apps conectadas',
   'aj.con.hint':
@@ -576,8 +576,9 @@ export const es = {
   'aj.con.vacio': 'Todavía no hay apps conectadas.',
   'aj.con.app': 'App',
   'aj.con.url': 'URL',
-  'aj.con.clave': 'Clave de API de esa app',
-  'aj.con.clave.hint': 'En la otra app: Ajustes → General → Clave de API.',
+  'aj.con.clave': 'Clave de administración de esa app',
+  'aj.con.clave.hint':
+    'Se usa una sola vez para registrarse: después cada app guarda solo su clave de conexión.',
   'aj.con.nombre': 'Nombre (opcional)',
   'aj.con.nombre.placeholder': 'Se usa el nombre de la otra app',
   'aj.con.reciproca': 'Conectar también en sentido contrario',
@@ -995,7 +996,7 @@ export const es = {
   'aj.con.auto.titulo': 'Creada al arrancar por CLIPGEIST_*_URL.',
   'aj.acceso.titulo': 'Acceso',
   'aj.acceso.sin':
-    'Sin contraseña: entra cualquiera que llegue a esta dirección. Pon una si Ajustes (que muestra la clave de API) se ve desde otros equipos.',
+    'Sin usuario: solo se puede usar desde este mismo equipo. Crea uno para entrar desde otros dispositivos.',
   'aj.acceso.con':
     'Con contraseña (usuario «{usuario}»). La sesión dura 30 días; 8 fallos seguidos bloquean el acceso 5 minutos.',
   'aj.acceso.entorno':
@@ -1007,7 +1008,28 @@ export const es = {
   'aj.acceso.minimo': 'Al menos 8 caracteres.',
   'aj.acceso.poner': 'Poner contraseña',
   'aj.acceso.cambiar': 'Cambiar',
-  'aj.acceso.quitar': 'Quitar la contraseña',
+  'aj.acceso.quitar': 'Quitar la contraseña (solo desde este equipo)',
   'aj.acceso.guardada': 'Contraseña guardada: las demás sesiones se cerraron',
   'aj.acceso.quitada': 'Contraseña quitada',
+  'aj.ses.titulo': 'Sesiones abiertas',
+  'aj.ses.hint':
+    'Dónde has entrado. Cerrar una la invalida de verdad (también si alguien copió la cookie). Las sesiones abiertas en clipkeeper o clonbuster se ven en esa app.',
+  'aj.ses.esta': 'esta',
+  'aj.ses.cerrar': 'Cerrar',
+  'aj.ses.cerrarDemas': 'Cerrar las demás',
+  'aj.ses.cerradas': 'Sesiones cerradas: {n}',
+  'aj.ses.cerrada': 'Sesión cerrada',
+  'aj.ses.ultima': 'Última vez: {fecha} · {ip}',
+  'aj.ses.vacio': 'No hay sesiones abiertas (sin contraseña no hacen falta).',
+  'aj.con.claveConexion': 'Clave de conexión propia',
+  'aj.con.claveAntigua':
+    'Aún con clave de administración (se cambia sola cuando la otra app se actualice)',
+  'aj.con.revocar': 'Revocar su clave',
+  'aj.con.revocarConfirmar':
+    '¿Revocar la clave con la que {nombre} llama a esta app? Dejará de poder hacerlo hasta que la vuelvas a conectar.',
+  'aj.con.revocada': 'Clave revocada',
+  'aj.con.sinEntrada': 'Revocada: no puede llamar a esta app',
+  'aviso.cifrado':
+    'Estás entrando desde internet sin cifrado: tu contraseña viaja en claro. Usa una red privada entre tus dispositivos o un proxy con HTTPS.',
+  'aviso.cerrar': 'Entendido',
 };

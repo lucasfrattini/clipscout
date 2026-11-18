@@ -3618,3 +3618,22 @@ a {
   color: var(--cc-aviso, #b54708);
   font-size: 0.85rem;
 }
+
+/* Aviso: entrando desde internet sin cifrar (app.js → avisoSinCifrar) */
+.aviso-cifrado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 16px;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  background: var(--c-warning-soft);
+  color: var(--c-warning);
+  border-bottom: 1px solid color-mix(in srgb, var(--c-warning) 35%, transparent);
+}
+
+/* Sesiones abiertas: misma lista que las conexiones, sin icono */
+.ajustes-sesiones li {
+  grid-template-columns: 1fr auto;
+}

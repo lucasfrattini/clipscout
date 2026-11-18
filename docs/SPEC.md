@@ -40,18 +40,27 @@ descargar nada: la descarga se delega en JDownloader. Es dueña del origen de ca
 | SEG-1  | Toda petición saliente DEBE pasar la validación SSRF, también al resolver y en redirecciones.                    | `ssrf`, `security-regressions`               |
 | SEG-2  | `trust proxy` nunca es `true`.                                                                                   | `security-regressions`                       |
 | SEG-3  | La interfaz no usa `innerHTML` y la CSP no admite inline.                                                        | ESLint                                       |
-| ACC-1  | Sin contraseña (ni `ADMIN_PASSWORD` ni la de Ajustes) no hay acceso que pedir; con ella, a `/login`.             | `admin-password.test.js`                     |
+| ACC-1  | Sin usuario solo se atiende al propio equipo; desde fuera, primer arranque con el código del registro.           | `fase1-seguridad.test.js`                    |
 | ACC-2  | El usuario se acepta sin distinguir mayúsculas; la contraseña sí las distingue.                                  | `admin-password.test.js`                     |
-| ACC-3  | La sesión es una cookie HttpOnly firmada; HTTP Basic sigue valiendo para clientes de API.                        | `admin-password.test.js`                     |
-| ACC-4  | Tras 8 fallos por dirección de socket (formulario y HTTP Basic: un contador), 429 durante 5 min.                 | `admin-password`, `acceso-basic-freno`       |
+| ACC-3  | Sesión en el servidor: testigo opaco en cookie HttpOnly/Lax; «Salir» la borra; sin HTTP Basic.                   | `admin-password`, `fase1-seguridad`          |
+| ACC-4  | Tras 8 fallos por dirección de socket (login y código de primer arranque), 429 durante 5 min.                    | `admin-password.test.js`                     |
 | ACC-6  | La contraseña se pone, cambia o quita en Ajustes → Acceso (scrypt); ADMIN_PASSWORD manda si existe.              | `acceso-ajustes.test.js`                     |
 | ACC-5  | `/api/health` y el protocolo no piden contraseña.                                                                | `admin-password.test.js`                     |
 | ACC-7  | crew.json ilegible y sin copia buena: app CERRADA (503), fichero intacto; nunca abierta.                         | `ajustes-corruptos.test.js`                  |
 | DAT-1  | data/*.json: temporal único + rename y `.bak` de la anterior; si se daña, vuelve el `.bak`.                      | `ajustes-corruptos.test.js`                  |
+| ACC-8  | Cookie firmada de 2.17: se canjea una vez por una sesión nueva (2 min de margen); después, 401.                  | `fase1-varios`, `fase1-actualizacion`        |
+| ACC-9  | Cambiar la contraseña cierra las demás sesiones; Ajustes → Seguridad lista y cierra sesiones.                    | `fase1-seguridad.test.js`                    |
+| CRW-3  | Clave de conexión `cgc_`: solo las rutas de su lista de permisos (CREW.md); revocable; guardada con sha256.      | `fase1-seguridad.test.js`                    |
+| CRW-4  | Conexiones con clave de administración ajena se renuevan solas (al arrancar y cada hora); una vieja (404) sigue. | `fase1-actualizacion.test.js`                |
+| CRW-5  | Testigo de otra app conectada: se valida con ella (60 s de caché, 5 min si no responde); sin conexión, 401.      | `fase1-seguridad.test.js`                    |
+| SEG-4  | Host no permitido → 421 (salvo /api/health); lo que cambia algo sin clave exige origen propio o X-Clipgeist.     | `fase1-seguridad.test.js`                    |
+| SEG-5  | El navegador interno corta toda petición a la red local (privadas, loopback, enlace local).                      | `fase1-varios.test.js`                       |
+| SEG-6  | Navegador aislado (sandbox) salvo en contenedor o como root; perfil temporal por arranque; sin extensiones.      | `fase1-varios.test.js`                       |
+| SEG-7  | Carpeta de datos 700 y ficheros 600 (también los existentes); la copia descargada va sin secretos.               | `fase1-varios`, `fase1-actualizacion`        |
 | PRG-1  | Una programada manda cada vídeo una vez (identidad del enlace y repetidos), en la vuelta y entre vueltas.        | `programadas.test.js`                        |
 | CRW-1  | Implementa el protocolo v1 de CREW.md.                                                                           | `tests/` de crew                             |
 | I18N-1 | Toda cadena existe en `es.js` y `en.js`.                                                                         | `i18n.test.js`                               |
 
 ## Datos
 
-Sin base de datos. `data/profiles.json`, `data/crew.json`, `data/busquedas.json` (búsquedas en curso y recientes), `data/programadas-enviados.json` (lo ya enviado por las programadas) y ajustes, fuera de git y de la imagen.
+Sin base de datos. `data/profiles.json`, `data/crew.json`, `data/sesiones.json` (sesiones abiertas: solo resúmenes de los testigos; no entra en las copias), `data/busquedas.json` (búsquedas en curso y recientes), `data/programadas-enviados.json` (lo ya enviado por las programadas) y ajustes, fuera de git y de la imagen.

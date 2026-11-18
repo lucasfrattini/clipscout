@@ -140,7 +140,9 @@ It ends up in `/opt/clipgeist`; running it again updates the images and keeps yo
 Proxmox VE container, see
 [clipkeeper/deploy](https://github.com/lucasfrattini/clipkeeper/tree/main/deploy).
 
-**After installing:** open port `3001`. There is no login unless you set `ADMIN_PASSWORD` in `.env`.
+**After installing:** open port `3001`. Until a user exists, clipscout only answers this same
+computer; from another device the sign-in page asks for the **first-start code** printed in the log
+(`docker logs clipscout`: «Código para crear el usuario: XXXX-XXXX»).
 To link it with the other apps, see [Part of Clipgeist](#part-of-clipgeist).
 
 ---
@@ -186,16 +188,18 @@ others know (for example, "do I already have this?" before downloading).
 
 **Connect them** — every app has a **Settings** tab:
 
-1. In app B, open **Settings → API key** and copy it.
+1. In app B, open **Settings → Security → Admin key** and copy it (it is used once, to register).
 2. In app A, open **Settings → Connected apps → + Add connection**, pick B, check the suggested URL
    (`http://<server-ip>:<port>`), paste B's key, press **Test**, then **Save**.
 3. With _Also connect in the opposite direction_ ticked (the default), B is connected back to A
-   automatically.
+   automatically. From then on each app keeps only a **connection key** (`cgc_…`) that the other
+   one issued: it only opens the protocol routes, and can be revoked in **Settings → Connections**.
+   Connections made with older versions switch to connection keys by themselves.
 
 The header shows the three apps with the same look in all of them (the current one highlighted,
 the ones not connected dimmed), to jump between them. With **clipkeeper** connected, the
 **Do I have it?** button in the Videos tab marks the results that are already in your library. The protocol (endpoints,
-authentication with the `X-Api-Key` header, error format) is described in
+admin and connection keys in the `X-Api-Key` header, shared sessions, error format) is described in
 [docs/CREW.md](docs/CREW.md).
 
 ### Install the three apps together
@@ -211,7 +215,8 @@ mkdir -p datos/clipscout datos/clipkeeper datos/clonbuster
 docker compose up -d --build
 ```
 
-All three share the API key in `CLIPGEIST_CLAVE` and find each other through
+All three use the shared key in `CLIPGEIST_CLAVE` for the first registration (then each keeps its
+own connection keys) and find each other through
 `CLIPGEIST_CLIPSCOUT_URL`, `CLIPGEIST_CLIPKEEPER_URL` and `CLIPGEIST_CLONBUSTER_URL` (by default the
 internal service names). On startup each app creates its connections to the other two, and keeps
 retrying for a few minutes if one is still starting. Connections you added by hand are left
@@ -270,7 +275,7 @@ What happens then:
 | Variable          | Default          | What it does                                                                                                                                                                                                                |
 | ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OUTBOUND_PROXY`  | _(empty)_        | Optional outbound proxy for crawls and the browser, e.g. `http://192.168.1.10:8118` (the Privoxy of a VPN container). Useful when your ISP blocks a site                                                                    |
-| `ADMIN_PASSWORD`  | _(empty)_        | Optional password for the whole app: a sign-in page with the username in `ADMIN_USER` (default `admin`, case-insensitive). HTTP Basic also works for API clients. Recommended if it is reachable from outside your network. |
+| `ADMIN_PASSWORD`  | _(empty)_        | Fixes the password from the environment (only its hash is kept in memory), username in `ADMIN_USER` (default `admin`, case-insensitive). Otherwise it is set in Settings → Security. Scripts use the `X-Api-Key` admin key. |
 | `CREW_PATH`       | `data/crew.json` | API key, instance name and connections                                                                                                                                                                                      |
 | `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another Clipgeist app                                                                                                                                                                               |
 
@@ -288,7 +293,8 @@ Your saved configurations survive updates. clipscout makes a **daily backup** of
 (`data/*.json`: connections, sites, scheduled searches, filters, statistics) in `data/respaldos/`
 and keeps the last `RESPALDOS_DIAS` days (7). **Settings → Backups** lists them and lets you
 download or restore one (restoring first saves the current state, so it can be undone). The
-download contains your API keys: keep it somewhere safe. Keep a copy of `.env` yourself.
+download leaves out the password hash and every key (the local copies keep them, readable only by
+the owner, so they can restore the install). Keep a copy of `.env` yourself.
 
 Every data file is written atomically and keeps its previous version as `<file>.bak`. If
 `data/crew.json` gets damaged, clipscout restores that copy and keeps the damaged one as
@@ -304,10 +310,13 @@ you want to keep them. Paused explorations are kept in memory and are lost on re
 
 ## Exposing it on the internet
 
-clipscout has **no login**: anyone who can reach it can use it and see or
-change the saved configurations. On a home or office network that is fine. If
-you open it to the internet, put it behind a reverse proxy with authentication
-(basic auth, an SSO proxy) or behind a VPN such as Tailscale or WireGuard.
+clipscout asks for a user and password (sessions are kept on the server: **Settings → Security**
+lists them and closes them). It only answers host names it knows (an IP, `localhost`, the
+computer's name, the hosts of its connections, or `CLIPGEIST_HOSTS`) and rejects actions sent
+from other websites. Without HTTPS the password travels in clear text: if you open it to the
+internet, put it behind a reverse proxy with HTTPS (set `CLIPGEIST_PROXY_CONFIABLE=1` so the
+cookie is marked secure) or a VPN such as Tailscale or WireGuard. The app shows a warning when it
+is reached from a public address without encryption.
 
 Behind a reverse proxy, set `TRUST_PROXY` in `.env` to the proxy's IP address
 as the app sees it. Never set it to `true`: that lets any client fake its IP and

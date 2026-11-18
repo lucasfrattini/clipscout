@@ -555,9 +555,9 @@ export const en = {
     'The address the other apps use to reach this one. If you leave it empty, the one you are using now is used: {url}',
   'aj.guardar': 'Save',
   'aj.guardado': 'Settings saved',
-  'aj.clave.titulo': 'API key',
+  'aj.clave.titulo': 'Admin key',
   'aj.clave.hint':
-    'The other Clipgeist apps need it to connect to this one: paste it under their Settings → Connections.',
+    'Opens this app’s whole API (for your scripts). Don’t paste it into other apps: that’s what connections are for; when connecting it is used once and each app keeps its own connection key.',
   'aj.clave.mostrar': 'Show',
   'aj.clave.ocultar': 'Hide',
   'aj.clave.copiar': 'Copy',
@@ -565,7 +565,7 @@ export const en = {
   'aj.clave.noCopia': 'Could not copy automatically: select it and copy it by hand.',
   'aj.clave.regenerar': 'Regenerate',
   'aj.clave.confirmar':
-    'Generate a new key? Apps connected with the current key will stop talking to this one until you connect them again.',
+    'Generate a new admin key? Your scripts and any app still using it (older versions) will stop talking to this one until you give them the new one. Connections using connection keys are not affected.',
   'aj.clave.nueva': 'New key generated',
   'aj.con.titulo': 'Connected apps',
   'aj.con.hint':
@@ -574,8 +574,8 @@ export const en = {
   'aj.con.vacio': 'No apps connected yet.',
   'aj.con.app': 'App',
   'aj.con.url': 'URL address',
-  'aj.con.clave': "That app's API key",
-  'aj.con.clave.hint': 'In the other app: Settings → General → API key.',
+  'aj.con.clave': "That app's admin key",
+  'aj.con.clave.hint': 'Used once to register: afterwards each app keeps only its connection key.',
   'aj.con.nombre': 'Name (optional)',
   'aj.con.nombre.placeholder': "The other app's name is used",
   'aj.con.reciproca': 'Also connect in the opposite direction',
@@ -989,7 +989,7 @@ export const en = {
   'aj.con.auto.titulo': 'Created at startup from CLIPGEIST_*_URL.',
   'aj.acceso.titulo': 'Access',
   'aj.acceso.sin':
-    'No password: anyone who reaches this address gets in. Set one if Settings (which shows the API key) can be reached from other devices.',
+    'No user yet: it can only be used from this same computer. Create one to sign in from other devices.',
   'aj.acceso.con':
     'Password protected (user “{usuario}”). Sessions last 30 days; 8 failed attempts in a row lock sign-in for 5 minutes.',
   'aj.acceso.entorno':
@@ -1001,7 +1001,28 @@ export const en = {
   'aj.acceso.minimo': 'At least 8 characters.',
   'aj.acceso.poner': 'Set password',
   'aj.acceso.cambiar': 'Change',
-  'aj.acceso.quitar': 'Remove the password',
+  'aj.acceso.quitar': 'Remove the password (this computer only)',
   'aj.acceso.guardada': 'Password saved: other sessions were signed out',
   'aj.acceso.quitada': 'Password removed',
+  'aj.ses.titulo': 'Open sessions',
+  'aj.ses.hint':
+    'Where you are signed in. Closing one really invalidates it (even if someone copied the cookie). Sessions opened in clipkeeper or clonbuster are listed in that app.',
+  'aj.ses.esta': 'this one',
+  'aj.ses.cerrar': 'Close',
+  'aj.ses.cerrarDemas': 'Close the others',
+  'aj.ses.cerradas': 'Sessions closed: {n}',
+  'aj.ses.cerrada': 'Session closed',
+  'aj.ses.ultima': 'Last seen: {fecha} · {ip}',
+  'aj.ses.vacio': 'No open sessions (without a password none are needed).',
+  'aj.con.claveConexion': 'Own connection key',
+  'aj.con.claveAntigua':
+    'Still using the admin key (switches by itself once the other app is updated)',
+  'aj.con.revocar': 'Revoke its key',
+  'aj.con.revocarConfirmar':
+    'Revoke the key {nombre} uses to call this app? It will no longer be able to until you connect it again.',
+  'aj.con.revocada': 'Key revoked',
+  'aj.con.sinEntrada': 'Revoked: it cannot call this app',
+  'aviso.cifrado':
+    'You are connecting from the internet without encryption: your password travels in clear text. Use a private network between your devices or a proxy with HTTPS.',
+  'aviso.cerrar': 'Got it',
 };
