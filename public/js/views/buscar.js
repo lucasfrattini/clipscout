@@ -240,6 +240,20 @@ export function createBuscarView(root) {
       }),
       hayWeb ? casilla(conWeb, 'buscar.web.siempre', 'buscar.webSi.detalle') : null,
       hayWeb ? casilla(abierta, 'buscar.webTodo', 'buscar.webTodo.detalle') : null,
+      // CS-N6: sin buscador web no se esconde sin más: se dice qué falta y dónde se pone.
+      hayWeb
+        ? null
+        : el('p', {
+            className: 'cs-nota buscar__sin-web',
+            children: [
+              el('span', { text: `${t('buscar.sinWeb')} ` }),
+              el('a', {
+                attrs: { href: '#/ajustes/busqueda' },
+                text: t('buscar.sinWeb.como'),
+                on: { click: () => hoja.cerrar() },
+              }),
+            ],
+          }),
       casilla(compacta, 'buscar.vista.compacta', 'buscar.vista.compacta.detalle'),
       el('div', {
         className: 'cs-fila-botones',

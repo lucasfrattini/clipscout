@@ -892,6 +892,22 @@ export function createAjustesView(raiz) {
             el('p', { className: 'card__hint', text: t('aj.web.hint') }),
           ],
         }),
+        // CS-N6: cómo conseguir la búsqueda web (antes la opción desaparecía sin explicación).
+        el('details', {
+          className: 'cs-explica',
+          attrs: { id: 'ajustes-web-como' },
+          children: [
+            el('summary', { text: t('aj.web.como') }),
+            el('p', { text: t('aj.web.como.que') }),
+            el('p', { text: t('aj.web.como.docker') }),
+            el('pre', {
+              className: 'cs-codigo',
+              text: 'docker run -d --name searxng -p 8888:8080 \\\n  -v ./searxng:/etc/searxng searxng/searxng',
+            }),
+            el('p', { text: t('aj.web.como.json') }),
+            el('p', { text: t('aj.web.como.otra') }),
+          ],
+        }),
         form,
       ],
     });

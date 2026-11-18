@@ -1391,4 +1391,14 @@ export const en = {
   'buscar.copiar.csv': 'Download a table (.csv)',
   'buscar.copiar.copiados.uno': '1 link copied',
   'buscar.copiar.copiados.varios': '{n} links copied',
+  'aj.web.como': 'How do I get web search?',
+  'aj.web.como.que':
+    'clipscout does not search Google or other engines directly: it goes through SearXNG, a free metasearch engine that gathers results from many. You need one that accepts JSON searches: your own, or one run by someone you trust.',
+  'aj.web.como.docker': 'With Docker, on this computer or another one on your network:',
+  'aj.web.como.json':
+    'Then add “json” to search → formats in searxng/settings.yml (created on first start), restart it (docker restart searxng), type its address here (for example http://192.168.1.10:8888) and press “Test”.',
+  'aj.web.como.otra':
+    'Public instances usually have JSON turned off and throttle automated searches: running your own is the safe bet. Without web search, clipscout still searches your sites.',
+  'buscar.sinWeb': 'Searching the whole web too needs a search engine (SearXNG).',
+  'buscar.sinWeb.como': 'How to set it up',
 };

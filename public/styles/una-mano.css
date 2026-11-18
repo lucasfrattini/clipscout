@@ -1129,3 +1129,32 @@ cg-chips.actividad__pestanas {
 .buscar__recientes-borrar {
   margin-top: 8px;
 }
+
+/* Búsqueda web (CS-N6): cómo conseguirla, plegado dentro de su tarjeta. */
+.cs-explica {
+  margin: 0 16px 8px;
+}
+.cs-explica summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.cs-explica p {
+  margin: 8px 0;
+  font-size: 0.92rem;
+}
+.cs-codigo {
+  overflow-x: auto;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--c-border);
+  font-size: 0.82rem;
+  white-space: pre;
+}
+.buscar__sin-web a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
