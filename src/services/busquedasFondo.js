@@ -105,6 +105,9 @@ function foto() {
       origen: b.origen,
       estado: b.estado,
       quitada: b.quitada === true,
+      // Retomada que aún espera hueco: si se reinicia otra vez antes de arrancar, sigue siendo
+      // una búsqueda a medias (sin esto volvía a empezar de cero y repetía lo ya encontrado).
+      ...(b.reanudar ? { reanudar: true } : {}),
       creadaEn: b.creadaEn,
       empezadaEn: b.empezadaEn,
       terminadaEn: b.terminadaEn,
@@ -217,13 +220,39 @@ function entradaPendiente(entrada, eventos) {
   }
   const sitios = faltan.filter(id => id >= 0);
   const claves = sitios.map(id => claveDe.get(id));
+  const retomar = fichasPendientes(eventos, claves.filter(Boolean));
   return {
     ...entrada,
     sitios,
     ...(claves.every(Boolean) ? { claves } : {}),
+    ...(retomar ? { retomar } : {}),
     abierta: Boolean(entrada.abierta) && faltan.includes(-1),
   };
 }
+
+/**
+ * CS-09: de cada sitio a medias (por su clave estable), las fichas que faltaban: la lista que dio
+ * su listado (`sitio_enlaces`) menos las ya terminadas (`sitio_hechas`, de esta vuelta y de las
+ * anteriores). Así se sigue por donde iba en vez de repetir sus páginas. null si no hay ninguno.
+ */
+function fichasPendientes(eventos, claves) {
+  const retomar = {};
+  for (const clave of claves) {
+    const lista = eventos.findLast(e => e.type === 'sitio_enlaces' && e.clave === clave);
+    if (!lista || !Array.isArray(lista.enlaces)) continue;
+    const hechas = new Set(
+      eventos.filter(e => e.type === 'sitio_hechas' && e.clave === clave).flatMap(e => e.urls)
+    );
+    retomar[clave] = lista.enlaces.filter(u => !hechas.has(u));
+  }
+  return Object.keys(retomar).length ? retomar : null;
+}
+
+/**
+ * Eventos solo para retomar (CS-09): se guardan con la búsqueda pero no se mandan a quien mira.
+ */
+const INTERNOS = new Set(['sitio_enlaces', 'sitio_hechas']);
+const esInterno = e => INTERNOS.has(e.type);
 
 /**
  * Los eventos guardados de una búsqueda (formato 2). Una línea que no se entiende (la última,
@@ -333,7 +362,7 @@ async function restaurarAhora() {
       terminadas += 1;
       continue;
     }
-    if (b.estado === 'curso') {
+    if (b.estado === 'curso' || b.reanudar === true) {
       b.reanudar = true;
       enMarcha.push(b.id);
     } else esperando.push(b.id);
@@ -403,6 +432,7 @@ function publicar(b, eventoOriginal) {
   const conNumero = { ...evento, seq: b.eventos.length };
   b.eventos.push(conNumero);
   anotarEvento(b, conNumero);
+  if (esInterno(conNumero)) return;
   for (const oyente of b.oyentes) {
     try {
       oyente(conNumero);
@@ -625,7 +655,7 @@ function suscribir(id, desde, oyente, { resumen = false } = {}) {
   const b = busquedas.get(id);
   if (!b) return null;
   if (resumen && desde <= 0) for (const e of resumirEventos(b.eventos)) oyente(e);
-  else for (const e of b.eventos.slice(Math.max(0, desde))) oyente(e);
+  else for (const e of b.eventos.slice(Math.max(0, desde))) if (!esInterno(e)) oyente(e);
   if (b.terminadaEn) return () => {};
   b.oyentes.add(oyente);
   return () => b.oyentes.delete(oyente);

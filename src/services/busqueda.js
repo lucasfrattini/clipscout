@@ -217,7 +217,16 @@ async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems, agrupa
  * @param {object} opciones { signal, emit }
  */
 async function buscarEnTodos(
-  { q, sitios = null, claves = null, paginas = null, web = false, enlaces = null, abierta = false },
+  {
+    q,
+    sitios = null,
+    claves = null,
+    paginas = null,
+    web = false,
+    enlaces = null,
+    abierta = false,
+    retomar = null,
+  },
   { signal, emit = () => {}, itemsPrevios = [], contar = true } = {}
 ) {
   const conWeb = web === true && Boolean(config.busqueda.searxngUrl);
@@ -268,6 +277,14 @@ async function buscarEnTodos(
     const dominio = hostDe(c.searchUrl || '');
     const apuntar = cuentas => contar && estadisticas.sumar(dominio, { busquedas: 1, ...cuentas });
     const vistos = new Set(); // fichas ya revisadas (para no repetirlas en la búsqueda web)
+    // CS-09: las fichas terminadas se apuntan por tandas (con el siguiente progreso) para poder
+    // retomar el sitio por donde iba tras un reinicio, sin repetir sus páginas ni sus fichas.
+    let hechas = [];
+    const apuntarHechas = () => {
+      if (hechas.length === 0) return;
+      emit({ type: 'sitio_hechas', sitio: sitio.id, clave: sitio.clave, urls: hechas });
+      hechas = [];
+    };
     const reenviar =
       ({ web: esWeb = false } = {}) =>
       evento => {
@@ -284,6 +301,7 @@ async function buscarEnTodos(
           emit({ type: 'sitio_progreso', sitio: sitio.id, enlaces: evento.totalLinks });
         } else if (evento.type === 'phase2_progress') {
           if (evento.url) vistos.add(evento.url);
+          apuntarHechas();
           emit({
             type: 'sitio_progreso',
             sitio: sitio.id,
@@ -300,6 +318,12 @@ async function buscarEnTodos(
         endPage: (Number.parseInt(c.startPage, 10) || 1) + porSitio - 1,
         withThumbnails: true,
       });
+      // CS-09: retomado tras un reinicio con su lista de fichas ya sacada: ni las páginas del
+      // listado ni las fichas terminadas se vuelven a pedir.
+      const previos = Array.isArray(retomar?.[sitio.clave]) ? retomar[sitio.clave] : null;
+      if (previos) {
+        emit({ type: 'sitio_progreso', sitio: sitio.id, enlaces: previos.length, retomado: true });
+      }
       const resultado = await crawl(
         {
           ...params,
@@ -309,8 +333,21 @@ async function buscarEnTodos(
           // Las fichas que ya abrió otra búsqueda hace poco no se vuelven a abrir.
           usarCache: true,
         },
-        { signal, emit: reenviar() }
+        {
+          signal,
+          emit: reenviar(),
+          linksPrevios: previos,
+          alTenerEnlaces: links =>
+            emit({
+              type: 'sitio_enlaces',
+              sitio: sitio.id,
+              clave: sitio.clave,
+              enlaces: links,
+            }),
+          alTerminarFicha: url => hechas.push(url),
+        }
       );
+      apuntarHechas();
       const bloqueo = resultado.diagnostico?.bloqueo?.sospechoso === true;
       const recortado = resultado.truncated === true;
 
@@ -353,7 +390,8 @@ async function buscarEnTodos(
       }
       emit({ type: 'sitio_fin', sitio: sitio.id, total, bloqueo, recortado });
       apuntar({ resultados: total, conDuracion, bloqueos: bloqueo ? 1 : 0 });
-      if (contar && !signal?.aborted) {
+      // Retomado: `total` cuenta solo lo de ahora, así que no dice nada de la salud del sitio.
+      if (contar && !signal?.aborted && !previos) {
         estadisticas.anotarSalud(dominio, { total, error: bloqueo ? 'bloqueo' : '' });
       }
       return { id: sitio.id, total };

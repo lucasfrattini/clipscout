@@ -48,6 +48,10 @@ module.exports = function crear({ assertUrlIsSafe, collectLinks, findFiles }) {
        * duplicadas. La hace `crawlMany` UNA sola vez sobre la fusión de todas.
        */
       group = true,
+      /** CS-09: la lista de fichas de la fase 1, en cuanto se tiene (para poder retomar). */
+      alTenerEnlaces = null,
+      /** CS-09: cada ficha de la fase 2 ya terminada. */
+      alTerminarFicha = null,
     } = opciones;
     const {
       searchUrl,
@@ -130,6 +134,7 @@ module.exports = function crear({ assertUrlIsSafe, collectLinks, findFiles }) {
         scroll: scrollInfo || null,
         diagnostico,
       });
+      alTenerEnlaces?.(links);
     }
 
     let files = [];
@@ -156,6 +161,7 @@ module.exports = function crear({ assertUrlIsSafe, collectLinks, findFiles }) {
         signal: timeoutSignal,
         onProgress: progress => emit({ type: 'phase2_progress', ...progress }),
         onFilesFound: payload => emit({ type: 'files_found', ...payload }),
+        onFichaHecha: alTerminarFicha,
       });
 
       files = result.files;

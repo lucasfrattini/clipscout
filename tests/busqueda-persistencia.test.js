@@ -117,12 +117,15 @@ test('tras un reinicio se retoma sola, solo en el sitio que faltaba, sin perder 
     await new Promise(r => setTimeout(r, 25));
   }
   assert.equal(eventos.at(-1).type, 'fin');
-  assert.deepEqual(
-    eventos.map(e => e.seq),
-    eventos.map((_, i) => i),
-    'la numeración sigue donde iba: quien mira no ve huecos ni repetidos'
+  // La numeración sigue donde iba: quien mira no ve repetidos ni desorden. Puede haber huecos:
+  // son los eventos que solo sirven para retomar (CS-09) y no se mandan.
+  const numeros = eventos.map(e => e.seq);
+  assert.equal(numeros[0], 0);
+  assert.ok(
+    numeros.every((n, i) => i === 0 || n > numeros[i - 1]),
+    'la numeración sigue donde iba: quien mira no ve repetidos'
   );
-  const despues = eventos.slice(antes);
+  const despues = eventos.filter(e => e.seq >= antes);
   assert.equal(despues[0].type, 'reanudada');
   const sitiosNuevos = despues.find(e => e.type === 'sitios').sitios.map(s => s.id);
   assert.deepEqual(sitiosNuevos, [1], 'solo el sitio que no había terminado');

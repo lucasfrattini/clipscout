@@ -144,6 +144,11 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
       usarCache = false,
       onProgress,
       onFilesFound,
+      /**
+       * CS-09: avisa de cada ficha TERMINADA (no de las que se empiezan, como `onProgress`):
+       * con ellas una búsqueda cortada por un reinicio sigue por las que faltaban.
+       */
+      onFichaHecha,
     } = options;
 
     const files = new Set();
@@ -349,6 +354,8 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
           failures.push({ url, error: error.message });
         } finally {
           processed += 1;
+          // Cortada a medias no cuenta como hecha: al retomar se vuelve a mirar.
+          if (!signal?.aborted) onFichaHecha?.(url);
         }
       }
     }

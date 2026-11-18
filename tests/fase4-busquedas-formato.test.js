@@ -133,6 +133,10 @@ test('migra solo los datos de la 2.21.0: la cola, lo encontrado y lo terminado s
   const nuevo = JSON.parse(fs.readFileSync(indice(), 'utf8'));
   assert.equal(nuevo.version, 2);
   assert.ok(nuevo.busquedas.every(b => typeof b.eventos === 'number'));
+  // La que iba a medias sigue marcada para retomarse aunque aún espere hueco: otro reinicio antes
+  // de que arranque no la hace empezar de cero (repetía lo ya encontrado).
+  assert.equal(nuevo.busquedas.find(b => b.id === 'en-curso').reanudar, true);
+  assert.equal(nuevo.busquedas.find(b => b.id === 'espera-1').reanudar, undefined);
   assert.equal(lineas('terminada').length, 5);
   assert.equal(lineas('en-curso').length, 4);
   assert.equal(JSON.parse(lineas('terminada')[2]).items[1].title, 'Clip 2');
