@@ -226,3 +226,23 @@ test('el HTML estatico solo referencia claves que existen', () => {
   }
   assert.deepStrictEqual(faltan, []);
 });
+
+/**
+ * CS-15: la interfaz solo descarga el diccionario del idioma activo. index.js no puede importar
+ * los dos de forma estática (eso los mete a los dos en la carga inicial); el otro llega al
+ * cambiar de idioma, y entonces ya traduce.
+ */
+test('solo el diccionario activo: sin import estático y el otro se carga al cambiar', async () => {
+  const fs = require('node:fs');
+  const fuente = fs.readFileSync(path.join(dir, 'index.js'), 'utf8');
+  assert.doesNotMatch(fuente, /^import .* from '\.\/(es|en)\.js'/m);
+  const antes = i18n.idiomaActual();
+  await i18n.cambiarIdioma('es');
+  assert.equal(i18n.idiomaActual(), 'es');
+  assert.equal(i18n.t('nav.buscar'), es['nav.buscar']);
+  assert.equal(i18n.existeClave('err.sin_sesion'), true);
+  assert.equal(i18n.existeClave('err.no_existe_este_codigo'), false);
+  await i18n.cambiarIdioma('en');
+  assert.equal(i18n.t('nav.buscar'), en['nav.buscar']);
+  await i18n.cambiarIdioma(antes);
+});

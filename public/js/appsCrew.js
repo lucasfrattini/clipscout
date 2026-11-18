@@ -28,7 +28,10 @@ export function initCrewCabecera(contenedor) {
       conexiones = [];
     }
     const icono = app =>
-      el('img', { attrs: { src: `/img/crew/${app}.png`, alt: app, width: 36, height: 36 } });
+      // Diferidas (CS-15): la hoja «Apps» está cerrada al arrancar y no hace falta bajarlas aún.
+      el('img', {
+        attrs: { src: `/img/crew/${app}.png`, alt: app, width: 36, height: 36, loading: 'lazy' },
+      });
     const contenido = (app, detalle) => [
       icono(app),
       el('span', {

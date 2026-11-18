@@ -26,10 +26,21 @@
  * no da ningún error.
  */
 
-import { es } from './es.js';
-import { en } from './en.js';
+/*
+ * CS-15: solo se descarga el diccionario del idioma activo (cada uno pesa ~75 KB). El otro se pide
+ * al cambiar de idioma, antes de repintar. El primero se carga con `await` de nivel superior: todo
+ * lo que importa este módulo espera a que esté, así que `t()` sigue siendo síncrona.
+ */
+const CARGAR = {
+  es: () => import('./es.js').then(m => m.es),
+  en: () => import('./en.js').then(m => m.en),
+};
+const DICCIONARIOS = {};
 
-const DICCIONARIOS = { es, en };
+async function cargarDiccionario(cual) {
+  if (!DICCIONARIOS[cual]) DICCIONARIOS[cual] = await CARGAR[cual]();
+  return DICCIONARIOS[cual];
+}
 
 /** Idiomas que existen de verdad. Cualquier otro cae en INGLÉS. */
 export const IDIOMAS = ['es', 'en'];
@@ -92,6 +103,7 @@ function idiomaInicial() {
 }
 
 let idioma = idiomaInicial();
+await cargarDiccionario(idioma);
 
 const suscriptores = new Set();
 
@@ -107,14 +119,16 @@ export function idiomaActual() {
  * dice exactamente qué falta, a devolver cadena vacía y dejar un hueco mudo.
  * El test de paridad de claves existe para que esto no llegue nunca a pasar.
  */
+/** El diccionario activo (o, mientras llega otro, el que haya). */
+const activo = () => DICCIONARIOS[idioma] || Object.values(DICCIONARIOS)[0] || {};
+
 export function t(clave, params) {
-  const diccionario = DICCIONARIOS[idioma] || DICCIONARIOS[IDIOMA_POR_DEFECTO];
-  let plantilla = diccionario[clave];
+  let plantilla = activo()[clave];
 
   if (plantilla === undefined) {
-    // Respaldo al idioma por defecto antes de rendirse: más vale la frase en
-    // inglés que la clave cruda delante del usuario.
-    plantilla = DICCIONARIOS[IDIOMA_POR_DEFECTO][clave];
+    // Respaldo a otro diccionario ya cargado antes de rendirse: más vale la frase en el otro
+    // idioma que la clave cruda delante del usuario (el test de paridad evita que haga falta).
+    plantilla = Object.values(DICCIONARIOS).find(d => d[clave] !== undefined)?.[clave];
     if (plantilla === undefined) {
       console.warn(`[i18n] falta la clave "${clave}" en "${idioma}"`);
       return clave;
@@ -130,8 +144,7 @@ export function t(clave, params) {
 
 /** ¿Hay traducción para esta clave? (para elegir entre el diccionario y el texto del servidor). */
 export function existeClave(clave) {
-  const diccionario = DICCIONARIOS[idioma] || DICCIONARIOS[IDIOMA_POR_DEFECTO];
-  return Boolean(diccionario && clave in diccionario);
+  return clave in activo();
 }
 
 /**
@@ -151,8 +164,9 @@ export function tp(clave, n, params) {
  * No recarga la página: la exploración en curso, los resultados y lo escrito
  * en el formulario siguen donde estaban.
  */
-export function cambiarIdioma(nuevo) {
+export async function cambiarIdioma(nuevo) {
   if (!IDIOMAS.includes(nuevo) || nuevo === idioma) return;
+  await cargarDiccionario(nuevo);
   idioma = nuevo;
 
   try {

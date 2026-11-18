@@ -101,7 +101,7 @@ async function quietoDiezSegundos(pagina) {
       await pagina.evaluate(
         async idioma => {
           const i18n = await import('/js/i18n/index.js');
-          i18n.cambiarIdioma(idioma);
+          await i18n.cambiarIdioma(idioma);
         },
         i === 12 ? 'en' : 'es'
       );

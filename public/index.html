@@ -10,6 +10,28 @@
     <link rel="stylesheet" href="/styles/crew.css" />
     <link rel="stylesheet" href="/styles/main.css" />
     <link rel="stylesheet" href="/styles/una-mano.css" />
+    <!--
+      CS-15: los módulos que app.js importa de forma estática, pedidos todos a la vez en lugar de
+      descubrirse uno detrás de otro (cada nivel de import era una ida y vuelta más). Las demás
+      pantallas se cargan al abrirlas. tests/fase5-carga.test.js vigila que esta lista sea
+      exactamente la del grafo de imports.
+    -->
+    <link rel="modulepreload" href="/js/app.js" />
+    <link rel="modulepreload" href="/js/api.js" />
+    <link rel="modulepreload" href="/js/i18n/index.js" />
+    <link rel="modulepreload" href="/js/views/buscar.js" />
+    <link rel="modulepreload" href="/js/dom.js" />
+    <link rel="modulepreload" href="/js/components/jdEnvio.js" />
+    <link rel="modulepreload" href="/js/components/dialog.js" />
+    <link rel="modulepreload" href="/js/carpetas.js" />
+    <link rel="modulepreload" href="/js/components/altaSitios.js" />
+    <link rel="modulepreload" href="/js/filtros.js" />
+    <link rel="modulepreload" href="/js/albumes.js" />
+    <link rel="modulepreload" href="/js/hojas.js" />
+    <link rel="modulepreload" href="/js/unaMano.js" />
+    <link rel="modulepreload" href="/js/buscarModelo.js" />
+    <link rel="modulepreload" href="/js/appsCrew.js" />
+    <link rel="modulepreload" href="/js/tema.js" />
 
     <!--
       Favicons. Llevan una placa clara HORNEADA en la propia imagen, a
@@ -44,7 +66,7 @@
     -->
     <cg-barra-inferior data-i18n="nav.aria" data-i18n-attr="etiqueta" etiqueta="Herramientas">
       <a data-marca class="cs-marca" href="/">
-        <img src="/img/logo.png" alt="" width="34" height="34" />
+        <img src="/img/logo-68.png" alt="" width="34" height="34" />
         <span class="cs-marca-texto">
           <small>Clipgeist</small>
           <span>clipscout</span>
