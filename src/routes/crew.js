@@ -16,6 +16,7 @@ const estadisticas = require('../services/estadisticas');
 const respaldos = require('../services/respaldos');
 const { listarSitios } = require('../services/busqueda');
 const { hostDe } = require('../services/web');
+const sesiones = require('../services/sesiones');
 
 /**
  * Rutas de Clipgeist.
@@ -46,15 +47,30 @@ const manejar = fn => async (req, res) => {
   }
 };
 
-async function requiereClave(req, res, next) {
-  const { api_key: propia } = await crew.datos();
-  if (!crew.claveValida(req.get('X-Api-Key'), propia)) {
+/**
+ * La clave ya la comprobó middleware/acceso.js (`req.clave`): la de administración abre todo; una
+ * de conexión solo llega aquí para las rutas de su lista de permisos.
+ */
+function requiereClave(req, res, next) {
+  if (!req.clave) {
     return res
       .status(401)
       .json({ detail: 'Clave de API incorrecta o ausente (cabecera X-Api-Key).' });
   }
   return next();
 }
+
+function soloAdmin(req, res, next) {
+  if (req.clave?.tipo !== 'admin') {
+    return res.status(403).json({ detail: 'Hace falta la clave de administración.' });
+  }
+  return next();
+}
+
+const quien = req => ({
+  admin: req.clave?.tipo === 'admin',
+  conexion: req.clave?.conexion || null,
+});
 
 /* ── Protocolo (entre apps) ─────────────────────────────────────────── */
 
@@ -66,16 +82,43 @@ protocolo.get(
 );
 protocolo.get(
   '/conexiones',
+  soloAdmin,
   manejar(() => crew.listar())
 );
+/** Alta (o «vuelta») de otra app. Responde con `clave`: la de conexión para llamarnos. */
 protocolo.post(
   '/conexiones',
-  manejar(req => crew.guardarConexion(req.body || {}))
+  manejar(req => crew.registrarConexion(req.body || {}, quien(req)))
+);
+/** Pasar de la clave de administración a claves de conexión (migración de 2.18). */
+protocolo.post(
+  '/conexiones/renovar',
+  manejar(req => crew.renovarConexion(req.body || {}, quien(req)))
 );
 protocolo.delete(
   '/conexiones/:id',
+  soloAdmin,
   manejar(async req => {
     await crew.quitar(req.params.id);
+    return { ok: true };
+  })
+);
+/** ¿Vale este testigo de sesión de clipscout? Lo preguntan las otras apps (inicio único). */
+protocolo.post(
+  '/sesion/validar',
+  manejar(async req => {
+    const { testigo = '' } = req.body || {};
+    const s = await sesiones.validar(String(testigo));
+    if (!s) return { ok: false };
+    return { ok: true, usuario: s.usuario, caduca: s.caduca };
+  })
+);
+/** «Salir» en otra app con un testigo nuestro: se borra aquí. */
+protocolo.post(
+  '/sesion/cerrar',
+  manejar(async req => {
+    const { testigo = '' } = req.body || {};
+    await sesiones.cerrar({ testigo: String(testigo) });
     return { ok: true };
   })
 );
@@ -191,6 +234,8 @@ router.post(
     crew.validarApp(app);
     const prueba = await crew.probar(app, url, clave);
     if (!prueba.ok) throw new crew.ErrorCrew(prueba.error);
+    // Se guarda con la clave que ha pegado el usuario (la de administración de la otra) y, al
+    // registrarnos allí, se cambia por la de conexión que nos dé: la de administración se olvida.
     const { id } = await crew.guardarConexion({
       app,
       url,
@@ -198,7 +243,9 @@ router.post(
       nombre: String(nombre).trim() || prueba.instancia || app,
     });
     const vuelta = reciproca
-      ? await crew.registrarseEn(req, crew.normalizarUrl(url), String(clave).trim())
+      ? await crew.registrarseEn(req, crew.normalizarUrl(url), String(clave).trim(), {
+          conexionId: id,
+        })
       : null;
     return { id, prueba, reciproca: vuelta };
   })
@@ -452,6 +499,12 @@ router.get(
     if (!c) throw new crew.ErrorCrew('No existe esa conexión.', 404);
     return crew.probar(c.app, c.url, c.api_key);
   })
+);
+
+/** La otra app deja de poder llamarnos con la clave de conexión que le dimos. */
+router.post(
+  '/ajustes/conexiones/:id/revocar',
+  manejar(req => crew.revocarEntrada(req.params.id))
 );
 
 router.delete(

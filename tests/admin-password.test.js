@@ -6,7 +6,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { after, before, test } = require('node:test');
 
-// Con ADMIN_PASSWORD definida, toda la app pide HTTP Basic salvo health y el protocolo Clipgeist.
+// Con ADMIN_PASSWORD definida, toda la app pide sesión salvo health y el protocolo Clipgeist.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-admin-'));
 process.env.CREW_PATH = path.join(dir, 'crew.json');
 process.env.ADMIN_USER = 'lucas';
@@ -31,33 +31,29 @@ after(() => {
 });
 
 const basic = (u, p) => `Basic ${Buffer.from(`${u}:${p}`).toString('base64')}`;
-
-test('sin credenciales o con unas malas: 401 con WWW-Authenticate', async () => {
-  const r = await fetch(`${base}/`);
-  assert.equal(r.status, 401);
-  assert.match(r.headers.get('www-authenticate'), /Basic/);
-  const mala = await fetch(`${base}/api/ajustes/general`, {
-    headers: { Authorization: basic('lucas', 'otra') },
+const entrar = (usuario, contrasena) =>
+  fetch(`${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ usuario, contrasena }),
   });
-  assert.equal(mala.status, 401);
+
+test('sin sesión: 401, sin pedir HTTP Basic', async () => {
+  const r = await fetch(`${base}/api/ajustes/general`);
+  assert.equal(r.status, 401);
+  assert.equal(r.headers.get('www-authenticate'), null, 'ya no se ofrece Basic');
 });
 
-test('con las credenciales correctas entra (la contraseña puede llevar «:»)', async () => {
+test('HTTP Basic ya no abre nada, ni con las credenciales buenas', async () => {
   const r = await fetch(`${base}/api/ajustes/general`, {
     headers: { Authorization: basic('lucas', 'secreta:con:dos-puntos') },
   });
-  assert.equal(r.status, 200);
+  assert.equal(r.status, 401);
 });
 
-test('el usuario entra sin distinguir mayúsculas; la contraseña sí las distingue', async () => {
-  const bien = await fetch(`${base}/api/ajustes/general`, {
-    headers: { Authorization: basic('Lucas', 'secreta:con:dos-puntos') },
-  });
-  assert.equal(bien.status, 200);
-  const mala = await fetch(`${base}/api/ajustes/general`, {
-    headers: { Authorization: basic('lucas', 'SECRETA:con:dos-puntos') },
-  });
-  assert.equal(mala.status, 401);
+test('el usuario entra sin distinguir mayúsculas; la contraseña sí las distingue (y puede llevar «:»)', async () => {
+  assert.equal((await entrar('Lucas', 'secreta:con:dos-puntos')).status, 200);
+  assert.equal((await entrar('lucas', 'SECRETA:con:dos-puntos')).status, 401);
 });
 
 test('un navegador va a la pantalla de acceso; al entrar, la cookie abre la app', async () => {
@@ -65,17 +61,17 @@ test('un navegador va a la pantalla de acceso; al entrar, la cookie abre la app'
   assert.equal(html.status, 302);
   assert.equal(html.headers.get('location'), '/login');
   assert.equal((await fetch(`${base}/login`, { headers: { Accept: 'text/html' } })).status, 200);
-  const entrar = (usuario, contrasena) =>
-    fetch(`${base}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuario, contrasena }),
-    });
   assert.equal((await entrar('lucas', 'mala')).status, 401);
   const ok = await entrar('LUCAS', 'secreta:con:dos-puntos');
   assert.equal(ok.status, 200);
   const cookie = ok.headers.get('set-cookie').split(';')[0];
   assert.match(ok.headers.get('set-cookie'), /HttpOnly/i);
+  assert.match(ok.headers.get('set-cookie'), /SameSite=Lax/i);
+  assert.match(cookie, /^clipgeist_sesion=clipscout\.[A-Za-z0-9_-]{43}$/, 'testigo opaco');
+  // La contraseña del entorno no deja rastro en ningún fichero (solo se guarda el resumen en memoria).
+  for (const f of fs.readdirSync(dir)) {
+    assert.doesNotMatch(fs.readFileSync(path.join(dir, f), 'utf8'), /secreta:con/);
+  }
   const r = await fetch(`${base}/api/ajustes/general`, { headers: { Cookie: cookie } });
   assert.equal(r.status, 200);
   const falsa = await fetch(`${base}/api/ajustes/general`, {
@@ -85,14 +81,8 @@ test('un navegador va a la pantalla de acceso; al entrar, la cookie abre la app'
 });
 
 test('tras muchos fallos, el login se bloquea', async () => {
-  const entrar = contrasena =>
-    fetch(`${base}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usuario: 'lucas', contrasena }),
-    });
-  for (let i = 0; i < 8; i++) assert.equal((await entrar('mala')).status, 401);
-  assert.equal((await entrar('secreta:con:dos-puntos')).status, 429);
+  for (let i = 0; i < 8; i++) assert.equal((await entrar('lucas', 'mala')).status, 401);
+  assert.equal((await entrar('lucas', 'secreta:con:dos-puntos')).status, 429);
 });
 
 test('health y el protocolo Clipgeist no piden contraseña (tienen su propia clave)', async () => {

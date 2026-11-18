@@ -14,6 +14,17 @@ const { pool } = require('./src/lib/browser');
 
 const app = createApp();
 
+// La carpeta de datos solo para el dueño (700) y los ficheros 600, también los que ya había.
+const path = require('node:path');
+require('./src/lib/permisos')
+  .corregirPermisos([config.datos.dir, path.dirname(config.crew.path)])
+  .catch(() => {});
+
+// Sin usuario todavía: código de primer arranque en el registro (para crearlo desde otro equipo).
+require('./src/services/acceso')
+  .prepararPrimerArranque()
+  .catch(error => logger.warn('Primer arranque', error.message));
+
 // Lo guardado en Ajustes (búsqueda web, sitios sin VPN) pasa a la configuración en memoria.
 require('./src/services/ajustesBusqueda')
   .cargar()
@@ -41,6 +52,12 @@ require('./src/services/respaldos').arrancar();
 require('./src/services/crew')
   .autoconectar()
   .catch(error => logger.warn('Clipgeist: autoconexión', error.message));
+
+// Conexiones de antes de 2.18 (con la clave de administración de la otra app): se pasan solas a
+// claves de conexión, al arrancar y luego cada hora hasta conseguirlo.
+require('./src/services/crew').arrancarMigracion({
+  esperaMs: Number(process.env.CLIPGEIST_MIGRACION_ESPERA_MS) || 20000,
+});
 
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();

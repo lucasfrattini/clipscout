@@ -10,6 +10,17 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
+// La interfaz manda «X-Clipgeist: 1» en todas sus llamadas (public/js/api.js). Los tests hacen de
+// interfaz: el fetch de Node la lleva por defecto. Los que prueban el rechazo de peticiones de
+// otras webs usan `globalThis.fetchSinCabecera`.
+const fetchOriginal = globalThis.fetch;
+globalThis.fetchSinCabecera = fetchOriginal;
+globalThis.fetch = (url, opciones = {}) => {
+  const cabeceras = new Headers(opciones.headers || {});
+  if (!cabeceras.has('X-Clipgeist')) cabeceras.set('X-Clipgeist', '1');
+  return fetchOriginal(url, { ...opciones, headers: cabeceras });
+};
+
 if (!process.env.CREW_PATH) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-test-'));
   process.env.CREW_PATH = path.join(dir, 'crew.json');

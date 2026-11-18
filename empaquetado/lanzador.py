@@ -69,6 +69,11 @@ def conectar_hermanas(datos: Path) -> list[str]:
             f.write(secrets.token_hex(24))
     except FileExistsError:
         pass
+    if not ES_WIN:  # solo el dueño: es la clave común del primer registro entre apps
+        try:
+            os.chmod(archivo, 0o600)
+        except OSError:
+            pass
     for _ in range(20):
         clave = archivo.read_text(encoding="utf-8").strip()
         if clave:
@@ -136,7 +141,9 @@ def main() -> None:
 
     p = argparse.ArgumentParser(prog=A.APP, description=f"{A.NOMBRE} (Clipgeist)")
     p.add_argument("--sin-bandeja", action="store_true", help="solo el servidor, sin icono ni navegador")
-    p.add_argument("--host", default=os.environ.get("CLIPGEIST_HOST", "127.0.0.1"),
+    # Por defecto solo este equipo; CLIPGEIST_ESCUCHAR=red (o --host 0.0.0.0) abre a la red local.
+    red = os.environ.get("CLIPGEIST_ESCUCHAR", "").strip().lower() == "red"
+    p.add_argument("--host", default=os.environ.get("CLIPGEIST_HOST") or ("0.0.0.0" if red else "127.0.0.1"),
                    help="0.0.0.0 para usarla desde otros equipos de la red")
     p.add_argument("--puerto", type=int, default=int(os.environ.get("CLIPGEIST_PUERTO", A.PUERTO)))
     p.add_argument("--no-abrir", action="store_true", help="no abrir el navegador al arrancar")

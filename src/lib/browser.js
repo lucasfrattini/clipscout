@@ -1,11 +1,15 @@
 'use strict';
 
+const dns = require('node:dns').promises;
+const fs = require('node:fs');
+const net = require('node:net');
+const path = require('node:path');
 const puppeteer = require('puppeteer');
 
 const config = require('../config');
 const logger = require('./logger');
 const { AppError } = require('./errors');
-const { assertUrlIsSafe } = require('./ssrf');
+const { assertUrlIsSafe, isPrivateAddress } = require('./ssrf');
 
 /**
  * Pool de Puppeteer.
@@ -16,21 +20,147 @@ const { assertUrlIsSafe } = require('./ssrf');
  * con un pool de pestañas, y se cierra solo tras un rato sin uso.
  */
 
-const LAUNCH_ARGS = [
-  '--no-sandbox',
-  '--disable-setuid-sandbox',
+const BASE_ARGS = [
   '--disable-dev-shm-usage',
   '--disable-gpu',
   '--no-first-run',
-  '--no-zygote',
-  // Con el sistema de ficheros en solo lectura (Docker con read_only: true),
-  // Chromium no puede crear la base de datos de crashpad en su HOME y se cae
-  // con "chrome_crashpad_handler: --database is required". Estas dos opciones
-  // lo mandan todo a un directorio escribible y desactivan el reporte de
-  // fallos, que en un scraper no aporta nada.
-  `--user-data-dir=${config.browser.userDataDir}`,
+  // Sin extensiones del usuario ni de nadie, sin sincronizar y sin servicios en segundo plano.
+  '--disable-extensions',
+  '--disable-sync',
+  '--disable-background-networking',
   '--disable-breakpad',
 ];
+const SIN_SANDBOX = ['--no-sandbox', '--disable-setuid-sandbox', '--no-zygote'];
+
+/**
+ * ¿Hay que quitar el aislamiento (sandbox) de Chromium? (CS-S3)
+ *
+ * Fuera de un contenedor se deja PUESTO: en el escritorio se usa el Chrome/Edge del propio
+ * usuario contra páginas de terceros, y sin aislamiento un fallo del navegador ejecutaría código
+ * con sus permisos. Solo se quita donde no puede funcionar: dentro de Docker (el perfil seccomp
+ * por defecto no deja crear los espacios de nombres que necesita) o corriendo como root.
+ * `BROWSER_SANDBOX=on|off` lo fuerza.
+ */
+function sinSandbox() {
+  const forzado = String(process.env.BROWSER_SANDBOX || '').toLowerCase();
+  if (forzado === 'on' || forzado === 'true' || forzado === '1') return false;
+  if (forzado === 'off' || forzado === 'false' || forzado === '0') return true;
+  if (process.getuid?.() === 0) return true;
+  return enContenedor();
+}
+
+function enContenedor() {
+  try {
+    if (fs.existsSync('/.dockerenv') || fs.existsSync('/run/.containerenv')) return true;
+    return /docker|containerd|kubepods|libpod/.test(fs.readFileSync('/proc/1/cgroup', 'utf8'));
+  } catch {
+    return false;
+  }
+}
+
+/** Perfil NUEVO por cada arranque del navegador (se borra al cerrarlo): nada pasa de una sesión a otra. */
+let restosBorrados = false;
+function perfilTemporal() {
+  const base = path.dirname(config.browser.userDataDir);
+  const prefijo = `${path.basename(config.browser.userDataDir)}-`;
+  fs.mkdirSync(base, { recursive: true });
+  // Los que dejara un cierre brusco anterior de ESTE proceso de clipscout (solo hay uno).
+  if (!restosBorrados) {
+    restosBorrados = true;
+    for (const n of fs
+      .readdirSync(base)
+      .filter(x => x.startsWith(prefijo) && x.length === prefijo.length + 6)) {
+      fs.rmSync(path.join(base, n), { recursive: true, force: true });
+    }
+  }
+  return fs.mkdtempSync(path.join(base, `${path.basename(config.browser.userDataDir)}-`));
+}
+
+function argumentosLanzamiento(perfil, { sandbox = !sinSandbox() } = {}) {
+  const args = [
+    ...(sandbox ? [] : SIN_SANDBOX),
+    ...BASE_ARGS,
+    // Con el sistema de ficheros en solo lectura (Docker con read_only: true), Chromium no puede
+    // crear la base de datos de crashpad en su HOME: todo va a un directorio escribible.
+    `--user-data-dir=${perfil}`,
+  ];
+  if (config.outboundProxy) {
+    args.push(`--proxy-server=${config.outboundProxy.replace(/\/\/[^@]*@/, '//')}`);
+    // Los que bloquean la VPN van directos (también en el navegador)
+    if (config.outboundProxyBypass.length) {
+      args.push(
+        `--proxy-bypass-list=${config.outboundProxyBypass.flatMap(d => [d, `*.${d}`]).join(';')}`
+      );
+    }
+  }
+  return args;
+}
+
+/* ── Red local fuera del alcance de las páginas (CS-S6) ─────────────── */
+
+const resueltos = new Map(); // host → {privado, hasta}
+const RESUELTO_MS = 60 * 1000;
+
+/**
+ * ¿Esta petición del navegador va a la red local (privada, loopback, enlace local…)? Se mira
+ * CADA petición: la primera dirección, las redirecciones, los marcos y lo que pida el código de
+ * la página. Un nombre que no se puede resolver aquí no se corta (con proxy de salida lo resuelve
+ * el proxy); uno que resuelve a una dirección privada, sí. El proxy de salida configurado no pasa
+ * por aquí: Chromium habla con él directamente, no es una petición de la página.
+ */
+async function vaARedLocal(rawUrl) {
+  if (!config.security.blockPrivateAddresses) return false;
+  let url;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (!['http:', 'https:', 'ws:', 'wss:', 'ftp:'].includes(url.protocol)) return false;
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true;
+  if (net.isIP(host)) return isPrivateAddress(host);
+  const previo = resueltos.get(host);
+  if (previo && previo.hasta > Date.now()) return previo.privado;
+  let privado = false;
+  try {
+    const direcciones = await dns.lookup(host, { all: true });
+    privado = direcciones.some(d => isPrivateAddress(d.address));
+  } catch {
+    privado = false;
+  }
+  if (resueltos.size > 2000) resueltos.clear();
+  resueltos.set(host, { privado, hasta: Date.now() + RESUELTO_MS });
+  return privado;
+}
+
+/**
+ * Intercepta todas las peticiones de la pestaña y corta las que van a la red local. Los
+ * `observadores` (p. ej. la captura de vídeos de renderPageWithMedia) solo miran: quien decide
+ * seguir o cortar es esto.
+ */
+async function protegerPestana(page, observadores = []) {
+  await page.setRequestInterception(true);
+  page.on('request', request => {
+    for (const mirar of observadores) {
+      try {
+        mirar(request);
+      } catch {
+        // no bloquear la navegación por un fallo al inspeccionar
+      }
+    }
+    vaARedLocal(request.url())
+      .then(local => {
+        if (request.isInterceptResolutionHandled?.()) return undefined;
+        if (local) {
+          logger.debug(`Navegador: bloqueada una petición a la red local (${request.url()})`);
+          return request.abort('addressunreachable');
+        }
+        return request.continue();
+      })
+      .catch(() => {});
+  });
+}
 
 class BrowserPool {
   constructor(options = {}) {
@@ -48,26 +178,46 @@ class BrowserPool {
     if (this.browser && this.browser.connected) return this.browser;
     if (this.launching) return this.launching;
 
-    this.launching = puppeteer
-      .launch({
-        headless: true,
-        args: config.outboundProxy
-          ? [
-              ...LAUNCH_ARGS,
-              `--proxy-server=${config.outboundProxy.replace(/\/\/[^@]*@/, '//')}`,
-              // Los que bloquean la VPN van directos (también en el navegador)
-              ...(config.outboundProxyBypass.length
-                ? [
-                    `--proxy-bypass-list=${config.outboundProxyBypass
-                      .flatMap(d => [d, `*.${d}`])
-                      .join(';')}`,
-                  ]
-                : []),
-            ]
-          : LAUNCH_ARGS,
-        protocolTimeout: config.browser.protocolTimeoutMs,
-        // undefined = Chromium propio de Puppeteer; en Docker apunta al de apt
-        executablePath: config.browser.executablePath,
+    const lanzar = sandbox => {
+      const perfil = perfilTemporal();
+      return puppeteer
+        .launch({
+          headless: true,
+          args: argumentosLanzamiento(perfil, { sandbox }),
+          protocolTimeout: config.browser.protocolTimeoutMs,
+          // undefined = Chromium propio de Puppeteer; en Docker apunta al de apt
+          executablePath: config.browser.executablePath,
+        })
+        .then(
+          browser => {
+            browser.perfilTemporal = perfil;
+            browser.on('disconnected', () =>
+              fs.rm(perfil, { recursive: true, force: true }, () => {})
+            );
+            return browser;
+          },
+          error => {
+            fs.rm(perfil, { recursive: true, force: true }, () => {});
+            throw error;
+          }
+        );
+    };
+    const conSandbox = !sinSandbox();
+    this.launching = lanzar(conSandbox)
+      .catch(error => {
+        // Hay escritorios (algunos Linux con los espacios de nombres sin privilegios
+        // desactivados) donde el aislamiento no arranca: antes que dejar la app sin navegador, se
+        // sigue sin él, avisando. Con BROWSER_SANDBOX=on no se reintenta.
+        const forzado = /^(on|true|1)$/i.test(String(process.env.BROWSER_SANDBOX || ''));
+        if (!conSandbox || forzado || !/sandbox|namespace|zygote/i.test(error.message)) throw error;
+        logger.warn(
+          'El navegador no arranca aislado (sandbox) en este equipo: se usa SIN aislamiento. ' +
+            'Pon BROWSER_SANDBOX=on para impedirlo.',
+          String(error.message)
+            .split('\n')
+            .find(l => /sandbox/i.test(l)) || ''
+        );
+        return lanzar(false);
       })
       .then(browser => {
         this.browser = browser;
@@ -116,7 +266,7 @@ class BrowserPool {
   }
 
   /** Ejecuta `task(page)` con una pestaña del pool y la cierra siempre. */
-  async withPage(task) {
+  async withPage(task, { protegeSola = false } = {}) {
     if (!config.browser.enabled) {
       throw new AppError(
         'El navegador está desactivado por configuración',
@@ -134,6 +284,7 @@ class BrowserPool {
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
       );
       page.setDefaultNavigationTimeout(config.browser.navigationTimeoutMs);
+      if (!protegeSola) await protegerPestana(page);
       return await task(page);
     } finally {
       if (page) {
@@ -152,6 +303,9 @@ class BrowserPool {
     this.browser = null;
     if (browser) {
       await browser.close().catch(() => {});
+      if (browser.perfilTemporal) {
+        fs.rmSync(browser.perfilTemporal, { recursive: true, force: true, maxRetries: 3 });
+      }
       logger.info('Navegador Puppeteer cerrado');
     }
   }
@@ -333,99 +487,96 @@ async function renderPageWithInfiniteScroll(url, options = {}) {
 async function renderPageWithMedia(url, { isMediaUrl } = {}) {
   await assertUrlIsSafe(url);
 
-  return pool.withPage(async page => {
-    const mediaRequests = [];
+  return pool.withPage(
+    async page => {
+      const mediaRequests = [];
 
-    await page.setRequestInterception(true);
-    page.on('request', request => {
-      try {
-        const requestUrl = request.url();
-        const isMedia = request.resourceType() === 'media';
-        if (isMedia || isMediaUrl?.(requestUrl)) {
-          mediaRequests.push({ url: requestUrl, resourceType: request.resourceType() });
-        }
-      } catch {
-        // no bloquear la navegación por un fallo al inspeccionar
-      }
-      if (!request.isInterceptResolutionHandled?.()) {
-        request.continue().catch(() => {});
-      }
-    });
+      await protegerPestana(page, [
+        request => {
+          const requestUrl = request.url();
+          const isMedia = request.resourceType() === 'media';
+          if (isMedia || isMediaUrl?.(requestUrl)) {
+            mediaRequests.push({ url: requestUrl, resourceType: request.resourceType() });
+          }
+        },
+      ]);
 
-    await page.goto(url, {
-      waitUntil: config.browser.waitUntil,
-      timeout: config.browser.navigationTimeoutMs,
-    });
+      await page.goto(url, {
+        waitUntil: config.browser.waitUntil,
+        timeout: config.browser.navigationTimeoutMs,
+      });
 
-    await autoScroll(page);
-    await new Promise(resolve => setTimeout(resolve, config.browser.settleMs));
+      await autoScroll(page);
+      await new Promise(resolve => setTimeout(resolve, config.browser.settleMs));
 
-    const domVideos = await page.evaluate(() => {
-      const found = [];
-      // `poster`, `duration`, `videoWidth`/`videoHeight` son propiedades del
-      // <video>, no del <source> hijo que suele llevar la URL real del
-      // fichero. Recorrer video y source como una lista plana les daba
-      // `poster: null` a los <source> —no tienen esa propiedad— y saltaba
-      // los <video> que solo declaran el fichero vía <source> (su `.src`
-      // queda vacío sin el atributo). El resultado: una ficha con varios
-      // vídeos acababa con todos sin miniatura propia, y aguas abajo se les
-      // estampaba la de la página entera a todos por igual.
-      const procesados = new Set();
-      document.querySelectorAll('video').forEach(video => {
-        const duration = Number.isFinite(video.duration) ? video.duration : null;
-        const poster = video.poster || null;
-        const width = video.videoWidth || video.getAttribute('width') || null;
-        const height = video.videoHeight || video.getAttribute('height') || null;
+      const domVideos = await page.evaluate(() => {
+        const found = [];
+        // `poster`, `duration`, `videoWidth`/`videoHeight` son propiedades del
+        // <video>, no del <source> hijo que suele llevar la URL real del
+        // fichero. Recorrer video y source como una lista plana les daba
+        // `poster: null` a los <source> —no tienen esa propiedad— y saltaba
+        // los <video> que solo declaran el fichero vía <source> (su `.src`
+        // queda vacío sin el atributo). El resultado: una ficha con varios
+        // vídeos acababa con todos sin miniatura propia, y aguas abajo se les
+        // estampaba la de la página entera a todos por igual.
+        const procesados = new Set();
+        document.querySelectorAll('video').forEach(video => {
+          const duration = Number.isFinite(video.duration) ? video.duration : null;
+          const poster = video.poster || null;
+          const width = video.videoWidth || video.getAttribute('width') || null;
+          const height = video.videoHeight || video.getAttribute('height') || null;
 
-        const fuentes = [];
-        if (video.src) fuentes.push(video);
-        video.querySelectorAll('source').forEach(source => fuentes.push(source));
+          const fuentes = [];
+          if (video.src) fuentes.push(video);
+          video.querySelectorAll('source').forEach(source => fuentes.push(source));
 
-        fuentes.forEach(el => {
-          const src = el.src || el.getAttribute('data-src') || el.getAttribute('data-video-src');
-          if (!src) return;
-          procesados.add(el);
-          found.push({
-            url: src,
-            element: el.tagName.toLowerCase(),
-            duration,
-            width,
-            height,
-            poster,
+          fuentes.forEach(el => {
+            const src = el.src || el.getAttribute('data-src') || el.getAttribute('data-video-src');
+            if (!src) return;
+            procesados.add(el);
+            found.push({
+              url: src,
+              element: el.tagName.toLowerCase(),
+              duration,
+              width,
+              height,
+              poster,
+            });
           });
         });
+        // <source> sin <video> padre: no hay poster ni duración que heredar.
+        document.querySelectorAll('source').forEach(source => {
+          if (procesados.has(source)) return;
+          const src =
+            source.src || source.getAttribute('data-src') || source.getAttribute('data-video-src');
+          if (src) {
+            found.push({
+              url: src,
+              element: 'source',
+              duration: null,
+              width: null,
+              height: null,
+              poster: null,
+            });
+          }
+        });
+        document.querySelectorAll('[data-video], [data-src], [data-video-url]').forEach(el => {
+          const src =
+            el.getAttribute('data-video') ||
+            el.getAttribute('data-src') ||
+            el.getAttribute('data-video-url');
+          if (src) {
+            found.push({ url: src, element: 'data-attribute', duration: null });
+          }
+        });
+        return found;
       });
-      // <source> sin <video> padre: no hay poster ni duración que heredar.
-      document.querySelectorAll('source').forEach(source => {
-        if (procesados.has(source)) return;
-        const src =
-          source.src || source.getAttribute('data-src') || source.getAttribute('data-video-src');
-        if (src) {
-          found.push({
-            url: src,
-            element: 'source',
-            duration: null,
-            width: null,
-            height: null,
-            poster: null,
-          });
-        }
-      });
-      document.querySelectorAll('[data-video], [data-src], [data-video-url]').forEach(el => {
-        const src =
-          el.getAttribute('data-video') ||
-          el.getAttribute('data-src') ||
-          el.getAttribute('data-video-url');
-        if (src) {
-          found.push({ url: src, element: 'data-attribute', duration: null });
-        }
-      });
-      return found;
-    });
 
-    const html = await page.content();
-    return { html, domVideos, mediaRequests };
-  });
+      const html = await page.content();
+      return { html, domVideos, mediaRequests };
+    },
+    { protegeSola: true }
+  );
 }
 
 /**
@@ -501,4 +652,8 @@ module.exports = {
   enviarBusqueda,
   renderPageWithInfiniteScroll,
   BrowserPool,
+  vaARedLocal,
+  protegerPestana,
+  argumentosLanzamiento,
+  sinSandbox,
 };

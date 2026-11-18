@@ -17,17 +17,40 @@ const path = require('node:path');
  *   se aparta como `<fichero>.corrupto-<fecha>` solo cuando hay con qué sustituirlo.
  */
 
+// Solo el dueño: los ficheros de datos llevan secretos (resumen de la contraseña, claves, sesiones).
+// En Windows `mode` no aplica y se ignora.
+const MODO_FICHERO = 0o600;
+const MODO_CARPETA = 0o700;
+
 const temporalDe = destino =>
   `${destino}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
 
 const fechaArchivo = () => new Date().toISOString().replace(/[:.]/g, '-');
+
+const esperar = ms => new Promise(r => setTimeout(r, ms));
+
+/**
+ * `rename` con reintentos: en Windows falla con EPERM/EBUSY/EACCES si otro proceso (antivirus,
+ * indexador) tiene el destino abierto un instante. En Linux y macOS sale a la primera.
+ */
+async function renombrar(origen, destino) {
+  for (let intento = 0; ; intento += 1) {
+    try {
+      return await fsp.rename(origen, destino);
+    } catch (error) {
+      if (intento >= 5 || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) throw error;
+      await esperar(50 * (intento + 1));
+    }
+  }
+}
 
 async function copiaAnterior(destino) {
   const bak = `${destino}.bak`;
   const temporal = temporalDe(bak);
   try {
     await fsp.copyFile(destino, temporal);
-    await fsp.rename(temporal, bak);
+    await fsp.chmod(temporal, MODO_FICHERO).catch(() => {});
+    await renombrar(temporal, bak);
   } catch (error) {
     await fsp.rm(temporal, { force: true }).catch(() => {});
     if (error.code !== 'ENOENT') throw error;
@@ -36,12 +59,12 @@ async function copiaAnterior(destino) {
 
 /** Escribe `texto` en `destino` de forma atómica (y con `.bak` de la anterior si `copia`). */
 async function escribirTexto(destino, texto, { copia = false } = {}) {
-  await fsp.mkdir(path.dirname(destino), { recursive: true });
+  await fsp.mkdir(path.dirname(destino), { recursive: true, mode: MODO_CARPETA });
   const temporal = temporalDe(destino);
   try {
-    await fsp.writeFile(temporal, texto, 'utf8');
+    await fsp.writeFile(temporal, texto, { encoding: 'utf8', mode: MODO_FICHERO });
     if (copia) await copiaAnterior(destino);
-    await fsp.rename(temporal, destino);
+    await renombrar(temporal, destino);
   } catch (error) {
     await fsp.rm(temporal, { force: true }).catch(() => {});
     throw error;
@@ -50,10 +73,10 @@ async function escribirTexto(destino, texto, { copia = false } = {}) {
 
 /** Lo mismo, síncrono (para el apagado, cuando ya no hay tiempo para promesas). */
 function escribirTextoSync(destino, texto) {
-  fs.mkdirSync(path.dirname(destino), { recursive: true });
+  fs.mkdirSync(path.dirname(destino), { recursive: true, mode: MODO_CARPETA });
   const temporal = temporalDe(destino);
   try {
-    fs.writeFileSync(temporal, texto, 'utf8');
+    fs.writeFileSync(temporal, texto, { encoding: 'utf8', mode: MODO_FICHERO });
     fs.renameSync(temporal, destino);
   } catch (error) {
     fs.rmSync(temporal, { force: true });
@@ -118,6 +141,8 @@ async function leerJson(ruta) {
 }
 
 module.exports = {
+  MODO_FICHERO,
+  MODO_CARPETA,
   escribirTexto,
   escribirTextoSync,
   escribirJson,

@@ -16,8 +16,10 @@ const { ErrorCrew } = require('./crew');
  * profiles.json (los sitios), estadisticas.json, jd-paquetes.json y programadas-enviados.json. NO entra busquedas.json: es
  * estado pasajero (se vacía solo en una hora) y el que más pesa.
  *
- * Ojo al descargar: crew.json lleva la clave de API y las de las conexiones. Es lo que hace falta
- * para recuperar la instalación, y por eso mismo la descarga va detrás del acceso de la app.
+ * Las copias locales (data/respaldos, solo el dueño: 700/600) llevan crew.json entero, con el
+ * resumen de la contraseña y las claves: es lo que hace falta para recuperar la instalación. La
+ * DESCARGA no (CS-S10): sale sin contraseña, sin clave de administración y sin las claves de las
+ * conexiones (ver `sinSecretos`). Las sesiones (sesiones.json) no entran en ninguna copia.
  */
 
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
@@ -49,11 +51,12 @@ async function existe(ruta) {
 /** Copia los ficheros que existan a `respaldos/<id>`. Devuelve los nombres copiados. */
 async function copiarA(id) {
   const destino = path.join(carpeta(), id);
-  await fs.mkdir(destino, { recursive: true });
+  await fs.mkdir(destino, { recursive: true, mode: 0o700 });
   const copiados = [];
   for (const [nombre, ruta] of Object.entries(ficheros())) {
     if (!(await existe(ruta))) continue;
     await fs.copyFile(ruta, path.join(destino, nombre));
+    await fs.chmod(path.join(destino, nombre), 0o600).catch(() => {});
     copiados.push(nombre);
   }
   return copiados;
@@ -115,16 +118,58 @@ async function validar(id) {
   return copia;
 }
 
-/** Todo el respaldo en un JSON (para descargarlo). */
+/** crew.json sin lo que abre puertas: contraseña, clave de administración y claves de conexión. */
+function sinSecretos(crew) {
+  const limpio = { ...crew };
+  delete limpio.acceso;
+  delete limpio.api_key;
+  if (Array.isArray(limpio.conexiones)) {
+    limpio.conexiones = limpio.conexiones.map(c => {
+      const resto = { ...c };
+      delete resto.api_key;
+      delete resto.entradas;
+      return resto;
+    });
+  }
+  return limpio;
+}
+
+/** Todo el respaldo en un JSON (para descargarlo), sin secretos. */
 async function paquete(id) {
   const copia = await validar(id);
   const contenido = {};
   for (const { nombre } of copia.ficheros) {
-    contenido[nombre] = JSON.parse(
-      await fs.readFile(path.join(carpeta(), copia.id, nombre), 'utf8')
-    );
+    const datos = JSON.parse(await fs.readFile(path.join(carpeta(), copia.id, nombre), 'utf8'));
+    contenido[nombre] = nombre === 'crew.json' ? sinSecretos(datos) : datos;
   }
-  return { clipscout: 'respaldo', version: 1, id: copia.id, ficheros: contenido };
+  return {
+    clipscout: 'respaldo',
+    version: 2,
+    id: copia.id,
+    sinSecretos: true,
+    ficheros: contenido,
+  };
+}
+
+/**
+ * Al restaurar crew.json, las claves de conexión se quedan como están AHORA: las otras apps ya
+ * usan las actuales y una copia de antes las dejaría sin poder llamarnos (y a nosotros sin poder
+ * llamarlas).
+ */
+function conClavesActuales(restaurado) {
+  let actual = {};
+  try {
+    actual = JSON.parse(require('node:fs').readFileSync(config.crew.path, 'utf8'));
+  } catch {
+    return restaurado;
+  }
+  for (const c of restaurado.conexiones || []) {
+    const ahora = (actual.conexiones || []).find(x => x.url === c.url && x.app === c.app);
+    if (!ahora) continue;
+    if (String(ahora.api_key || '').startsWith('cgc_')) c.api_key = ahora.api_key;
+    if (ahora.entradas) c.entradas = ahora.entradas;
+  }
+  return restaurado;
 }
 
 /**
@@ -139,8 +184,9 @@ async function restaurar(id) {
   for (const { nombre } of copia.ficheros) {
     const origen = path.join(carpeta(), copia.id, nombre);
     // Que sea JSON válido ANTES de pisar nada.
-    const texto = await fs.readFile(origen, 'utf8');
-    JSON.parse(texto);
+    let texto = await fs.readFile(origen, 'utf8');
+    const datos = JSON.parse(texto);
+    if (nombre === 'crew.json') texto = `${JSON.stringify(conClavesActuales(datos), null, 2)}\n`;
     await escribirTexto(rutas[nombre], texto);
   }
   await podar();
@@ -167,4 +213,4 @@ function arrancar() {
   reloj.unref?.();
 }
 
-module.exports = { asegurarDiario, listar, paquete, restaurar, arrancar, ficheros };
+module.exports = { asegurarDiario, listar, paquete, restaurar, arrancar, ficheros, sinSecretos };

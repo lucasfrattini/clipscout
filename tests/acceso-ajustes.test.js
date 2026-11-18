@@ -41,11 +41,10 @@ const cookieDe = r => (r.headers.get('set-cookie') || '').split(';')[0];
 
 test('sin contraseña todo pasa; poner una exige 8 caracteres', async () => {
   assert.equal((await pedir('/api/ajustes/general')).status, 200);
-  assert.deepEqual(await (await pedir('/api/auth/estado')).json(), {
-    protegido: false,
-    delEntorno: false,
-    usuario: '',
-  });
+  const estado = await (await pedir('/api/auth/estado')).json();
+  assert.equal(estado.protegido, false);
+  assert.equal(estado.primerArranque, true);
+  assert.equal(estado.pideCodigo, false, 'desde el propio equipo no hace falta el código');
   const corta = await pedir('/api/ajustes/acceso', {
     metodo: 'PUT',
     cuerpo: { usuario: 'ana', contrasena: 'corta' },
@@ -53,7 +52,7 @@ test('sin contraseña todo pasa; poner una exige 8 caracteres', async () => {
   assert.equal(corta.status, 400);
 });
 
-test('con contraseña: login, sesión, Basic, X-Api-Key, cambio y quitarla', async () => {
+test('con contraseña: login, sesión, X-Api-Key, cambio y quitarla', async () => {
   const puesta = await pedir('/api/ajustes/acceso', {
     metodo: 'PUT',
     cuerpo: { usuario: 'Ana', contrasena: 'playa-larga-1' },
@@ -79,7 +78,8 @@ test('con contraseña: login, sesión, Basic, X-Api-Key, cambio y quitarla', asy
   const basic = `Basic ${Buffer.from('ana:playa-larga-1').toString('base64')}`;
   assert.equal(
     (await pedir('/api/ajustes/general', { cabeceras: { Authorization: basic } })).status,
-    200
+    401,
+    'HTTP Basic ya no se acepta'
   );
   const clave = (await (await pedir('/api/ajustes/general', { cookie: sesion2 })).json()).api_key;
   assert.equal(
@@ -101,7 +101,8 @@ test('con contraseña: login, sesión, Basic, X-Api-Key, cambio y quitarla', asy
     cuerpo: { usuario: 'ana', contrasena: 'montana-nevada', actual: 'playa-larga-1' },
   });
   assert.equal(cambio.status, 200);
-  const sesion3 = cookieDe(cambio);
+  assert.equal(cookieDe(cambio), '', 'quien la cambia sigue con su misma sesión');
+  const sesion3 = sesion2;
   assert.equal((await pedir('/api/ajustes/general', { cookie: sesion1 })).status, 401);
   assert.equal((await pedir('/api/ajustes/general', { cookie: sesion3 })).status, 200);
 

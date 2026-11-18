@@ -12,6 +12,7 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 
 const { crearAcceso } = require('./middleware/acceso');
 const credenciales = require('./services/acceso');
+const sesiones = require('./services/sesiones');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -28,28 +29,38 @@ function createApp() {
   app.set('trust proxy', config.security.trustProxy);
   app.disable('x-powered-by');
 
-  // Contraseña opcional (ADMIN_PASSWORD en el entorno, o la de Ajustes → Acceso). Va lo primero
-  // para que nada se sirva sin ella. Sin ninguna, todo pasa, como siempre.
+  // Acceso (sesiones, claves, host y origen: middleware/acceso.js). Va lo primero para que nada se
+  // sirva sin él.
   const acceso = crearAcceso({ retrasoFalloMs: config.security.loginRetrasoFalloMs });
   app.use(acceso.guardia);
 
   // Tope de body: nada legítimo se acerca a esto
   app.use(express.json({ limit: '64kb' }));
 
-  // `protegido` le dice a la interfaz si tiene sentido ofrecer «Cerrar sesión».
+  // `protegido` le dice a la interfaz si tiene sentido ofrecer «Salir»; `primerArranque`, que hay
+  // que crear el usuario (y `pideCodigo`, si desde aquí hace falta el código del registro);
+  // `avisoCifrado`, que se está entrando desde internet sin HTTPS.
   app.get('/api/auth/estado', async (req, res) => {
     await credenciales.cargar().catch(() => {});
-    res.json(credenciales.estado());
+    const e = credenciales.estado();
+    res.json({
+      ...e,
+      primerArranque: !e.protegido,
+      pideCodigo: !e.protegido && !acceso.esLocal(req),
+      sesion: Boolean(req.sesion),
+      avisoCifrado: acceso.avisoSinCifrar(req),
+    });
   });
   app.post('/api/auth/login', acceso.login);
   app.post('/api/auth/logout', acceso.logout);
+  app.post('/api/auth/primer-usuario', acceso.primerUsuario);
 
-  // Ajustes → Acceso: poner, cambiar o quitar la contraseña (pide la actual si ya había). Tras
-  // cambiarla, las demás sesiones quedan cerradas y esta sigue dentro con una nueva.
+  // Ajustes → Seguridad: poner, cambiar o quitar la contraseña (pide la actual si ya había). Tras
+  // cambiarla, las demás sesiones quedan cerradas y esta sigue dentro.
   const cambiarAcceso = fn => async (req, res) => {
     try {
-      const r = await fn(req.body || {});
-      if (r.protegido) acceso.ponerSesion(req, res);
+      const r = await fn(req);
+      await acceso.trasCambiarContrasena(req, res);
       res.json(r);
     } catch (error) {
       res.status(error.status || 500).json({ detail: error.message });
@@ -57,12 +68,42 @@ function createApp() {
   };
   app.put(
     '/api/ajustes/acceso',
-    cambiarAcceso(b => credenciales.configurar(b))
+    cambiarAcceso(req =>
+      credenciales.configurar(req.body || {}, {
+        local: acceso.esLocal(req) || req.clave?.tipo === 'admin',
+      })
+    )
   );
   app.post(
     '/api/ajustes/acceso/quitar',
-    cambiarAcceso(b => credenciales.quitar(b))
+    cambiarAcceso(req => credenciales.quitar(req.body || {}))
   );
+
+  // Sesiones abiertas (Ajustes → Seguridad): las de esta app.
+  const sesionActual = req => (req.sesion?.propia ? req.sesion.testigo : null);
+  app.get('/api/ajustes/sesiones', async (req, res, next) => {
+    try {
+      res.json({ sesiones: await sesiones.listar(sesionActual(req)) });
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.delete('/api/ajustes/sesiones/:id', async (req, res, next) => {
+    try {
+      const ok = await sesiones.cerrar({ id: req.params.id });
+      if (!ok) return res.status(404).json({ detail: 'No existe esa sesión.' });
+      return res.json({ ok: true });
+    } catch (error) {
+      return next(error);
+    }
+  });
+  app.post('/api/ajustes/sesiones/cerrar-demas', async (req, res, next) => {
+    try {
+      res.json({ cerradas: await sesiones.cerrarTodas({ salvo: sesionActual(req) }) });
+    } catch (error) {
+      next(error);
+    }
+  });
 
   // Cabeceras de seguridad. La CSP es estricta porque el front no carga
   // recursos externos ni usa scripts inline.

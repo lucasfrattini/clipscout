@@ -1,19 +1,24 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const fs = require('node:fs/promises');
+const path = require('node:path');
 
 const config = require('../config');
+const logger = require('../lib/logger');
+const { escribirTexto } = require('../lib/ficheroJson');
 const crew = require('./crew');
 
 /**
  * Usuario y contraseña de la interfaz, como en clipkeeper y clonbuster: se ponen y se cambian
- * desde Ajustes → Acceso y se guardan en data/crew.json (`acceso`) con scrypt, nunca en claro.
+ * desde Ajustes → Seguridad y se guardan en data/crew.json (`acceso`) con scrypt, nunca en claro.
  *
  * `ADMIN_PASSWORD` (y `ADMIN_USER`) en el entorno siguen valiendo y MANDAN: con ellas, Ajustes
- * no deja cambiar nada (se dice de dónde viene). Sin ninguna de las dos, no hay contraseña, que es
- * como ha funcionado siempre clipscout y sigue siendo una opción explícita («Quitar la
- * contraseña»): a diferencia de las otras dos apps, no se obliga a crear un usuario al arrancar,
- * para no dejar fuera de golpe a una instalación que ya funcionaba abierta en su red.
+ * no deja cambiar nada (se dice de dónde viene). De esa contraseña solo se guarda en memoria su
+ * resumen; las sesiones ya no se firman con nada derivado de ella (ver services/sesiones.js).
+ *
+ * Sin usuario, la app solo atiende al propio equipo (CS-S1): para crearlo desde otro dispositivo
+ * hace falta el código de primer arranque que se escribe en el registro al arrancar.
  */
 
 const MIN_LONGITUD = 8;
@@ -64,19 +69,14 @@ function usuario() {
 }
 
 /**
- * Secreto con el que se firman las sesiones. Sale de la contraseña (o de su hash), así que
- * cambiarla invalida todas las sesiones abiertas: lo mismo que «cerrar las demás sesiones» de
- * las otras apps, sin guardar sesiones en ningún sitio.
+ * Firma de las cookies de 2.17 y anteriores («<caduca en s>.<hmac>»). Solo sirve para reconocer
+ * una cookie antigua y canjearla UNA vez por una sesión nueva (middleware/acceso.js).
  */
-function secreto() {
+function secretoAntiguo() {
   const base = delEntorno() ? config.security.adminPassword : guardado?.hash || '';
   return claveFirma(usuario(), base);
 }
 
-/**
- * Igual que clipkeeper y clonbuster: con el mismo usuario y la misma contraseña, la sesión
- * abierta en una app vale en las tres. Token: «<caduca en segundos>.<hmac-sha256 hex>».
- */
 const claveFirma = (u, hash) =>
   crypto
     .createHash('sha256')
@@ -90,6 +90,15 @@ const firmarSesion = (u, hash, caduca) =>
 // (por huella, nunca la contraseña) hasta que cambie lo guardado: con HTTP Basic llega en CADA
 // petición.
 const verificadas = new Map();
+// De ADMIN_PASSWORD se calcula el resumen una vez y se compara contra él, como con la de Ajustes.
+let entorno = null;
+function hashEntorno() {
+  const de = crypto.createHash('sha256').update(config.security.adminPassword).digest('hex');
+  if (!entorno || entorno.de !== de) {
+    entorno = { de, hash: hashDe(config.security.adminPassword) };
+  }
+  return entorno.hash;
+}
 const scrypt = (contrasena, sal) =>
   new Promise((resolver, rechazar) =>
     crypto.scrypt(String(contrasena), sal, 32, PARAMS, (error, clave) =>
@@ -101,10 +110,7 @@ const scrypt = (contrasena, sal) =>
 async function verificar(u, contrasena) {
   if (!activo()) return false;
   const usuarioBien = igualTiempo(String(u).trim().toLowerCase(), usuario().toLowerCase());
-  if (delEntorno()) {
-    return igualTiempo(contrasena, config.security.adminPassword) && usuarioBien;
-  }
-  const { hash } = guardado;
+  const hash = delEntorno() ? hashEntorno() : guardado.hash;
   const huella = crypto.createHash('sha256').update(`${hash}\n${u}\n${contrasena}`).digest('hex');
   if (verificadas.has(huella)) return verificadas.get(huella);
   const [, sal, esperado] = hash.split('$');
@@ -122,7 +128,10 @@ function estado() {
 /**
  * Poner o cambiar usuario y contraseña. Si ya había, hace falta la actual (`actual`).
  */
-async function configurar({ usuario: nuevoUsuario = '', contrasena = '', actual = '' } = {}) {
+async function configurar(
+  { usuario: nuevoUsuario = '', contrasena = '', actual = '', codigo = '' } = {},
+  { local = false } = {}
+) {
   await cargar();
   if (delEntorno()) {
     throw new crew.ErrorCrew(
@@ -132,6 +141,14 @@ async function configurar({ usuario: nuevoUsuario = '', contrasena = '', actual 
   }
   if (guardado && !(await verificar(guardado.usuario, actual))) {
     throw new crew.ErrorCrew('La contraseña actual no es correcta.', 400);
+  }
+  // Primer usuario (SU-04): desde el propio equipo, o con el código de primer arranque.
+  if (!guardado && !local && !(await codigoValido(codigo))) {
+    throw new crew.ErrorCrew(
+      'Para crear el usuario desde otro dispositivo hace falta el código de primer arranque ' +
+        '(está en el registro de la app: «Código para crear el usuario»).',
+      403
+    );
   }
   const u = String(nuevoUsuario).trim().slice(0, 80);
   if (!u || String(contrasena).length < MIN_LONGITUD) {
@@ -144,9 +161,75 @@ async function configurar({ usuario: nuevoUsuario = '', contrasena = '', actual 
   await crew.cambiar(d => {
     d.acceso = nuevo;
   });
+  const eraPrimero = !guardado;
   guardado = nuevo;
   verificadas.clear();
+  if (eraPrimero) await borrarCodigo();
   return estado();
+}
+
+/* ── Código de primer arranque (SU-04) ──────────────────────────────── */
+
+// Sin 0/O, 1/l/I: que se lea bien en una consola.
+const LETRAS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const rutaCodigo = () => path.join(config.datos.dir, 'codigo-primer-arranque.txt');
+
+function codigoNuevo() {
+  const bytes = crypto.randomBytes(8);
+  const c = [...bytes].map(b => LETRAS[b % LETRAS.length]).join('');
+  return `${c.slice(0, 4)}-${c.slice(4)}`;
+}
+
+const normalizarCodigo = c =>
+  String(c || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+
+async function leerCodigo() {
+  try {
+    return (await fs.readFile(rutaCodigo(), 'utf8')).trim();
+  } catch {
+    return '';
+  }
+}
+
+async function codigoValido(codigo) {
+  const guardadoCodigo = await leerCodigo();
+  const recibido = normalizarCodigo(codigo);
+  return (
+    Boolean(guardadoCodigo && recibido) && igualTiempo(recibido, normalizarCodigo(guardadoCodigo))
+  );
+}
+
+async function borrarCodigo() {
+  await fs.rm(rutaCodigo(), { force: true }).catch(() => {});
+}
+
+/**
+ * Al arrancar (y al quitar la contraseña): si no hay usuario, deja un código en la carpeta de
+ * datos (600) y lo escribe en el registro, bien visible. Se reutiliza el que hubiera.
+ */
+async function prepararPrimerArranque() {
+  try {
+    await cargar();
+  } catch {
+    return null; // ajustes ilegibles: la app está cerrada de todos modos
+  }
+  if (activo()) {
+    await borrarCodigo();
+    return null;
+  }
+  let codigo = await leerCodigo();
+  if (!codigo) {
+    codigo = codigoNuevo();
+    await escribirTexto(rutaCodigo(), `${codigo}\n`);
+  }
+  const linea = '='.repeat(56);
+  logger.warn(
+    `\n${linea}\n  clipscout no tiene usuario todavía.\n  Código para crear el usuario: ${codigo}\n` +
+      `  (desde este mismo equipo no hace falta)\n${linea}`
+  );
+  return codigo;
 }
 
 /** Volver a «sin contraseña». Pide la actual. */
@@ -167,6 +250,7 @@ async function quitar({ actual = '' } = {}) {
   });
   guardado = null;
   verificadas.clear();
+  await prepararPrimerArranque();
   return estado();
 }
 
@@ -174,8 +258,11 @@ module.exports = {
   cargar,
   activo,
   usuario,
-  secreto,
+  secretoAntiguo,
   firmarSesion,
+  prepararPrimerArranque,
+  codigoValido,
+  rutaCodigo,
   verificar,
   estado,
   configurar,
