@@ -325,3 +325,61 @@ test('sin ningun peso conocido, el representante no cambia', () => {
   const grupo = grupos.find(g => g.miembros.length > 1);
   assert.equal(grupo.representante.url, 'https://a.com/video-identico.mp4');
 });
+
+/**
+ * CS-08: la agrupación por cubos (miniatura, nombre, duración) da EXACTAMENTE los mismos grupos
+ * que comparar todos contra todos. Se comprueba contra esa versión de referencia con listas al azar
+ * llenas de coincidencias parciales (mismo nombre corto, misma duración, tamaños parecidos…).
+ */
+test('CS-08: por cubos, los mismos grupos que todos contra todos', () => {
+  const {
+    senalesComunes,
+    bastan,
+    normalizeName,
+    detectarMiniaturasDeRelleno,
+  } = require('../src/lib/dedupe');
+  const referencia = (items, soloDuracion) => {
+    const nombres = items.map(i => normalizeName(i.url));
+    const relleno = detectarMiniaturasDeRelleno(items);
+    const asignado = new Set();
+    const grupos = [];
+    for (let i = 0; i < items.length; i++) {
+      if (asignado.has(i)) continue;
+      asignado.add(i);
+      const miembros = [items[i].url];
+      for (let j = i + 1; j < items.length; j++) {
+        if (asignado.has(j)) continue;
+        const s = senalesComunes(items[i], items[j], nombres[i], nombres[j], relleno);
+        if (!bastan(s, { soloDuracion })) continue;
+        miembros.push(items[j].url);
+        asignado.add(j);
+      }
+      grupos.push(miembros.sort());
+    }
+    return grupos.map(g => g.join('|')).sort();
+  };
+  let semilla = 7;
+  const azar = n => {
+    semilla = (semilla * 1103515245 + 12345) % 2147483648;
+    return semilla % n;
+  };
+  for (let vuelta = 0; vuelta < 30; vuelta++) {
+    const items = Array.from({ length: 200 }, (_, k) => ({
+      url: `https://cdn${azar(3)}.ejemplo.com/${k}/${['a', 'clip-largo-de-prueba', 'b'][azar(3)]}${azar(4)}.mp4`,
+      thumbnail: azar(3) ? `https://img.ejemplo.com/${azar(40)}.jpg` : undefined,
+      durationSeconds: azar(4) ? 60 + azar(30) : undefined,
+      sizeBytes: azar(2) ? 1e6 + azar(50) * 1000 : undefined,
+    }));
+    for (const soloDuracion of [false, true]) {
+      const nuevos = groupDuplicates(items, { soloDuracion })
+        .grupos.map(g =>
+          g.miembros
+            .map(m => m.url)
+            .sort()
+            .join('|')
+        )
+        .sort();
+      assert.deepEqual(nuevos, referencia(items, soloDuracion));
+    }
+  }
+});

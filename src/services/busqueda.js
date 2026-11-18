@@ -67,6 +67,44 @@ async function proxyNoResponde(emit) {
   return true;
 }
 
+/**
+ * Repetidos EN VIVO (CS-08): antes solo se agrupaban al final, así que mientras duraba la búsqueda
+ * la lista enseñaba los repetidos. Ahora, con cada tanda de resultados se programa una pasada
+ * (como mucho una cada `config.busqueda.agruparCadaMs`) y se manda `duplicados` solo si cambió.
+ * Agrupar ya es barato (por cubos: ver lib/dedupe.js), así que no para el servidor.
+ */
+function crearAgrupador(items, emit) {
+  let reloj = null;
+  let ultima = '';
+  const pasada = () => {
+    const grupos = groupDuplicates(items)
+      .grupos.filter(g => g.miembros.length > 1)
+      .map(g => ({ representante: g.representante.url, miembros: g.miembros.map(m => m.url) }));
+    const firma = JSON.stringify(grupos);
+    return { grupos, cambio: firma !== ultima, firma };
+  };
+  return {
+    tocar() {
+      if (reloj) return;
+      reloj = setTimeout(() => {
+        reloj = null;
+        const r = pasada();
+        if (r.cambio && r.grupos.length) {
+          ultima = r.firma;
+          emit({ type: 'duplicados', grupos: r.grupos, parcial: true });
+        }
+      }, config.busqueda.agruparCadaMs);
+      reloj.unref?.();
+    },
+    /** Al terminar: la pasada definitiva, siempre (quien mira cierra con ella). */
+    final() {
+      clearTimeout(reloj);
+      reloj = null;
+      emit({ type: 'duplicados', grupos: pasada().grupos });
+    },
+  };
+}
+
 /** Id del «sitio» que agrupa lo encontrado en toda la web (no es una configuración guardada). */
 const ID_WEB_ABIERTA = -1;
 
@@ -78,7 +116,7 @@ const EXTENSIONES_ABIERTA = '.mp4, .webm, .m4v, .mov, .m3u8';
  * una se busca el vídeo como en la fase 2. Al final se avisa de qué dominios dieron vídeos, para
  * que se puedan dar de alta con un clic (services/autoSitio.js).
  */
-async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems }) {
+async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems, agrupador }) {
   const id = ID_WEB_ABIERTA;
   emit({ type: 'sitio_inicio', sitio: id });
   let total = 0;
@@ -111,6 +149,7 @@ async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems }) {
                 .map(it => ({ ...it, web: true }));
               total += items.length;
               todosLosItems.push(...items);
+              agrupador.tocar();
               for (const it of items) {
                 const h = hostDe(it.sourceUrl || it.pageUrl || it.url);
                 if (h) conVideo.set(h, (conVideo.get(h) || 0) + 1);
@@ -158,6 +197,7 @@ async function buscarEnTodos(
   // Para agrupar repetidos ENTRE sitios al final. Al reanudar tras un reinicio llegan ya los de
   // antes: si no, una copia hallada antes y otra después no se verían nunca como repetidas.
   const todosLosItems = [...itemsPrevios];
+  const agrupador = crearAgrupador(todosLosItems, emit);
   const todos = await listarSitios();
   // Sin elegir sitios (búsquedas de otras apps, varias, programadas): fuera los marcados en
   // Ajustes como «no buscar por defecto». Eligiéndolos a mano sí se busca en ellos.
@@ -202,6 +242,7 @@ async function buscarEnTodos(
           conDuracion += items.filter(it => Number.isFinite(it.durationSeconds)).length;
           todosLosItems.push(...items);
           emit({ type: 'resultados', sitio: sitio.id, items });
+          agrupador.tocar();
         } else if (evento.type === 'phase1_complete') {
           emit({ type: 'sitio_progreso', sitio: sitio.id, enlaces: evento.totalLinks });
         } else if (evento.type === 'phase2_progress') {
@@ -295,22 +336,13 @@ async function buscarEnTodos(
     resumen.push({ id: ID_WEB_ABIERTA, total: 0, error: ERROR_PROXY });
   } else if (conAbierta && !signal?.aborted) {
     const excluir = new Set(todos.map(s => hostDe(s.perfil.config.searchUrl)).filter(Boolean));
-    const r = await buscarEnAbierta(q, { excluir, signal, emit, todosLosItems });
+    const r = await buscarEnAbierta(q, { excluir, signal, emit, todosLosItems, agrupador });
     resumen.push(r);
   }
 
   // Repetidos: el mismo vídeo en varios sitios (o en varias fichas). Como en el Explorador, no se
   // quita nada: se manda qué es copia de qué y la interfaz los pliega.
-  const { grupos } = groupDuplicates(todosLosItems);
-  emit({
-    type: 'duplicados',
-    grupos: grupos
-      .filter(g => g.miembros.length > 1)
-      .map(g => ({
-        representante: g.representante.url,
-        miembros: g.miembros.map(m => m.url),
-      })),
-  });
+  agrupador.final();
 
   return { sitios: resumen, total: resumen.reduce((n, r) => n + (r?.total || 0), 0) };
 }
@@ -397,6 +429,7 @@ async function buscarEnlace(
   const nombres = lista.map((u, i) => ({ id: idDe(i), nombre: hostDe(u) || u }));
   emit({ type: 'sitios', sitios: nombres });
   const todosLosItems = [...itemsPrevios];
+  const agrupador = crearAgrupador(todosLosItems, emit);
   const resumen = [];
   const proxyCaido = await proxyNoResponde(emit);
   for (const [i, u] of lista.entries()) {
@@ -414,6 +447,7 @@ async function buscarEnlace(
       total += items.length;
       todosLosItems.push(...items);
       emit({ type: 'resultados', sitio: id, items });
+      agrupador.tocar();
     };
     const progreso = (hechos, enlaces) =>
       emit({ type: 'sitio_progreso', sitio: id, modo: 'listado', hechos, enlaces });
@@ -444,13 +478,7 @@ async function buscarEnlace(
       resumen.push({ id, total, error: error.message });
     }
   }
-  const { grupos } = groupDuplicates(todosLosItems);
-  emit({
-    type: 'duplicados',
-    grupos: grupos
-      .filter(g => g.miembros.length > 1)
-      .map(g => ({ representante: g.representante.url, miembros: g.miembros.map(m => m.url) })),
-  });
+  agrupador.final();
   return { sitios: resumen, total: resumen.reduce((n, r) => n + r.total, 0) };
 }
 

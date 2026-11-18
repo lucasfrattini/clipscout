@@ -247,20 +247,10 @@ function groupDuplicates(items, opciones = {}) {
   const asignado = new Map();
 
   /**
-   * Nombres normalizados, UNA vez cada uno.
-   *
-   * Antes se calculaban dentro del bucle interno, así que el nombre del
-   * elemento `i` se recomputaba n veces —parseo de URL y cinco regex— para
-   * dar siempre el mismo resultado. Con los topes de la aplicación (miles de
-   * ficheros) eso son millones de reemplazos regex y segundos de CPU
-   * bloqueando el proceso justo al final de una exploración.
-   *
-   * La comparación sigue siendo la misma y sigue siendo O(n²): lo que cambia
-   * es lo que cuesta cada comparación. No se agrupa por clave porque la
-   * tolerancia de tamaño no es una relación de equivalencia, y bucketizar
-   * cambiaría qué elementos acaban juntos.
+   * Nombres normalizados, UNA vez cada uno (parsear la URL y cinco regex por comparación eran
+   * millones de reemplazos con listas de miles).
    */
-  const nombres = items.map(item => normalizeName(item.url));
+  const nombres = items.map(item => normalizeName(item?.url));
 
   /**
    * Miniaturas que se repiten tanto que ya no identifican a nadie.
@@ -272,6 +262,34 @@ function groupDuplicates(items, opciones = {}) {
    */
   const miniaturasDeRelleno = detectarMiniaturasDeRelleno(items);
 
+  /**
+   * CS-08: candidatos por pistas baratas en vez de todos contra todos.
+   *
+   * Para agrupar hacen falta dos señales, o una que identifique sola (nombre largo, miniatura),
+   * o la duración en el modo `soloDuracion`. Entre dos señales cualesquiera siempre hay una de
+   * estas tres: misma miniatura (que no sea relleno), mismo nombre normalizado o misma duración
+   * (el tamaño solo nunca basta). Así que dos elementos que no comparten NINGUNA de esas claves no
+   * pueden acabar juntos, y basta con comparar dentro de cada «cubo». Se compara exactamente igual
+   * que antes, contra el representante y en el mismo orden: los grupos salen idénticos, pero con
+   * miles de resultados son miles de comparaciones en vez de millones.
+   */
+  const cubos = new Map();
+  const meter = (clave, i) => {
+    const lista = cubos.get(clave);
+    if (lista) lista.push(i);
+    else cubos.set(clave, [i]);
+  };
+  const clavesDe = items.map((item, i) => {
+    const claves = [];
+    if (item?.thumbnail && !miniaturasDeRelleno.has(item.thumbnail)) {
+      claves.push(`m:${item.thumbnail}`);
+    }
+    if (nombres[i] !== '') claves.push(`n:${nombres[i]}`);
+    if (item?.durationSeconds) claves.push(`d:${item.durationSeconds}`);
+    for (const c of claves) meter(c, i);
+    return claves;
+  });
+
   for (let i = 0; i < items.length; i += 1) {
     if (asignado.has(i)) continue;
 
@@ -282,9 +300,12 @@ function groupDuplicates(items, opciones = {}) {
     };
     asignado.set(i, grupos.length);
 
-    for (let j = i + 1; j < items.length; j += 1) {
-      if (asignado.has(j)) continue;
-
+    // Los que comparten alguna clave con `i` y van después, en orden (como el bucle de antes).
+    const candidatos = new Set();
+    for (const c of clavesDe[i]) {
+      for (const j of cubos.get(c)) if (j > i && !asignado.has(j)) candidatos.add(j);
+    }
+    for (const j of [...candidatos].sort((x, y) => x - y)) {
       // Se compara contra el REPRESENTANTE, no contra cualquier miembro del
       // grupo. Encadenar (A~B, B~C ⇒ A,B,C juntos) arrastra elementos que no
       // se parecen entre sí, y es como una agrupación por duración acaba

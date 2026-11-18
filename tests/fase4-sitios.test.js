@@ -21,6 +21,7 @@ process.env.CRAWL_PAGE_DELAY_MS = '0';
 process.env.THROTTLE_MIN_INTERVAL_MS = '0';
 process.env.HTTP_RETRY_BASE_DELAY_MS = '0';
 process.env.SEARXNG_URL = '';
+process.env.BUSQUEDA_AGRUPAR_CADA_MS = '20';
 
 const estadisticas = require('../src/services/estadisticas');
 const { buscarEnTodos } = require('../src/services/busqueda');
@@ -120,4 +121,45 @@ test('CS-17: poner las cifras a cero quita también los avisos', async () => {
   assert.equal((await estadisticas.leerSalud())['roto.example'].ultimoError, 'HTTP 500');
   await estadisticas.ponerACero();
   assert.deepEqual(await estadisticas.leerSalud(), {});
+});
+
+test('CS-08: los repetidos se agrupan mientras dura la búsqueda, no solo al final', async t => {
+  // Tres sitios en el mismo servidor: «a» y «b» dan el MISMO vídeo al momento; «c» tarda.
+  const srv = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    const [, sitioNombre] = req.url.split('/');
+    if (req.url.includes('/buscar')) return res.end(`<a href="/${sitioNombre}/v/1">1</a>`);
+    const lento = sitioNombre === 'c';
+    return setTimeout(
+      () =>
+        res.end(
+          `<video src="https://cdn.example/m/paisaje-de-montana-largo.mp4" poster="https://cdn.example/${sitioNombre}.jpg"></video>`
+        ),
+      lento ? 400 : 0
+    );
+  });
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  t.after(() => srv.close());
+  const b = `http://127.0.0.1:${srv.address().port}`;
+  const perfiles = JSON.parse(fs.readFileSync(process.env.PROFILES_PATH, 'utf8'));
+  t.after(() => fs.writeFileSync(process.env.PROFILES_PATH, JSON.stringify(perfiles)));
+  fs.writeFileSync(
+    process.env.PROFILES_PATH,
+    JSON.stringify({
+      profiles: ['a', 'b', 'c'].map(n => ({
+        name: n,
+        config: { searchUrl: `${b}/${n}/buscar?q={q}`, linkPattern: '/v/', fileExtensions: '.mp4' },
+      })),
+    })
+  );
+  const eventos = [];
+  await buscarEnTodos({ q: 'montaña', paginas: 1 }, { emit: e => eventos.push(e), contar: false });
+  const finC = eventos.findIndex(e => e.type === 'sitio_fin' && e.sitio === 2);
+  const parcial = eventos.findIndex(e => e.type === 'duplicados' && e.parcial);
+  assert.ok(parcial >= 0 && parcial < finC, 'agrupados antes de que acabe el sitio lento');
+  assert.equal(eventos[parcial].grupos[0].miembros.length, 2);
+  const final = eventos.at(-1);
+  assert.equal(final.type, 'duplicados');
+  assert.equal(final.parcial, undefined);
+  assert.equal(final.grupos[0].miembros.length, 3);
 });

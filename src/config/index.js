@@ -209,6 +209,8 @@ const config = {
     // Búsquedas en curso y en cola guardadas en disco (data/busquedas.json) para retomarlas tras
     // un reinicio. Cada cuánto se guarda como mucho mientras hay cambios.
     persistirMs: intFromEnv('BUSQUEDA_PERSISTIR_MS', 3000),
+    // Repetidos en vivo (CS-08): como mucho una agrupación cada tanto mientras llegan resultados
+    agruparCadaMs: intFromEnv('BUSQUEDA_AGRUPAR_CADA_MS', 2000),
   },
 
   /**
