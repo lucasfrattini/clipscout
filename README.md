@@ -96,7 +96,16 @@ progress, real cancellation and export.
 - **Broken-site warning**: a site that returns nothing twice in a row is flagged in _Activity_ and
   _Settings → Sites_, with **Set up again** in its **⋯**.
 - **Safe to run**: SSRF protection, per-host throttling, rate limiting, memory
-  and time caps. English and Spanish interface.
+  and time caps. English and Spanish interface; API errors carry a `codigo` and come in the
+  language of the request.
+- **Diagnostics** (_Settings → System_): what works and what doesn't (settings, data folder,
+  built-in browser, outbound proxy, download manager, connected apps), the latest log lines and a
+  downloadable report with no paths, file names or keys. `GET /api/salud` is an honest health
+  check (no login).
+- **Updates and privacy** (_Settings → System → About_): a dot on **Apps** when there is a new
+  version (once a day it downloads one file with the versions and sends nothing; it can be
+  switched off), and **What leaves this computer**, the list of every outgoing connection.
+- **Installable on the phone** (web app manifest; needs HTTPS on most phones).
 
 ---
 
@@ -305,6 +314,12 @@ download or restore one (restoring first saves the current state, so it can be u
 download leaves out the password hash and every key (the local copies keep them, readable only by
 the owner, so they can restore the install). Keep a copy of `.env` yourself.
 
+**Settings → System → Clipgeist backup** downloads one zip with everything clipscout needs on
+another computer (sites, settings, scheduled searches, statistics; no password, no keys) and
+restores one: the current state is saved first, a backup from a newer version is refused, and the
+password and keys stay as they are. Restart clipscout afterwards. The same zip is available to
+scripts at `GET /api/crew/v1/copia` (admin key).
+
 Every data file is written atomically and keeps its previous version as `<file>.bak`. If
 `data/crew.json` gets damaged, clipscout restores that copy and keeps the damaged one as
 `crew.json.corrupto-<date>`. With no good copy it stays **locked** (HTTP 503) instead of opening
@@ -416,6 +431,10 @@ work on what was already found and never start a new crawl.
 ---
 
 ## Troubleshooting
+
+**Something fails and you don't know why.** _Settings → System → Diagnostics_ says what is
+broken (for example, an outbound proxy that stopped answering) and **Download report** gives a
+zip you can attach when asking for help. The log is in `data/registro/` (5 MB × 3).
 
 **Saving a configuration fails.** The container runs as user id 1000 and
 must be able to write to the `data/` folder. If your user has another id, run

@@ -171,10 +171,62 @@ Quitar una conexión. Opcional para llamadas entre apps; siempre disponible desd
 4. El estado de cada conexión (verde / rojo, versión remota) se refresca al abrir Ajustes →
    Conexiones.
 
-## Errores
+## Errores (SU-10, fase 5)
 
-JSON `{"detail": "mensaje legible en español"}` con el código HTTP adecuado (400, 401, 404, 409,
-502 si la app remota no responde).
+Todas las respuestas de error, en las tres apps:
+
+```
+{"codigo": "<snake_case>", "detail": "<texto en el idioma de la petición>", "params": {...}}
+```
+
+- Idioma por `Accept-Language` (`es` por defecto, `en`). `detail` va SIEMPRE (los scripts lo
+  leen); la interfaz traduce por `codigo` y usa `detail` si no lo conoce.
+- Códigos comunes (mismo nombre en las tres): `sin_sesion`, `clave_invalida`, `prohibido`,
+  `no_encontrado`, `ocupado`, `apagando`, `host_no_permitido`, `origen_rechazado`,
+  `demasiados_intentos`, `datos_invalidos`, `disco_no_responde`, `en_uso`, `error_interno`.
+- `error_interno` lleva `params.id` (8 hex), que también aparece en el registro de la app.
+- clipscout añade los suyos: `cancelado`, `remoto_no_responde`, `no_disponible`,
+  `direccion_bloqueada`, `demasiadas_peticiones`, `ajustes_ilegibles`, `ya_hay_usuario`,
+  `sin_usuario`, `credenciales_incorrectas`, `copia_invalida`, `version_mas_nueva`. Además
+  conserva los campos de antes (`error`, `code`).
+
+## Diagnóstico y salud (SU-11, fase 5)
+
+- `GET /api/salud` (sin sesión): `{ok, app, version}`. `ok:false` (y 503 en clipscout) si la base
+  de datos (en clipscout, `crew.json`) o la carpeta de datos fallan.
+- `GET /api/diagnostico` (sesión o clave de administración): `{app, version, arranque,
+estado: "ok|degradado", comprobaciones: [{nombre, ok, detalle}], ultimos_errores: [{fecha,
+codigo, id}]}`. En clipscout: `ajustes`, `carpeta_datos`, `navegador`, `proxy_salida`,
+  `gestor_descargas` y `conexion_<app>` por cada conexión.
+- `GET /api/diagnostico/registro?lineas=200` → `{lineas: [...]}` (máx. 2.000).
+- `GET /api/diagnostico/informe`: zip con `diagnostico.json` y `registro.txt` (últimas 2.000
+  líneas) sin rutas absolutas (`<ruta>`), nombres de fichero (`<fichero>`) ni claves (`<clave>`).
+- Registro con rotación 5 MB × 3 en la carpeta de datos.
+
+## Copia de la suite (SU-20, fase 5)
+
+- `GET /api/crew/v1/copia[?miniaturas=1]` (clave de administración o sesión; nunca una de
+  conexión): zip con `manifiesto.json` `{app, version, esquema, fecha, contenido: [...]}` y los
+  datos de la app, sin contraseñas, claves ni sesiones.
+- `POST /api/crew/v1/copia/restaurar` (mismo permiso; el zip en el cuerpo): comprueba manifiesto,
+  app y versión (no restaura una copia de una versión más nueva: `version_mas_nueva`), guarda lo
+  actual, restaura y responde `reiniciar: true`. Lo que no exista en el equipo nuevo queda «no
+  disponible», nunca se borra.
+- clipscout: `esquema` 1; `contenido` = `crew.json` (sin secretos), `profiles.json`,
+  `estadisticas.json`, `jd-paquetes.json`, `programadas-enviados.json`. No guarda miniaturas en
+  disco. Al restaurar se quedan la contraseña, la clave de administración y las claves de conexión
+  actuales; una conexión que llega sin clave queda `activa: false, sin_clave: true`.
+
+## Actualizaciones y compatibilidad (SU-13, fase 5)
+
+- Fuente: `https://clipgeist.com/versiones.json`:
+  `{"actualizado":"AAAA-MM-DD","apps":{"<app>":{"version","notas","url","minimas":{"<otra>":"x.y.z"}}}}`.
+- Cada app lo pide como mucho una vez al día, sin parámetros ni datos (User-Agent `Clipgeist`),
+  si `buscar_actualizaciones` está activo (por defecto sí). 404 o sin red: silencio.
+- `minimas` de una app = versión mínima de cada app conectada que necesita ESA app; si una
+  conectada es más vieja, aviso en Ajustes → Conexiones.
+- clipscout: `GET|PUT /api/actualizaciones` (`{activo}`), `POST /api/actualizaciones/comprobar` y
+  `GET /api/privacidad` (lo que sale del equipo).
 
 ## Versionado
 

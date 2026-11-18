@@ -207,10 +207,15 @@ cross-app protocol in [CREW.md](CREW.md). By area:
 | Sites          | `/profiles`, `/sitios/*` (add, reconfigure), `/ajustes/sitios`                       |
 | Settings, apps | `/ajustes/*` (JDownloader, proxy, connections, backups), `/auth/*`, `/health`        |
 
-Every error answers `{ error, detail }`. Any `GET` that does not start with `/api/` serves the
+Every error answers `{ codigo, detail, params }` (plus the older `error` and `code`): `formatoErrores`
+(lib/errores.js) wraps `res.json`, so even the access guard's rejections carry a code, and
+`detail` follows `Accept-Language`. Unexpected failures become `error_interno` with a short id that
+is also in the log (`<data>/registro/clipscout.log`, rotated 5 MB × 3). Any `GET` that does not start with `/api/` serves the
 frontend shell; views are routed by hash (`#/buscar`, `#/actividad`, `#/ajustes`, `#/explorer`,
 `#/video`) and **each view's module is loaded the first time it is opened** — only Buscar loads
-at startup (17 modules instead of 28, no repeated API calls).
+at startup, its modules announced with `modulepreload` so they download in parallel, and only the
+active language's dictionary is fetched. Avanzada and Ajustes bring their own stylesheets
+(`avanzada.css`, `sistema.css`).
 
 ## Project layout
 
@@ -218,26 +223,29 @@ at startup (17 modules instead of 28, no repeated API calls).
 server.js              Entry point — Express wiring only
 src/
   config/index.js      Every env var, with its default. Single source of truth.
-  routes/              HTTP layer: scrape, buscar, video, thumbnail, media, sitios…
+  routes/              HTTP layer: scrape, buscar, video, thumbnail, media, sitios…;
+                       sistema: salud, diagnóstico, copia de la suite, versiones
   services/            The actual work — scraper, pagination, detector,
                        jobs (pause/resume), profiles, thumbnails, video
   lib/                 Reusable pieces: http, browser, throttle, ssrf,
-                       dedupe, pattern, license, media, relevance, url…
+                       dedupe, pattern, license, media, relevance, url,
+                       errores (error codes), registro (rotating log), zip…
   middleware/          rateLimit, errorHandler
   extensions/          Drop-in point for custom extractors (see its README)
 public/                Frontend — no build step, plain JS
   js/app.js            router: loads each view when first opened
   js/views/            buscar, actividad, ajustes, explorer, video
+                       (ajustes/: sitios, conexiones, sistema; explorer/: piezas)
   js/buscarModelo.js   what Buscar shows (filters, order, duplicates): pure, tested
   js/components/       dialog, progress, resultList, jdEnvio, altaSitios…
   cg/                  shared Clipgeist UI package (byte-identical copy)
   js/i18n/             engine + es / en dictionaries
-tests/                 71 files, ~670 tests (node:test) + e2e/ (Playwright)
+tests/                 73 files, ~690 tests (node:test) + e2e/ (Playwright)
 data/                  Runtime state (gitignored)
 ```
 
 ```bash
-npm test           # ~670 tests, ~45 s
+npm test           # ~690 tests, ~45 s
 npm run check      # lint + format check + tests — run this before committing
 npm run lint:fix   # autofix
 ```

@@ -1,5 +1,36 @@
 # Cambios
 
+## 2.23.0 — un solo producto (fase 5)
+
+- **Errores con código**: toda respuesta de error lleva `{codigo, detail, params}` y `detail` llega
+  en el idioma de la petición (`Accept-Language`; español por defecto). La interfaz traduce por
+  código. Un fallo no previsto da `error_interno` con una referencia que está también en el
+  registro.
+- **Diagnóstico** (Ajustes → Sistema): qué funciona y qué no (ajustes, carpeta de datos, navegador
+  interno, **proxy de salida**, gestor de descargas y cada app conectada), las últimas líneas del
+  registro y «Descargar informe» (un zip sin rutas, nombres de fichero ni claves). El registro va a
+  `data/registro/` con rotación (5 MB × 3). `GET /api/salud` dice la verdad: `ok:false` si no puede
+  trabajar.
+- **Copia de Clipgeist**: un zip con sitios, ajustes, programadas y estadísticas para llevarte
+  clipscout a otro equipo, sin contraseña ni claves; restaurarlo guarda antes lo actual y no
+  cambia la contraseña ni las claves.
+- **Versiones**: una vez al día se baja `clipgeist.com/versiones.json` (sin enviar nada; se puede
+  apagar en Acerca de). Con versión nueva, un punto en «Apps» y la orden para actualizar en
+  Docker; en Conexiones, aviso si otra app es demasiado antigua.
+- **Qué sale de este equipo** (Acerca de): la lista de las conexiones salientes con lo que tienes
+  configurado.
+- **Instalable en el móvil**: manifiesto, iconos y color de la barra según el tema.
+- **Más ligera al abrir**: solo el diccionario del idioma activo, módulos de arranque pedidos a la
+  vez y logo a su tamaño (de 38 peticiones y 704 KB a 35 y 502 KB). Mantenimiento: `explorer.js`,
+  `ajustes.js` y `main.css` partidos.
+
+**Al actualizar**: no hay que hacer nada. Ninguna ruta cambia y `detail` sigue en todos los errores
+(con `error` y `code` de antes); hay campos nuevos (`codigo`, `params`) y rutas nuevas
+(`/api/salud`, `/api/diagnostico`, `/api/crew/v1/copia`, `/api/actualizaciones`,
+`/api/privacidad`). La consulta de versiones queda **encendida**: la primera, unos minutos después
+de arrancar; si no la quieres, apágala en Ajustes → Sistema → Acerca de. Aparece
+`data/registro/clipscout.log`. Con una X-Api-Key mala, el 401 dice ahora `clave_invalida`.
+
 ## 2.22.0 — rápida y robusta (fase 4)
 
 - **Proxy de salida caído, a la vista**: se prueba al arrancar, cada minuto y antes de buscar; si no
