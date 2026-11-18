@@ -328,6 +328,14 @@ try {
   if (partes.join('|') !== 'Qué buscar|Filtrar resultados') {
     throw new Error(`partes de la hoja de filtros: ${partes.join(' | ')}`);
   }
+  // Profundidad «Rápida / Normal / A fondo» (§5.5), con la de ahora marcada.
+  const modos = await pagina.locator('cg-chips.buscar__modos button[data-modo]').allTextContents();
+  if (modos.map(m => m.trim()).join('|') !== 'Rápida|Normal|A fondo') {
+    throw new Error(`profundidad: ${modos.join(' | ')}`);
+  }
+  if ((await pagina.locator('cg-chips.buscar__modos button[aria-pressed="true"]').count()) !== 1) {
+    throw new Error('profundidad: ninguna (o varias) marcada');
+  }
   await pagina.locator('label.cs-casilla', { hasText: 'Lista compacta' }).click();
   await pagina.keyboard.press('Escape');
   await esperar(400);
@@ -345,6 +353,43 @@ try {
   await pagina.reload();
   await pagina.locator('.buscar__rejilla--grande .buscar__tarjeta').first().waitFor();
   await esperar(500);
+
+  // «Descargar en»: la carpeta se lee entera (antes salía «Pregun…»).
+  const cortado = await pagina.evaluate(() => {
+    const n = document.querySelector('.buscar__destino-texto > span');
+    return n ? n.scrollWidth > n.clientWidth + 1 : 'no está';
+  });
+  if (cortado !== false) throw new Error(`«Descargar en» cortado: ${cortado}`);
+
+  // Deslizar una fila hacia la izquierda la quita de la lista, con «Deshacer».
+  const antesDeslizar = await pagina.locator('.buscar__tarjeta').count();
+  const quitada = await pagina.evaluate(async () => {
+    const fila = document.querySelectorAll('.buscar__tarjeta')[1];
+    const r = fila.querySelector('.buscar__texto').getBoundingClientRect();
+    const toque = x =>
+      new Touch({ identifier: 1, target: fila, clientX: x, clientY: r.top + r.height / 2 });
+    const disparar = (tipo, x) =>
+      fila.dispatchEvent(
+        new TouchEvent(tipo, {
+          bubbles: true,
+          cancelable: true,
+          touches: tipo === 'touchend' ? [] : [toque(x)],
+          changedTouches: [toque(x)],
+        })
+      );
+    const x0 = r.left + r.width - 10;
+    disparar('touchstart', x0);
+    for (let d = 20; d <= 160; d += 20) disparar('touchmove', x0 - d);
+    disparar('touchend', x0 - 160);
+    await new Promise(res => setTimeout(res, 300));
+    return fila.dataset.id;
+  });
+  if ((await pagina.locator('.buscar__tarjeta').count()) !== antesDeslizar - 1) {
+    throw new Error('deslizar a la izquierda no quitó la fila');
+  }
+  await pagina.getByRole('button', { name: 'Deshacer' }).click();
+  await pagina.locator(`.buscar__tarjeta[data-id="${quitada}"]`).waitFor();
+  registro('deslizar: quitada y devuelta');
 
   // Selección: pulsación larga en una fila y la casilla de otra; se envían desde la barra de acción.
   const filas = pagina.locator('.buscar__tarjeta');
@@ -387,6 +432,27 @@ try {
     throw new Error('la barra de selección sigue abierta tras enviar');
   }
   await capturar(pagina, 'buscar-enviados', false);
+
+  // «Los N primeros» desde la barra de selección.
+  const cajaPrimeros = await pagina
+    .locator('.buscar__tarjeta')
+    .nth(0)
+    .locator('.buscar__texto')
+    .boundingBox();
+  await pagina.mouse.move(
+    cajaPrimeros.x + cajaPrimeros.width / 2,
+    cajaPrimeros.y + cajaPrimeros.height / 2
+  );
+  await pagina.mouse.down();
+  await esperar(700);
+  await pagina.mouse.up();
+  await pagina.locator('cg-barra-accion[cuenta="1"]').waitFor();
+  await pagina.locator('cg-barra-accion button[data-icono="lista"]').click();
+  await pagina.getByRole('button', { name: 'Los 5 primeros' }).click();
+  await pagina.locator('cg-barra-accion[cuenta="5"]').waitFor();
+  registro('«los 5 primeros»: elegidos');
+  await pagina.reload();
+  await pagina.locator('.buscar__tarjeta').first().waitFor();
 
   // Actividad: la búsqueda, el paquete enviado y las programadas, en un sitio.
   await pagina.locator('cg-barra-inferior a[href="#/actividad"]').click();
