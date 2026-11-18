@@ -198,6 +198,8 @@ router.post('/buscar/trabajos/:id/parar', (req, res) => {
 
 /**
  * GET /api/buscar/trabajos/:id/stream?desde=N — los eventos de esa búsqueda desde el N (por SSE).
+ * Con `resumen=1` y desde 0, lo ya ocurrido llega resumido (CS-12; la interfaz lo pide así) y
+ * después sigue en directo. Sin él, como siempre: todos los eventos.
  * Cerrar esta conexión NO para la búsqueda: solo deja de mirarla.
  */
 router.get('/buscar/trabajos/:id/stream', (req, res) => {
@@ -223,10 +225,16 @@ router.get('/buscar/trabajos/:id/stream', (req, res) => {
   };
   req.on('close', cerrar);
   const desde = Number.parseInt(req.query.desde, 10) || 0;
-  baja = fondo.suscribir(req.params.id, desde, evento => {
-    send(evento);
-    if (evento.type === 'fin' || evento.type === 'error') setImmediate(cerrar);
-  });
+  const resumen = req.query.resumen === '1';
+  baja = fondo.suscribir(
+    req.params.id,
+    desde,
+    evento => {
+      send(evento);
+      if (evento.type === 'fin' || evento.type === 'error') setImmediate(cerrar);
+    },
+    { resumen }
+  );
   if (baja === null) {
     send({ type: 'no_existe' });
     cerrar();

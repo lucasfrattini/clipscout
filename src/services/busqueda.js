@@ -106,24 +106,26 @@ async function proxyNoResponde(emit) {
  */
 function crearAgrupador(items, emit) {
   let reloj = null;
-  let ultima = '';
-  const pasada = () => {
-    const grupos = groupDuplicates(items)
+  const enviados = new Set(); // firma de cada grupo ya mandado
+  const pasada = () =>
+    groupDuplicates(items)
       .grupos.filter(g => g.miembros.length > 1)
       .map(g => ({ representante: g.representante.url, miembros: g.miembros.map(m => m.url) }));
-    const firma = JSON.stringify(grupos);
-    return { grupos, cambio: firma !== ultima, firma };
-  };
   return {
     tocar() {
       if (reloj) return;
       reloj = setTimeout(() => {
         reloj = null;
-        const r = pasada();
-        if (r.cambio && r.grupos.length) {
-          ultima = r.firma;
-          emit({ type: 'duplicados', grupos: r.grupos, parcial: true });
-        }
+        // Solo los grupos nuevos o que cambiaron: un grupo solo crece mientras llegan resultados,
+        // así que la pantalla los suma a lo que ya tenía (y el fichero de eventos no se llena de
+        // la misma lista repetida cada 2 s).
+        const nuevos = pasada().filter(g => {
+          const firma = JSON.stringify(g);
+          if (enviados.has(firma)) return false;
+          enviados.add(firma);
+          return true;
+        });
+        if (nuevos.length) emit({ type: 'duplicados', grupos: nuevos, parcial: true });
       }, config.busqueda.agruparCadaMs);
       reloj.unref?.();
     },
@@ -131,7 +133,7 @@ function crearAgrupador(items, emit) {
     final() {
       clearTimeout(reloj);
       reloj = null;
-      emit({ type: 'duplicados', grupos: pasada().grupos });
+      emit({ type: 'duplicados', grupos: pasada() });
     },
   };
 }

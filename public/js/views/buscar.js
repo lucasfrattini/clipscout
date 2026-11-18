@@ -1499,7 +1499,10 @@ export function createBuscarView(root) {
     trabajoVisto = id;
     recibidos = desde;
     mostrarResultados();
-    fuente = new EventSource(`/api/buscar/trabajos/${id}/stream?desde=${desde}`);
+    // Desde el principio, resumido (CS-12): lo ya encontrado llega de una vez, sin cada progreso.
+    fuente = new EventSource(
+      `/api/buscar/trabajos/${id}/stream?desde=${desde}${desde === 0 ? '&resumen=1' : ''}`
+    );
     fuente.onmessage = ev => {
       let m;
       try {
@@ -1567,7 +1570,8 @@ export function createBuscarView(root) {
       } else if (m.type === 'sitios_sugeridos') {
         sugeridos = m.sugeridos || [];
       } else if (m.type === 'duplicados') {
-        copias = new Map();
+        // Las parciales (mientras dura la búsqueda) traen solo los grupos nuevos o que crecieron.
+        if (!m.parcial) copias = new Map();
         for (const g of m.grupos) {
           for (const u of g.miembros) {
             copias.set(u, { representante: g.representante, n: g.miembros.length });

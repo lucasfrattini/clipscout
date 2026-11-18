@@ -208,3 +208,76 @@ test('CS-02: un índice ilegible se aparta, no se pisa', async () => {
   assert.equal(apartados.length, 1);
   assert.equal(fs.readFileSync(path.join(dir, apartados[0]), 'utf8'), '{"version":2,"busq');
 });
+
+test('CS-12: «Ver» desde el principio recibe lo ya ocurrido resumido, sin perder nada', () => {
+  const { resumirEventos } = cargar();
+  const eventos = [
+    { type: 'en_cola', posicion: 1 },
+    { type: 'inicio' },
+    {
+      type: 'sitios',
+      sitios: [
+        { id: 0, nombre: 'a' },
+        { id: 1, nombre: 'b' },
+      ],
+    },
+    { type: 'sitio_inicio', sitio: 0 },
+    { type: 'sitio_progreso', sitio: 0, enlaces: 3 },
+    { type: 'sitio_progreso', sitio: 0, hechos: 1, enlaces: 3 },
+    { type: 'resultados', sitio: 0, items: [item(1)] },
+    { type: 'sitio_progreso', sitio: 0, hechos: 2, enlaces: 3 },
+    { type: 'resultados', sitio: 0, items: [item(2)] },
+    { type: 'duplicados', parcial: true, grupos: [{ representante: 'x', miembros: ['x', 'y'] }] },
+    { type: 'duracion', items: [{ url: item(1).url, durationSeconds: 90, duration: '1:30' }] },
+    { type: 'sitio_fin', sitio: 0, total: 2 },
+    { type: 'sitio_inicio', sitio: 1 },
+    { type: 'sitio_progreso', sitio: 1, hechos: 4, enlaces: 9 },
+  ].map((e, seq) => ({ ...e, seq }));
+  const r = resumirEventos(eventos);
+  assert.deepEqual(
+    r.map(e => e.type),
+    [
+      'inicio',
+      'sitios',
+      'sitio_inicio',
+      'resultados',
+      'sitio_fin',
+      'sitio_inicio',
+      'sitio_progreso',
+      'duplicados',
+      'resumen',
+    ]
+  );
+  assert.ok(
+    r.slice(0, -1).every(e => e.seq === undefined),
+    'el resumen no lleva números'
+  );
+  assert.equal(r.at(-1).seq, 13, 'se sigue en directo desde el último evento resumido');
+  const res = r.find(e => e.type === 'resultados');
+  assert.deepEqual(
+    res.items.map(i => i.url),
+    [item(1).url, item(2).url]
+  );
+  assert.equal(res.items[0].durationSeconds, 90, 'la duración que llegó después ya va puesta');
+  assert.deepEqual(
+    r.find(e => e.type === 'sitio_progreso'),
+    {
+      type: 'sitio_progreso',
+      sitio: 1,
+      hechos: 4,
+      enlaces: 9,
+    }
+  );
+  // Terminada: el fin va después del marcador; una agrupación completa sustituye a las parciales.
+  const fin = resumirEventos([
+    ...eventos,
+    { type: 'duplicados', grupos: [{ representante: 'x', miembros: ['x', 'y', 'z'] }], seq: 14 },
+    { type: 'fin', total: 2, seq: 15 },
+  ]);
+  assert.deepEqual(
+    fin.slice(-3).map(e => e.type),
+    ['duplicados', 'resumen', 'fin']
+  );
+  assert.equal(fin.at(-3).grupos.length, 1);
+  assert.equal(fin.at(-3).grupos[0].miembros.length, 3);
+});

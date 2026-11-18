@@ -527,13 +527,105 @@ function iniciar(entrada, { carpeta = '', origen = 'manual' } = {}) {
 }
 
 /**
+ * CS-12: lo ya ocurrido de una búsqueda, RESUMIDO, para quien la abre desde el principio («Ver»,
+ * recargar). Antes se le mandaban todos los eventos tal cual: cada progreso de cada ficha, cada
+ * tanda de duraciones y cada agrupación de repetidos, varios MB por el móvil cada vez. El
+ * resumen deja lo que la pantalla necesita para quedar igual: los sitios, el último estado de
+ * cada uno, UN `resultados` por sitio (con las duraciones que llegaron después ya puestas), la
+ * agrupación de repetidos al día y el fin. Ningún evento del resumen lleva `seq`; al final va
+ * `{type: 'resumen', seq}` con el número del último evento resumido, para seguir desde ahí.
+ * Pura, para poder probarla.
+ */
+const sinSeq = e => {
+  const copia = { ...e };
+  delete copia.seq;
+  return copia;
+};
+
+function resumirEventos(eventos) {
+  if (eventos.length === 0) return [];
+  const salida = [];
+  const ultimoDe = tipo => eventos.findLast(e => e.type === tipo);
+  const arranque = eventos.findLast(e => e.type === 'inicio' || e.type === 'reanudada');
+  if (arranque) salida.push({ type: arranque.type });
+  else if (ultimoDe('en_cola')) {
+    salida.push({ type: 'en_cola', posicion: ultimoDe('en_cola').posicion });
+  }
+
+  const sitios = new Map();
+  for (const e of eventos.filter(x => x.type === 'sitios')) {
+    for (const s of e.sitios || []) sitios.set(s.id, { ...sitios.get(s.id), ...s });
+  }
+  if (sitios.size) salida.push({ type: 'sitios', sitios: [...sitios.values()] });
+
+  const duracion = new Map();
+  for (const e of eventos.filter(x => x.type === 'duracion')) {
+    for (const d of e.items || []) duracion.set(d.url, d);
+  }
+  const porSitio = new Map(); // id → { inicio, progreso, items, fin }
+  const de = id => {
+    if (!porSitio.has(id)) {
+      porSitio.set(id, { inicio: false, progreso: null, items: [], fin: null });
+    }
+    return porSitio.get(id);
+  };
+  for (const e of eventos) {
+    if (e.type === 'sitio_inicio') de(e.sitio).inicio = true;
+    else if (e.type === 'sitio_progreso') {
+      const p = de(e.sitio);
+      p.progreso = { ...p.progreso, ...sinSeq(e) };
+    } else if (e.type === 'resultados') {
+      for (const it of e.items || []) {
+        const d = duracion.get(it.url);
+        de(e.sitio).items.push(
+          d && !Number.isFinite(it.durationSeconds)
+            ? { ...it, durationSeconds: d.durationSeconds, duration: d.duration }
+            : it
+        );
+      }
+    } else if (e.type === 'sitio_fin') {
+      de(e.sitio).fin = sinSeq(e);
+    }
+  }
+  for (const [id, p] of porSitio) {
+    if (p.inicio) salida.push({ type: 'sitio_inicio', sitio: id });
+    if (p.progreso && !p.fin) salida.push(p.progreso);
+    if (p.items.length) salida.push({ type: 'resultados', sitio: id, items: p.items });
+    if (p.fin) salida.push(p.fin);
+  }
+
+  for (const e of eventos.filter(x => x.type === 'listado_disponible')) salida.push(sinSeq(e));
+  for (const tipo of ['sitios_sugeridos', 'proxy_caido']) {
+    const e = ultimoDe(tipo);
+    if (e) salida.push(sinSeq(e));
+  }
+  // Repetidos: la última agrupación completa más lo que añadieron las parciales posteriores.
+  const grupoDe = new Map();
+  let hayGrupos = false;
+  for (const e of eventos.filter(x => x.type === 'duplicados')) {
+    hayGrupos = true;
+    if (!e.parcial) grupoDe.clear();
+    for (const g of e.grupos || []) for (const u of g.miembros) grupoDe.set(u, g);
+  }
+  if (hayGrupos) salida.push({ type: 'duplicados', grupos: [...new Set(grupoDe.values())] });
+
+  const ultimo = eventos.at(-1);
+  salida.push({ type: 'resumen', seq: ultimo.seq });
+  const final = eventos.findLast(e => e.type === 'fin' || e.type === 'error');
+  if (final) salida.push(sinSeq(final));
+  return salida;
+}
+
+/**
  * Manda a `oyente` los eventos desde `desde` (los ya ocurridos, de golpe) y después los nuevos.
+ * Con `resumen` y desde 0, lo ya ocurrido va resumido (CS-12, ver `resumirEventos`).
  * Devuelve la función para darse de baja, o null si la búsqueda no existe.
  */
-function suscribir(id, desde, oyente) {
+function suscribir(id, desde, oyente, { resumen = false } = {}) {
   const b = busquedas.get(id);
   if (!b) return null;
-  for (const e of b.eventos.slice(Math.max(0, desde))) oyente(e);
+  if (resumen && desde <= 0) for (const e of resumirEventos(b.eventos)) oyente(e);
+  else for (const e of b.eventos.slice(Math.max(0, desde))) oyente(e);
   if (b.terminadaEn) return () => {};
   b.oyentes.add(oyente);
   return () => b.oyentes.delete(oyente);
@@ -628,6 +720,7 @@ module.exports = {
   guardarAhora,
   guardarAlApagar,
   entradaPendiente,
+  resumirEventos,
   contar,
   cancelarTodas,
 };
