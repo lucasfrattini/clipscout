@@ -161,7 +161,28 @@ const carpetaDe = v =>
 router.post('/buscar/iniciar', (req, res) => {
   try {
     const cuerpo = req.body || {};
-    res.json({ id: fondo.iniciar(entradaDe(cuerpo), { carpeta: carpetaDe(cuerpo.carpeta) }) });
+    const id = fondo.iniciar(entradaDe(cuerpo), { carpeta: carpetaDe(cuerpo.carpeta) });
+    // CS-N9: lo buscado a mano entra en el historial (un nombre o un enlace pegado).
+    require('../services/historial').apuntar(cuerpo.q || cuerpo.url);
+    res.json({ id });
+  } catch (error) {
+    errores.responder(req, res, error, logger);
+  }
+});
+
+/** GET /api/buscar/historial — lo último buscado (CS-N9). */
+router.get('/buscar/historial', async (req, res) => {
+  try {
+    res.json(await require('../services/historial').listar());
+  } catch (error) {
+    errores.responder(req, res, error, logger);
+  }
+});
+
+/** DELETE /api/buscar/historial[?q=…] — borra una búsqueda del historial, o todo. */
+router.delete('/buscar/historial', async (req, res) => {
+  try {
+    res.json(await require('../services/historial').borrar(String(req.query.q || '')));
   } catch (error) {
     errores.responder(req, res, error, logger);
   }

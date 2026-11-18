@@ -3,7 +3,7 @@ import { el, clear, toast, enfocarAlAbrir } from '../dom.js';
 import { t, tp, texto, atributo, alCambiarIdioma, idiomaActual } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
-import { palabras } from '../filtros.js';
+import { palabras, normalizar as normalizarTexto } from '../filtros.js';
 import { claveAlbum } from '../albumes.js';
 import { abrirHoja, menuAcciones } from '../hojas.js';
 import { paraDescargarTodo, fechaCorta } from '../unaMano.js';
@@ -343,6 +343,83 @@ export function createBuscarView(root) {
     attrs: { type: 'button' },
     on: { click: () => abrirVarias('') },
   });
+  /*
+   * CS-N9: lo último buscado (en el servidor: igual en el móvil y en el ordenador), a un toque.
+   * Se ve antes de la primera búsqueda y, después, al tocar la caja (filtrado por lo escrito).
+   */
+  const recientes = el('section', {
+    className: 'buscar__recientes',
+    attrs: { hidden: '', 'aria-labelledby': 'buscar-recientes-titulo' },
+    // Tocar una no debe quitar el foco de la caja antes del clic (se cerraría la lista).
+    on: { pointerdown: e => e.target.closest('button') && e.preventDefault() },
+  });
+  let historial = [];
+  let cajaEnfocada = false;
+  async function pintarRecientes() {
+    try {
+      ({ busquedas: historial = [] } = await (await fetch('/api/buscar/historial')).json());
+    } catch {
+      historial = [];
+    }
+    mostrarRecientes();
+  }
+  function mostrarRecientes() {
+    const escrito = normalizarTexto(entrada.value.trim());
+    const lista = historial
+      .filter(b => !escrito || normalizarTexto(b.q).includes(escrito))
+      .filter(b => normalizarTexto(b.q) !== escrito)
+      .slice(0, 8);
+    recientes.hidden = lista.length === 0 || !(cajaEnfocada || !zonaInicio.hidden);
+    if (recientes.hidden) return;
+    recientes.replaceChildren(
+      el('h2', {
+        className: 'buscar__recientes-titulo',
+        attrs: { id: 'buscar-recientes-titulo' },
+        text: t('buscar.recientes'),
+      }),
+      el('div', {
+        className: 'buscar__recientes-lista',
+        children: lista.map(b =>
+          el('button', {
+            className: 'cg-boton buscar__reciente',
+            attrs: { type: 'button', title: t('buscar.recientes.repetir', { q: b.q }) },
+            text: b.q,
+            on: {
+              click: () => {
+                entrada.value = b.q;
+                cajaEnfocada = false;
+                entrada.blur();
+                pintarInicio();
+                empezar();
+              },
+            },
+          })
+        ),
+      }),
+      escrito
+        ? null
+        : el('button', {
+            className: 'cg-boton cg-boton--fantasma buscar__recientes-borrar',
+            attrs: { type: 'button' },
+            text: t('buscar.recientes.borrar'),
+            on: {
+              click: async () => {
+                await fetch('/api/buscar/historial', { method: 'DELETE' }).catch(() => {});
+                pintarRecientes();
+              },
+            },
+          })
+    );
+  }
+  entrada.addEventListener('focus', () => {
+    cajaEnfocada = true;
+    mostrarRecientes();
+  });
+  entrada.addEventListener('blur', () => {
+    cajaEnfocada = false;
+    mostrarRecientes();
+  });
+  entrada.addEventListener('input', () => mostrarRecientes());
   const zonaInicio = el('section', {
     className: 'buscar__inicio',
     children: [
@@ -512,7 +589,7 @@ export function createBuscarView(root) {
     cabecera,
     el('div', {
       className: 'buscar',
-      children: [avisoProxy, otras, zonaInicio, zonaResultados],
+      children: [avisoProxy, recientes, otras, zonaInicio, zonaResultados],
     }),
     barraSeleccion
   );
@@ -1346,11 +1423,13 @@ export function createBuscarView(root) {
     conectar(r.id, 0);
     pintarResultados();
     refrescarCola();
+    pintarRecientes();
   }
 
   function mostrarResultados() {
     zonaResultados.hidden = false;
     zonaInicio.hidden = true;
+    mostrarRecientes();
   }
 
   /** «término → carpeta» por línea (también «->», «=>» o un tabulador); las vacías no cuentan. */
@@ -2153,6 +2232,7 @@ export function createBuscarView(root) {
   return {
     focus: () => {
       comprobarProxy();
+      pintarRecientes();
       enfocarAlAbrir(entrada);
     },
     // Al irse a otra pantalla la selección no sigue tapando la barra de navegación.

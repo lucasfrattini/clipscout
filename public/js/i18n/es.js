@@ -1389,4 +1389,7 @@ export const es = {
   'aj.priv.ip_salida': 'La dirección de salida',
   'aj.priv.ip_salida.que':
     'Solo al pulsar «Probar» en el proxy de salida: devuelve con qué dirección sales a internet.',
+  'buscar.recientes': 'Recientes',
+  'buscar.recientes.repetir': 'Buscar otra vez «{q}»',
+  'buscar.recientes.borrar': 'Borrar el historial',
 };

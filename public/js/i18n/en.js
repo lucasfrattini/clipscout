@@ -1381,4 +1381,7 @@ export const en = {
   'aj.priv.ip_salida': 'The outgoing address',
   'aj.priv.ip_salida.que':
     'Only when you press “Test” on the outbound proxy: it returns the address you go out with.',
+  'buscar.recientes': 'Recent',
+  'buscar.recientes.repetir': 'Search “{q}” again',
+  'buscar.recientes.borrar': 'Clear history',
 };

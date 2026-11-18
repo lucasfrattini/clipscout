@@ -1105,3 +1105,27 @@ cg-chips.actividad__pestanas {
 .actividad__aviso .cs-fila__texto strong {
   white-space: normal;
 }
+
+/* Historial (CS-N9): lo último buscado, a un toque, antes de buscar. */
+.buscar__recientes {
+  margin-top: 16px;
+}
+.buscar__recientes-titulo {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: var(--c-text-muted);
+}
+.buscar__recientes-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.buscar__reciente {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.buscar__recientes-borrar {
+  margin-top: 8px;
+}

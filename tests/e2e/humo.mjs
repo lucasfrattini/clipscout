@@ -456,6 +456,16 @@ try {
   await pagina.reload();
   await pagina.locator('.buscar__tarjeta').first().waitFor();
 
+  // Historial (CS-N9): al tocar la caja salen las búsquedas recientes; una repite con un toque.
+  await pagina.locator('.buscar__entrada').fill('');
+  await pagina.locator('.buscar__entrada').focus();
+  await pagina.locator('.buscar__reciente', { hasText: 'playa' }).waitFor();
+  await esperar(300);
+  await medir(pagina, 'buscar-recientes', '.buscar__entrada');
+  await pagina.locator('.buscar__entrada').blur();
+  await pagina.locator('.buscar__recientes').waitFor({ state: 'hidden' });
+  registro('historial: «playa» a un toque');
+
   // «Recoger» (CS-N1): propuesta a la vista y un solo botón. Los títulos falsos no llevan
   // «playa»: con «solo los que llevan el nombre» no hay nada; sin ella, 10 sin repetidos entre
   // los dos sitios y sin los ya enviados.
@@ -528,8 +538,8 @@ try {
   const comprobaciones = await pagina.locator('#ajustes-diagnostico .cs-diagnostico li').count();
   if (comprobaciones < 5) throw new Error(`Diagnóstico: ${comprobaciones} comprobaciones`);
   await pagina.locator('#ajustes-acerca .cs-salientes li').first().waitFor();
-  if ((await pagina.locator('#ajustes-acerca .cs-salientes li').count()) !== 6) {
-    throw new Error('«Qué sale de este equipo» no lista las 6 conexiones');
+  if ((await pagina.locator('#ajustes-acerca .cs-salientes li').count()) !== 7) {
+    throw new Error('«Qué sale de este equipo» no lista las 7 conexiones');
   }
   await pagina.locator('#ajustes-copia a[href="/api/crew/v1/copia"]').waitFor();
   if (await pagina.locator('#boton-apps.cs-con-aviso').count()) {
