@@ -10,6 +10,12 @@ si lo hay, pide confirmación; luego le pide que se apague (POST /api/apagar: te
 curso y cancela el resto) y espera hasta 75 s a que el servidor se cierre. Solo entonces fuerza la
 salida. Si la app se apaga por su cuenta (el instalador también llama a /api/apagar), el icono se
 quita solo.
+
+Con el lanzador común de Clipgeist instalado al lado (Windows: `Clipgeist\\clipgeist\\clipgeist.exe`;
+Linux: `clipgeist/suite/programa/clipgeist`), este lanzador le cede el control en vez de poner un
+segundo icono y arrancar la app en el puerto de fábrica: abre la app en el puerto que le dio la suite
+(arrancando la suite si no lo está). Cuando es la suite quien arranca la app (`CLIPGEIST_SUITE=1`),
+nunca pone icono. `CLIPGEIST_SUITE=0` o `--sola` la arrancan por su cuenta, como siempre.
 """
 
 from __future__ import annotations
@@ -94,6 +100,75 @@ def conectar_hermanas(datos: Path) -> list[str]:
         puerto = A.PUERTO if app == A.APP else PUERTOS[app]
         os.environ.setdefault(f"CLIPGEIST_{app.upper()}_URL", f"http://127.0.0.1:{puerto}")
     return hermanas
+
+
+ESPERA_SUITE = 90.0  # s que se espera a que la suite arranque la app antes de rendirse
+
+
+def lanzador_suite() -> Path | None:
+    """El lanzador común de Clipgeist instalado junto a esta app, o None. Nunca con CLIPGEIST_SUITE
+    puesta: «1» = nos ha arrancado la suite (cederle el control sería un bucle); «0» = forzar sola."""
+    if os.environ.get("CLIPGEIST_SUITE", "").strip():
+        return None
+    exe = ".exe" if ES_WIN else ""
+    for p in (PROGRAMA.parent / "clipgeist" / ("clipgeist" + exe),  # Windows: Clipgeist\clipgeist\
+              PROGRAMA.parent.parent / "suite" / "programa" / "clipgeist"):  # Linux: clipgeist/suite/programa/
+        if p.is_file():
+            return p
+    return None
+
+
+def puerto_en_suite(datos: Path) -> int | None:
+    """El puerto que la suite le dio a esta app (suite/puertos.json, junto a nuestra carpeta de datos)."""
+    try:
+        puerto = json.loads((datos.parent / "suite" / "puertos.json").read_text(encoding="utf-8")).get(A.APP)
+        return int(puerto) if puerto else None
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+
+
+def entorno_para_suite() -> dict[str, str]:
+    """El entorno sin lo que es solo de esta app; y, si este programa es de PyInstaller, con las
+    variables de bibliotecas como estaban antes (el hijo es otro ejecutable congelado)."""
+    env = {k: v for k, v in os.environ.items() if k not in ("CLIPGEIST_PUERTO", "CLIPGEIST_DATOS", "_MEIPASS2")}
+    if CONGELADO:
+        for k in ("LD_LIBRARY_PATH", "TCL_LIBRARY", "TK_LIBRARY"):
+            if env.get(k + "_ORIG") is not None:
+                env[k] = env[k + "_ORIG"]
+            else:
+                env.pop(k, None)
+    return env
+
+
+def ceder_a_suite(suite: Path, datos: Path, sin_bandeja: bool, no_abrir: bool) -> int:
+    """La suite manda: como servicio (--sin-bandeja) se convierte en ella (si ya está en marcha, sale
+    en seguida con 0); con escritorio, la arranca si hace falta y abre ESTA app en su puerto."""
+    orden = [str(suite)]
+    if sin_bandeja:
+        orden.append("--sin-bandeja")
+        if ES_WIN:
+            return subprocess.run(orden, env=entorno_para_suite(), check=False).returncode
+        os.execve(orden[0], orden, entorno_para_suite())  # systemd sigue al proceso de la suite
+    puerto = puerto_en_suite(datos)
+    if puerto and escuchando(puerto):  # ya está: solo mostrarla
+        if not no_abrir:
+            webbrowser.open(f"http://127.0.0.1:{puerto}/")
+        return 0
+    print(f"{A.NOMBRE}: arranca el lanzador común de Clipgeist ({suite})", flush=True)
+    opciones = {"creationflags": 0x00000008 | 0x00000200} if ES_WIN else {"start_new_session": True}  # DETACHED, NEW_GROUP
+    subprocess.Popen([*orden, "--no-abrir"], env=entorno_para_suite(), cwd=str(suite.parent),  # noqa: S603
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **opciones)
+    if no_abrir:
+        return 0
+    limite = time.monotonic() + ESPERA_SUITE
+    while time.monotonic() < limite:
+        puerto = puerto_en_suite(datos)
+        if puerto and escuchando(puerto) and llamar(puerto, "GET", "/api/salud", 2.0) is not None:
+            webbrowser.open(f"http://127.0.0.1:{puerto}/")
+            return 0
+        time.sleep(0.5)
+    print(f"{A.NOMBRE}: la suite no arrancó la app a tiempo; mira el registro de Clipgeist.", flush=True)
+    return 1
 
 
 ESPERA_APAGADO = 75.0  # s que se espera a que el servidor se cierre solo antes de forzar
@@ -263,10 +338,17 @@ def main() -> None:
                    help="0.0.0.0 para usarla desde otros equipos de la red")
     p.add_argument("--puerto", type=int, default=int(os.environ.get("CLIPGEIST_PUERTO", A.PUERTO)))
     p.add_argument("--no-abrir", action="store_true", help="no abrir el navegador al arrancar")
+    p.add_argument("--sola", action="store_true",
+                   help="arrancar por su cuenta aunque esté instalado el lanzador común de Clipgeist")
     args = p.parse_args()
+    if os.environ.get("CLIPGEIST_SUITE", "").strip() == "1":
+        args.sin_bandeja = True  # la arranca la suite: el icono es el suyo, nunca un segundo
 
     datos.mkdir(parents=True, exist_ok=True)
     a_registro(datos)
+    suite = None if args.sola else lanzador_suite()
+    if suite is not None:
+        sys.exit(ceder_a_suite(suite, datos, args.sin_bandeja, args.no_abrir))
     os.chdir(datos)
     os.environ["CLIPGEIST_LANZADOR"] = "1"  # la app sabe que es la de escritorio (asistente: acceso desde la red)
     # ffmpeg/ffprobe incluidos: junto al programa (instalador de una app) o en «comun», compartido
