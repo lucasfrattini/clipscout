@@ -1584,12 +1584,17 @@ export function createBuscarView(root) {
     };
     // La conexión se cortó (otra app, la pantalla se apagó, la red): la búsqueda sigue en el
     // servidor, así que se vuelve a mirar desde el último evento visto.
+    // Antes de reintentar se pregunta al servidor: si la sesión caducó, el 401 lleva a la pantalla
+    // de acceso (CS-13) en vez de reintentar cada 3 s para siempre.
     fuente.onerror = () => {
       if (!fuente || trabajo !== id) return;
       fuente.close();
       fuente = null;
       clearTimeout(reintento);
-      reintento = setTimeout(() => {
+      reintento = setTimeout(async () => {
+        if (trabajo !== id) return;
+        const r = await fetch('/api/buscar/actual').catch(() => null);
+        if (r?.status === 401) return;
         if (trabajo === id) conectar(id, recibidos);
       }, 3000);
     };

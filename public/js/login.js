@@ -68,7 +68,15 @@ $('acceso').addEventListener('submit', async ev => {
       body: JSON.stringify(cuerpo),
     });
     if (r.ok) {
-      location.replace('/');
+      // CS-13: si se llegó aquí porque caducó la sesión, se vuelve a la pantalla de antes.
+      let volver = '';
+      try {
+        volver = sessionStorage.getItem('clipscout:volver') || '';
+        sessionStorage.removeItem('clipscout:volver');
+      } catch {
+        volver = '';
+      }
+      location.replace(`/${/^#\/[\w/-]*$/.test(volver) ? volver : ''}`);
       return;
     }
     $('error').textContent = (await r.json()).detail || T.fallo;

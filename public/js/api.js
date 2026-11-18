@@ -24,16 +24,46 @@ if (typeof window !== 'undefined' && window.fetch && !window.fetch.clipgeist) {
       return false;
     }
   };
-  const conCabecera = (entrada, opciones = {}) => {
+  const conCabecera = async (entrada, opciones = {}) => {
     if (!propia(entrada)) return original(entrada, opciones);
     const cabeceras = new Headers(
       opciones.headers || (entrada instanceof Request ? entrada.headers : {})
     );
     if (!cabeceras.has('X-Clipgeist')) cabeceras.set('X-Clipgeist', '1');
-    return original(entrada, { ...opciones, headers: cabeceras });
+    const respuesta = await original(entrada, { ...opciones, headers: cabeceras });
+    if (respuesta.status === 401) revisarSesion(entrada);
+    return respuesta;
   };
   conCabecera.clipgeist = true;
   window.fetch = conCabecera;
+}
+
+/**
+ * CS-13: la sesión caducó (o se cerró desde otro sitio). Antes salía un error genérico y la
+ * conexión en directo reintentaba cada 3 s para siempre; ahora cualquier 401 de la propia API
+ * (salvo las de /api/auth/, que son las de entrar) lleva a la pantalla de acceso, y al entrar se
+ * vuelve a la misma pantalla.
+ */
+let yendoAlLogin = false;
+export function sesionCaducada() {
+  if (yendoAlLogin || typeof window === 'undefined') return;
+  yendoAlLogin = true;
+  try {
+    sessionStorage.setItem('clipscout:volver', location.hash || '');
+  } catch {
+    // sin almacenamiento: se vuelve al inicio
+  }
+  location.replace('/login');
+}
+function revisarSesion(entrada) {
+  try {
+    const url = new URL(entrada instanceof Request ? entrada.url : String(entrada), location.href);
+    if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/')) {
+      sesionCaducada();
+    }
+  } catch {
+    // dirección rara: nada que hacer
+  }
 }
 
 class ApiError extends Error {
