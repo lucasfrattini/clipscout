@@ -163,3 +163,49 @@ test('CS-08: los repetidos se agrupan mientras dura la búsqueda, no solo al fin
   assert.equal(final.parcial, undefined);
   assert.equal(final.grupos[0].miembros.length, 3);
 });
+
+test('CS-07: una búsqueda en cola sigue en el mismo sitio aunque se reordenen o borren otros', async () => {
+  const { clavesDeIds, listarSitios } = require('../src/services/busqueda');
+  const { entradaPendiente } = require('../src/services/busquedasFondo');
+  fs.writeFileSync(
+    process.env.PROFILES_PATH,
+    JSON.stringify({
+      profiles: ['uno', 'dos', 'tres'].map(n => ({
+        name: n,
+        config: { searchUrl: `${base}/${n}/buscar?q={q}`, linkPattern: '/v/' },
+      })),
+    })
+  );
+  await listarSitios();
+  const claves = clavesDeIds([2]);
+  assert.deepEqual(claves, [`127.0.0.1:${sitio.address().port}/tres/buscar`]);
+  // Se borra «uno»: «tres» pasa a la posición 1, pero la clave sigue llevando a «tres».
+  fs.writeFileSync(
+    process.env.PROFILES_PATH,
+    JSON.stringify({
+      profiles: ['dos', 'tres'].map(n => ({
+        name: n,
+        config: { searchUrl: `${base}/${n}/buscar?q={q}`, linkPattern: '/v/' },
+      })),
+    })
+  );
+  const eventos = [];
+  await buscarEnTodos({ q: 'x', paginas: 1, sitios: [2], claves }, { emit: e => eventos.push(e) });
+  assert.deepEqual(
+    eventos.find(e => e.type === 'sitios').sitios.map(s => s.nombre),
+    ['tres']
+  );
+  // Al retomar tras un reinicio, lo que faltaba se pide por clave.
+  const pendiente = entradaPendiente({ q: 'x' }, [
+    {
+      type: 'sitios',
+      sitios: [
+        { id: 0, clave: 'a.example/s' },
+        { id: 1, clave: 'b.example/s' },
+      ],
+    },
+    { type: 'sitio_fin', sitio: 0 },
+  ]);
+  assert.deepEqual(pendiente.claves, ['b.example/s']);
+  assert.deepEqual(pendiente.sitios, [1]);
+});

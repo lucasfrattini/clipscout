@@ -7,7 +7,7 @@ const path = require('node:path');
 const config = require('../config');
 const logger = require('../lib/logger');
 const { escribirTexto, escribirTextoSync } = require('../lib/ficheroJson');
-const { buscarEnTodos, buscarEnlace } = require('./busqueda');
+const { buscarEnTodos, buscarEnlace, clavesDeIds } = require('./busqueda');
 const filtrosGlobales = require('./filtrosGlobales');
 const duraciones = require('./duraciones');
 const { idiomaProbable, bloqueadaPor, relevancia } = require('../lib/filtros');
@@ -200,15 +200,27 @@ function entradaPendiente(entrada, eventos) {
   if (anunciados.length === 0) return entrada;
   const hechos = new Set(eventos.filter(e => e.type === 'sitio_fin').map(e => e.sitio));
   const faltan = [...new Set(anunciados)].filter(id => !hechos.has(id));
+  // CS-07: la clave estable de cada sitio anunciado (desde 2.22): con ella se retoman los mismos
+  // sitios aunque entretanto se hayan borrado o reordenado otros.
+  const claveDe = new Map(
+    eventos
+      .filter(e => e.type === 'sitios')
+      .flatMap(e => e.sitios)
+      .filter(x => x.clave)
+      .map(x => [x.id, x.clave])
+  );
   if (entrada.url) {
     const urls = entrada.urls && entrada.urls.length ? entrada.urls : [entrada.url];
     const indices = faltan.filter(id => id <= -2).map(id => -2 - id);
     const pendientesUrls = indices.map(i => urls[i]).filter(Boolean);
     return { ...entrada, url: pendientesUrls[0] || entrada.url, urls: pendientesUrls, indices };
   }
+  const sitios = faltan.filter(id => id >= 0);
+  const claves = sitios.map(id => claveDe.get(id));
   return {
     ...entrada,
-    sitios: faltan.filter(id => id >= 0),
+    sitios,
+    ...(claves.every(Boolean) ? { claves } : {}),
     abierta: Boolean(entrada.abierta) && faltan.includes(-1),
   };
 }
@@ -483,6 +495,13 @@ function iniciar(entrada, { carpeta = '', origen = 'manual' } = {}) {
     throw error;
   }
   const id = crypto.randomUUID();
+  // CS-07: los sitios elegidos por posición se guardan también por su clave estable: si la
+  // búsqueda espera en la cola (o se retoma tras un reinicio) y entretanto se borra o se reordena
+  // un sitio, sigue buscando en los mismos.
+  if (Array.isArray(entrada.sitios) && !entrada.claves) {
+    const claves = clavesDeIds(entrada.sitios);
+    if (claves) entrada = { ...entrada, claves };
+  }
   const b = {
     id,
     entrada,

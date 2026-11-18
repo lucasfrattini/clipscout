@@ -1,7 +1,7 @@
 'use strict';
 
 const config = require('../config');
-const { readProfiles } = require('./profiles');
+const { readProfiles, ultimosPerfiles } = require('./profiles');
 const { crawl, normalizeCrawlParams } = require('./scraper');
 const { hasSearchTemplate, parseExtensionList } = require('../lib/url');
 const { mapLimit } = require('../lib/concurrency');
@@ -35,12 +35,43 @@ function nombreCorto(nombre) {
     .trim();
 }
 
+/**
+ * CS-07: identidad ESTABLE de un sitio. El `id` que ve la API sigue siendo su posición en la lista
+ * (los scripts que mandan `sitios: [0, 2]` siguen igual), pero lo que se guarda con una búsqueda
+ * para lanzarla más tarde (cola) o retomarla tras un reinicio es esta clave: el servidor y la ruta
+ * de su dirección de búsqueda (dos configuraciones del mismo dominio se distinguen), o el nombre. Así, borrar o
+ * reordenar sitios ya no hace que una búsqueda en cola o retomada apunte a otros.
+ */
+function claveSitio(perfil) {
+  try {
+    const u = new URL(String(perfil.config.searchUrl || '').replace(/\{q\}/g, 'q'));
+    return `${u.host.replace(/^www\./, '')}${u.pathname}`;
+  } catch {
+    return `nombre:${perfil.name}`;
+  }
+}
+
+function sitiosDe(perfiles) {
+  return perfiles
+    .map((p, id) => ({ id, nombre: nombreCorto(p.name), clave: claveSitio(p), perfil: p }))
+    .filter(s => hasSearchTemplate(s.perfil.config.searchUrl || ''));
+}
+
 /** Los sitios donde se puede buscar, con su posición en la lista de configuraciones como id. */
 async function listarSitios() {
-  const perfiles = await readProfiles();
-  return perfiles
-    .map((p, id) => ({ id, nombre: nombreCorto(p.name), perfil: p }))
-    .filter(s => hasSearchTemplate(s.perfil.config.searchUrl || ''));
+  return sitiosDe(await readProfiles());
+}
+
+/**
+ * Posiciones → claves estables, al momento (con la última lista leída o guardada). null si no se
+ * puede traducir alguna: entonces se sigue con las posiciones, como antes.
+ */
+function clavesDeIds(ids) {
+  const perfiles = ultimosPerfiles();
+  if (!perfiles || !Array.isArray(ids)) return null;
+  const porId = new Map(sitiosDe(perfiles).map(s => [s.id, s.clave]));
+  const claves = ids.map(id => porId.get(id));
+  return claves.every(Boolean) ? claves : null;
 }
 
 async function sinLosDeFuera(lista) {
@@ -184,7 +215,7 @@ async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems, agrupa
  * @param {object} opciones { signal, emit }
  */
 async function buscarEnTodos(
-  { q, sitios = null, paginas = null, web = false, enlaces = null, abierta = false },
+  { q, sitios = null, claves = null, paginas = null, web = false, enlaces = null, abierta = false },
   { signal, emit = () => {}, itemsPrevios = [], contar = true } = {}
 ) {
   const conWeb = web === true && Boolean(config.busqueda.searxngUrl);
@@ -201,13 +232,17 @@ async function buscarEnTodos(
   const todos = await listarSitios();
   // Sin elegir sitios (búsquedas de otras apps, varias, programadas): fuera los marcados en
   // Ajustes como «no buscar por defecto». Eligiéndolos a mano sí se busca en ellos.
-  const elegidos = sitios ? todos.filter(s => sitios.includes(s.id)) : await sinLosDeFuera(todos);
+  const elegidos = Array.isArray(claves)
+    ? todos.filter(s => claves.includes(s.clave))
+    : sitios
+      ? todos.filter(s => sitios.includes(s.id))
+      : await sinLosDeFuera(todos);
 
   const conAbierta = abierta === true && Boolean(config.busqueda.searxngUrl);
   emit({
     type: 'sitios',
     sitios: [
-      ...elegidos.map(s => ({ id: s.id, nombre: s.nombre })),
+      ...elegidos.map(s => ({ id: s.id, nombre: s.nombre, clave: s.clave })),
       ...(conAbierta ? [{ id: ID_WEB_ABIERTA, nombre: 'web', abierta: true }] : []),
     ],
   });
@@ -486,6 +521,8 @@ module.exports = {
   buscarEnTodos,
   buscarEnlace,
   listarSitios,
+  clavesDeIds,
+  claveSitio,
   nombreCorto,
   ID_WEB_ABIERTA,
   ID_ENLACE,

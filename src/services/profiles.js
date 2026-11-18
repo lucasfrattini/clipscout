@@ -66,8 +66,21 @@ function sanitizeProfile(raw) {
   return note ? { name, note, config: clean } : { name, config: clean };
 }
 
+/**
+ * La última lista leída o guardada, para quien necesita traducir al momento (sin esperar al disco)
+ * la posición de un sitio a su identidad estable (CS-07, ver services/busqueda.js).
+ */
+let instantanea = null;
+const ultimosPerfiles = () => instantanea;
+
 /** Lee los perfiles del disco. Fichero ausente ⇒ lista vacía. */
 async function readProfiles() {
+  const lista = await leerPerfiles();
+  instantanea = lista;
+  return lista;
+}
+
+async function leerPerfiles() {
   let raw;
   try {
     raw = await fs.readFile(config.profiles.path, 'utf8');
@@ -132,7 +145,8 @@ async function writeProfiles(rawProfiles) {
     throw new AppError('No se pudieron guardar los perfiles', 500, 'PROFILES_WRITE_FAILED');
   }
 
+  instantanea = profiles;
   return profiles;
 }
 
-module.exports = { readProfiles, writeProfiles, sanitizeProfile, CONFIG_KEYS };
+module.exports = { readProfiles, writeProfiles, sanitizeProfile, ultimosPerfiles, CONFIG_KEYS };
