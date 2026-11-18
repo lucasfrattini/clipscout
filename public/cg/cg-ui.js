@@ -14,7 +14,7 @@
   'use strict';
   if (window.cg && window.cg.version) return; // cargado dos veces: nada
 
-  const VERSION = '1.3.0';
+  const VERSION = '1.4.0';
   const raiz = document.documentElement;
 
   // ── Textos ────────────────────────────────────────────────────────────
@@ -25,6 +25,7 @@
       aceptar: 'Aceptar',
       deshacer: 'Deshacer',
       mas: 'Más',
+      novedad: 'hay novedades',
       filtros: 'Filtros',
       filtrosActivos: n => (n ? `Filtros (${n} activos)` : 'Filtros'),
       filtrosRapidos: 'Filtros rápidos',
@@ -43,6 +44,7 @@
       aceptar: 'OK',
       deshacer: 'Undo',
       mas: 'More',
+      novedad: 'something new',
       filtros: 'Filters',
       filtrosActivos: n => (n ? `Filters (${n} active)` : 'Filters'),
       filtrosRapidos: 'Quick filters',
@@ -717,6 +719,20 @@
           caja.replaceChildren(icono(nombre));
           caja.dataset.nombre = nombre;
         }
+        // data-aviso (o data-punto): punto de aviso; su valor (si lo hay, si no «hay novedades») se
+        // lee en voz alta tras el nombre.
+        let punto = n.querySelector(':scope > .cg-punto-texto');
+        const conAviso = n.hasAttribute('data-aviso') || n.hasAttribute('data-punto');
+        const textoPunto = conAviso
+          ? n.getAttribute('data-aviso') || n.getAttribute('data-punto') || t('novedad') : '';
+        n.toggleAttribute('data-cg-aviso', conAviso);
+        if (textoPunto) {
+          if (!punto) {
+            punto = el('span', { class: 'cg-punto-texto' });
+            n.append(punto);
+          }
+          if (punto.textContent !== ', ' + textoPunto) punto.textContent = ', ' + textoPunto;
+        } else if (punto) punto.remove();
         const activo = n.hasAttribute('data-activo');
         if (activo) n.setAttribute('aria-current', 'page');
         else n.removeAttribute('aria-current');
@@ -731,6 +747,7 @@
       const guardados = this._destinos().filter(n => n.hasAttribute('data-mas'));
       if (hayMas) guardados[guardados.length - 1].after(this._mas);
       else this._mas.remove();
+      this._mas.toggleAttribute('data-cg-aviso', guardados.some(n => n.hasAttribute('data-cg-aviso')));
       if (masActivo) this._mas.setAttribute('aria-current', 'page');
       else this._mas.removeAttribute('aria-current');
       this.append(this._plegar);
@@ -740,7 +757,7 @@
         subtree: true,
         characterData: true,
         attributes: true,
-        attributeFilter: ['data-activo', 'data-icono', 'data-mas'],
+        attributeFilter: ['data-activo', 'data-icono', 'data-mas', 'data-punto', 'data-aviso'],
       });
     }
     _abrirMas() {
@@ -754,8 +771,11 @@
         ...this._destinos()
           .filter(n => n.hasAttribute('data-mas'))
           .map(n => {
-            const b = el('button', { type: 'button' }, icono(n.dataset.icono || ''), n.textContent.trim());
+            const nombre = [...n.childNodes].filter(x => !(x.classList && x.classList.contains('cg-punto-texto')))
+              .map(x => x.textContent).join('').trim();
+            const b = el('button', { type: 'button' }, icono(n.dataset.icono || ''), nombre);
             if (n.hasAttribute('data-activo')) b.setAttribute('aria-current', 'page');
+            if (n.hasAttribute('data-cg-aviso')) b.setAttribute('data-cg-aviso', '');
             b.addEventListener('click', () => {
               this._hoja.cerrar();
               n.click(); // el destino de verdad: vale su href o el manejador de la app

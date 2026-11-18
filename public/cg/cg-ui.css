@@ -310,6 +310,31 @@ cg-barra-inferior > * > .cg-barra-icono {
 cg-barra-inferior > :hover { color: var(--cg-texto); }
 cg-barra-inferior > [aria-current='page'] { color: var(--cg-texto); }
 cg-barra-inferior > [aria-current='page'] > .cg-barra-icono { background: var(--cg-acento-suave); color: var(--cg-acento); }
+/* Punto de aviso en un destino (p. ej. «Apps» con una versión nueva): data-aviso (o data-punto);
+   el componente pone data-cg-aviso. También en la barra lateral de escritorio y en la hoja «Más». */
+cg-barra-inferior > * > .cg-barra-icono { position: relative; }
+cg-barra-inferior > [data-cg-aviso] > .cg-barra-icono::after,
+.cg-hoja-lista > [data-cg-aviso]::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: calc(50% - 15px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cg-mal);
+  box-shadow: 0 0 0 2px var(--cg-superficie);
+}
+.cg-hoja-lista > [data-cg-aviso] { position: relative; }
+.cg-hoja-lista > [data-cg-aviso]::after { top: 50%; right: 16px; margin-top: -4px; }
+.cg-punto-texto {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
 cg-barra-inferior > [data-mas] { display: none; }
 cg-barra-inferior > [data-marca],
 cg-barra-inferior > .cg-barra-separador,
