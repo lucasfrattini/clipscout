@@ -218,7 +218,16 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
   async function apuntarFallo(req) {
     const ip = ipDe(req);
     const previo = fallos.get(ip);
-    if (fallos.size >= MAX_IPS) fallos.clear();
+    // CS-S12: lleno, se quitan los caducados y, si no basta, los más antiguos (antes se vaciaba
+    // entero: 10.000 direcciones falsas borraban el bloqueo de la que de verdad ataca).
+    if (fallos.size >= MAX_IPS) {
+      const ahora = Date.now();
+      for (const [k, v] of fallos) if (v.hasta <= ahora) fallos.delete(k);
+      for (const k of fallos.keys()) {
+        if (fallos.size < MAX_IPS) break;
+        if (k !== ip) fallos.delete(k);
+      }
+    }
     const n = previo && previo.hasta > Date.now() ? previo.n + 1 : 1;
     fallos.set(ip, { n, hasta: Date.now() + BLOQUEO_MS });
     await esperar(retrasoFalloMs);

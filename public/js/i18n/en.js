@@ -668,10 +668,10 @@ export const en = {
     'The desktop version or the Docker one both work (for example the jlesage/jdownloader-2 image). Make it download into a folder clipkeeper can also see, if you use it.',
   'aj.jd.guia.api.titulo': 'Turn on its local API.',
   'aj.jd.guia.api':
-    'In JDownloader: Settings → Advanced Settings, search for “deprecatedapi”. Enable “RemoteAPI: Deprecated API enabled” and disable “Deprecated API localhost only”. The default port is 3128. Restart JDownloader.',
+    'In JDownloader: Settings → Advanced Settings, search for “deprecatedapi” and enable “RemoteAPI: Deprecated API enabled”. If JDownloader runs on the same computer as clipscout, keep “Deprecated API localhost only” on and use http://127.0.0.1:3128; only if it runs elsewhere, turn it off (and read “Security”). The default port is 3128. Restart JDownloader.',
   'aj.jd.guia.docker.titulo': 'With Docker, publish the port.',
   'aj.jd.guia.docker':
-    'Add 3128 to the container ports (ports: "3128:3128"). Without it the API exists but nothing can reach it.',
+    'Publish 3128 only towards the clipscout computer: with both on the same machine, ports: "127.0.0.1:3128:3128"; with clipscout in Docker too, better the same Docker network and no published port. Without it the API exists but nothing can reach it.',
   'aj.jd.guia.conectar.titulo': 'Connect it here.',
   'aj.jd.guia.conectar':
     'Type http://<jdownloader-ip>:3128 above and press Test: it should answer with its version and download folder. Then Save.',
@@ -683,7 +683,7 @@ export const en = {
     '“Sent to JDownloader” follows each package. If a link fails, clipscout retries it once with the direct file (can be turned on per site). When a package finishes it tells clipkeeper so it is catalogued right away.',
   'aj.jd.guia.seguridad.titulo': 'Security.',
   'aj.jd.guia.seguridad':
-    'That API has no password: anyone who reaches the port can add downloads. Keep it on your local network only; never expose it to the internet.',
+    'That API has no password: whoever reaches the port can add downloads and change any JDownloader setting. Let only the clipscout computer reach it (127.0.0.1, the Docker network or a firewall rule for its address); never open it to the whole network or the internet.',
   'aj.jd.guia.red.titulo': 'Which connection it uses.',
   'aj.jd.guia.red':
     'Downloads go out through JDownloader’s connection, not clipscout’s. If you want them to go through a VPN, put JDownloader behind it; clipscout does not decide that.',

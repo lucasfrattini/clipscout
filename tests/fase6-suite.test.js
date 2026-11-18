@@ -80,3 +80,12 @@ test('acceso desde la red: solo en escritorio, con usuario, y también en la sui
   assert.equal(info.escritorio, true);
   assert.equal(info.red, false);
 });
+
+test('CS-S12: aislamiento entre orígenes (COOP en todo; CORP en la API salvo miniaturas)', async () => {
+  const pagina = await fetch(`${base}/login`);
+  assert.equal(pagina.headers.get('cross-origin-opener-policy'), 'same-origin');
+  const api = await fetch(`${base}/api/salud`);
+  assert.equal(api.headers.get('cross-origin-resource-policy'), 'same-origin');
+  const mini = await fetch(`${base}/api/thumbnail?url=x`);
+  assert.equal(mini.headers.get('cross-origin-resource-policy'), null);
+});

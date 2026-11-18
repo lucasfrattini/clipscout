@@ -64,6 +64,9 @@ function createApp() {
     const e = credenciales.estado();
     res.json({
       ...e,
+      // CS-S12: el nombre de usuario solo a quien ya ha entrado (o desde el propio equipo); sin
+      // sesión, desde otro, ayudaría a adivinar la contraseña.
+      usuario: req.sesion || acceso.esLocal(req) ? e.usuario : '',
       primerArranque: !e.protegido,
       pideCodigo: !e.protegido && !acceso.esLocal(req),
       // Asistente de primer arranque: solo en una instalación nueva (sin usuario ni datos).
@@ -149,6 +152,17 @@ function createApp() {
     res.set('X-Content-Type-Options', 'nosniff');
     res.set('X-Frame-Options', 'DENY');
     res.set('Referrer-Policy', 'no-referrer');
+    // CS-S12: aislamiento entre orígenes. Otra ventana abierta desde una web no puede tocar esta;
+    // las respuestas de la API no se pueden incrustar desde otra web (las miniaturas, el vídeo y
+    // los iconos sí: los usan las otras apps de Clipgeist).
+    res.set('Cross-Origin-Opener-Policy', 'same-origin');
+    if (
+      req.path.startsWith('/api/') &&
+      !req.path.startsWith('/api/thumbnail') &&
+      !req.path.startsWith('/api/media')
+    ) {
+      res.set('Cross-Origin-Resource-Policy', 'same-origin');
+    }
     res.set(
       'Content-Security-Policy',
       [
@@ -174,7 +188,10 @@ function createApp() {
    * necesita decenas. Cuando compartían límite, las primeras 30 cargaban y
    * el resto aparecía como imagen rota.
    */
-  app.use('/api', createRateLimiter(config.thumbnails.rateLimit), thumbnailRoutes);
+  // CS-S12: el límite de miniaturas, solo en /api/thumbnail (montado en /api contaba también las
+  // demás peticiones de la API).
+  app.use('/api/thumbnail', createRateLimiter(config.thumbnails.rateLimit));
+  app.use('/api', thumbnailRoutes);
   // Reproducir: cada salto del reproductor es una petición (Range), con su propio límite.
   app.use('/api/media', createRateLimiter(config.media.rateLimit));
   app.use('/api', mediaRoutes);

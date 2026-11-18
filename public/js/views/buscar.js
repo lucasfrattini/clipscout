@@ -1789,6 +1789,9 @@ export function createBuscarView(root) {
   }
 
   /* ── Pintar ─────────────────────────────────────────────────────── */
+  // CS-S12: los enlaces vienen de páginas de terceros: solo http(s) es navegable (como safeLink);
+  // cualquier otro esquema («javascript:»…) no lleva a ningún sitio.
+  const hrefSeguro = u => (/^https?:\/\//i.test(String(u || '')) ? u : '#');
   const nombreSitio = id =>
     id === ID_WEB
       ? t('buscar.webAbierta')
@@ -1945,7 +1948,7 @@ export function createBuscarView(root) {
         el('a', {
           className: 'buscar__imagen',
           attrs: {
-            href: enlace,
+            href: hrefSeguro(enlace),
             target: '_blank',
             rel: 'noopener noreferrer',
             tabindex: '-1',
@@ -1959,7 +1962,7 @@ export function createBuscarView(root) {
         el('a', {
           className: 'buscar__texto',
           attrs: {
-            href: enlace,
+            href: hrefSeguro(enlace),
             target: '_blank',
             rel: 'noopener noreferrer',
             title: r.title || enlace,
@@ -1998,7 +2001,7 @@ export function createBuscarView(root) {
         {
           texto: t('buscar.abrir'),
           detalle: dominioDe(enlace),
-          fn: () => window.open(enlace, '_blank', 'noopener,noreferrer'),
+          fn: () => window.open(hrefSeguro(enlace), '_blank', 'noopener,noreferrer'),
         },
         jd.configurado() ? { texto: t('buscar.jd'), fn: () => descargar([enlace]) } : null,
         esCabezaAlbum

@@ -74,8 +74,10 @@ test('un navegador va a la pantalla de acceso; al entrar, la cookie abre la app'
   }
   const r = await fetch(`${base}/api/ajustes/general`, { headers: { Cookie: cookie } });
   assert.equal(r.status, 200);
+  // Otro último carácter (si ya era «0», con «0» sería la misma: fallaba 1 de cada 64 veces).
+  const otro = cookie.endsWith('0') ? '1' : '0';
   const falsa = await fetch(`${base}/api/ajustes/general`, {
-    headers: { Cookie: `${cookie.slice(0, -1)}0` },
+    headers: { Cookie: `${cookie.slice(0, -1)}${otro}` },
   });
   assert.equal(falsa.status, 401);
 });

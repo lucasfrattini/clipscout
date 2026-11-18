@@ -673,10 +673,10 @@ export const es = {
     'Sirve la versión de escritorio o la de Docker (por ejemplo la imagen jlesage/jdownloader-2). Haz que descargue en una carpeta que clipkeeper también vea, si lo usas.',
   'aj.jd.guia.api.titulo': 'Activa su API local.',
   'aj.jd.guia.api':
-    'En JDownloader: Ajustes → Ajustes avanzados, busca «deprecatedapi». Activa «RemoteAPI: Deprecated API enabled» y desactiva «Deprecated API localhost only». El puerto por defecto es el 3128. Reinicia JDownloader.',
+    'En JDownloader: Ajustes → Ajustes avanzados, busca «deprecatedapi» y activa «RemoteAPI: Deprecated API enabled». Si JDownloader está en el mismo equipo que clipscout, deja «Deprecated API localhost only» activado y usa http://127.0.0.1:3128; solo si está en otro equipo, desactívalo (y mira «Seguridad»). El puerto por defecto es el 3128. Reinicia JDownloader.',
   'aj.jd.guia.docker.titulo': 'En Docker, publica el puerto.',
   'aj.jd.guia.docker':
-    'Añade el 3128 a los puertos del contenedor (ports: "3128:3128"). Sin esto la API existe pero nadie puede llegar a ella.',
+    'Publica el 3128 solo hacia el equipo de clipscout: con los dos en el mismo equipo, ports: "127.0.0.1:3128:3128"; con clipscout también en Docker, mejor en la misma red de Docker y sin publicarlo. Sin esto la API existe pero nadie puede llegar a ella.',
   'aj.jd.guia.conectar.titulo': 'Conéctalo aquí.',
   'aj.jd.guia.conectar':
     'Escribe arriba http://<ip-de-jdownloader>:3128 y pulsa Probar: debe responder con su versión y su carpeta de descargas. Luego Guardar.',
@@ -688,7 +688,7 @@ export const es = {
     '«Lo mandado a JDownloader» sigue cada paquete. Si un enlace falla, clipscout lo reintenta una vez con el fichero directo (se puede activar por sitio). Al terminar un paquete avisa a clipkeeper para que lo catalogue enseguida.',
   'aj.jd.guia.seguridad.titulo': 'Seguridad.',
   'aj.jd.guia.seguridad':
-    'Esa API no tiene contraseña: cualquiera que llegue al puerto puede añadir descargas. Déjala solo en tu red local; nunca la abras a internet.',
+    'Esa API no tiene contraseña: quien llegue al puerto puede añadir descargas y cambiar cualquier ajuste de JDownloader. Que solo llegue el equipo de clipscout (127.0.0.1, la red de Docker o una regla del cortafuegos para su dirección); nunca la abras a toda la red ni a internet.',
   'aj.jd.guia.red.titulo': 'Por dónde sale.',
   'aj.jd.guia.red':
     'Las descargas salen por la conexión de JDownloader, no por la de clipscout. Si quieres que vayan por una VPN, pon a JDownloader detrás de ella; clipscout no lo decide.',
