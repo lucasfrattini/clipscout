@@ -1,4 +1,4 @@
-Componentes de terceros de clipscout 2.20.0
+Componentes de terceros de clipscout 2.21.0
 
 clipscout se distribuye con licencia AGPL-3.0-or-later
 (fichero LICENSE). Lo que sigue son los componentes de otros autores que incluye, con su

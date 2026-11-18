@@ -5,7 +5,6 @@ import { createJdEnvio } from '../components/jdEnvio.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
 import { palabras, contieneAlguna, textoDe } from '../filtros.js';
 import { plegarAlbumes, claveAlbum } from '../albumes.js';
-import { botonLogo } from '../cabecera.js';
 import { abrirHoja, menuAcciones } from '../hojas.js';
 import { paraDescargarTodo, fechaCorta } from '../unaMano.js';
 
@@ -33,10 +32,12 @@ function tipoDeEntrada(texto) {
  * vez (las configuraciones cuya dirección lleva {q}); los resultados llegan mezclados y arriba hay
  * una marca por sitio, con su recuento y su estado, para ver solo los de uno.
  *
- * Fase 3 (cómoda con una mano): la caja va en la cabecera; las opciones de la búsqueda y los
- * filtros de la lista, en hojas inferiores; la lista es compacta (unas ocho filas por pantalla),
- * con selección múltiple (pulsación larga o la casilla) y las acciones abajo. «Ya lo tengo» y lo
- * ya enviado se ocultan por defecto, con su contador, y nunca entran en «Descargar todo».
+ * Fase 3 (cómoda con una mano): la caja va en la cabecera, con UN solo botón «Filtros (N)» al
+ * lado que abre una hoja con dos partes, «Qué buscar» (sitios, páginas, web, varias, vista) y
+ * «Filtrar resultados». Los resultados salen grandes (dos por fila en el móvil) o en lista
+ * compacta, a elegir y recordado en el dispositivo; con selección múltiple (pulsación larga o la
+ * casilla) y las acciones abajo. «Ya lo tengo» y lo ya enviado se ocultan por defecto, con su
+ * contador, y nunca entran en «Descargar todo».
  */
 
 const CLAVE_SITIOS = 'clipscout:buscar-apagados';
@@ -44,6 +45,8 @@ const CLAVE_SITIOS = 'clipscout:buscar-apagados';
 const CLAVE_FUERA = 'clipscout:buscar-fuera-aplicados';
 /** «Usar también el buscador web»: antes se preguntaba en cada búsqueda; ahora se recuerda. */
 const CLAVE_WEB = 'clipscout:buscar-web';
+/** Vista de los resultados: 'grande' (por defecto) o 'compacta'. Por dispositivo. */
+const CLAVE_VISTA = 'clipscout:buscar-vista';
 
 /**
  * Miniaturas que ya fallaron en esta página. Una fila rehecha volvía a pedir la misma imagen rota:
@@ -99,6 +102,7 @@ export function createBuscarView(root) {
   let trabajo = null; // id de la búsqueda en el servidor
   let trabajoVisto = null; // la que se está mirando (sigue tras terminar)
   let enCola = null; // puesto en la cola mientras espera su turno (null = ya arrancó)
+  let parada = false; // la persona la paró (aquí o en otro dispositivo): «Búsqueda parada»
   let recibidos = 0; // eventos ya procesados
   let reintento = null;
   let enBiblioteca = new Map(); // ficha → coincidencia de clipkeeper
@@ -123,16 +127,16 @@ export function createBuscarView(root) {
     attrs: { type: 'submit' },
     children: [icono('buscar')],
   });
-  const botonOpciones = el('button', {
-    className: 'cg-boton cg-boton--icono cg-boton--fantasma buscar__opciones-boton',
+  // EL botón de filtros (solo hay uno): qué buscar y cómo filtrar lo encontrado, en una hoja.
+  const botonFiltros = el('button', {
+    className: 'cg-boton buscar__boton-filtros',
     attrs: { type: 'button', 'aria-haspopup': 'dialog' },
-    children: [icono('filtros')],
-    on: { click: () => abrirOpciones() },
+    on: { click: () => abrirFiltros() },
   });
   const formCaja = el('form', {
     className: 'buscar__fila',
     attrs: { role: 'search' },
-    children: [entrada, boton, botonOpciones],
+    children: [entrada, boton, botonFiltros],
     on: {
       submit: e => {
         e.preventDefault();
@@ -148,11 +152,7 @@ export function createBuscarView(root) {
   texto(titulo, 'buscar.titulo');
   const cabecera = document.createElement('cg-cabecera');
   cabecera.className = 'buscar__cabecera';
-  cabecera.append(
-    titulo,
-    formCaja,
-    el('div', { className: 'cs-cabecera-acciones', children: [botonLogo()] })
-  );
+  cabecera.append(titulo, formCaja);
 
   /* ── Opciones de la búsqueda (hoja): sitios, páginas, web, varias ─ */
   const CLAVE_PAGINAS = 'clipscout:buscar-paginas';
@@ -174,11 +174,17 @@ export function createBuscarView(root) {
   const CLAVE_ABIERTA = 'clipscout:buscar-abierta';
   const abierta = el('input', { attrs: { type: 'checkbox' } });
   abierta.checked = leer(CLAVE_ABIERTA, '0') === '1';
-  abierta.addEventListener('change', () => guardar(CLAVE_ABIERTA, abierta.checked ? '1' : '0'));
+  abierta.addEventListener('change', () => {
+    guardar(CLAVE_ABIERTA, abierta.checked ? '1' : '0');
+    pintarBotonFiltros();
+  });
   // «Usar también el buscador web» (resultados 🌐): antes un diálogo en cada búsqueda.
   const conWeb = el('input', { attrs: { type: 'checkbox' } });
   conWeb.checked = leer(CLAVE_WEB, '0') === '1';
-  conWeb.addEventListener('change', () => guardar(CLAVE_WEB, conWeb.checked ? '1' : '0'));
+  conWeb.addEventListener('change', () => {
+    guardar(CLAVE_WEB, conWeb.checked ? '1' : '0');
+    pintarBotonFiltros();
+  });
 
   let hayWeb = false; // ¿hay SearXNG configurado?
   const casilla = (input, clave, detalleClave) =>
@@ -193,50 +199,70 @@ export function createBuscarView(root) {
     });
 
   const chipsSitios = el('div', { className: 'buscar__sitios' });
-  function abrirOpciones() {
+
+  /** Vista de los resultados: grandes (dos por fila en el móvil) o lista compacta. */
+  const compacta = el('input', { attrs: { type: 'checkbox' } });
+  compacta.checked = leer(CLAVE_VISTA, 'grande') === 'compacta';
+  compacta.addEventListener('change', () => {
+    guardar(CLAVE_VISTA, compacta.checked ? 'compacta' : 'grande');
+    aplicarVista();
+  });
+
+  /** «Qué buscar», la primera parte de la hoja de filtros (lo que antes era «Opciones»). */
+  function parteQueBuscar(hoja) {
     pintarSitios();
-    const hoja = abrirHoja({
-      titulo: t('buscar.opciones'),
-      contenido: [
-        el('h3', { className: 'cs-hoja-titulo', text: t('buscar.sitios.titulo') }),
-        chipsSitios,
-        el('p', { className: 'cs-nota', text: textoAyudaSitios() }),
-        el('label', {
-          className: 'field',
-          children: [el('span', { className: 'field__label', text: t('buscar.paginas') }), paginas],
-        }),
-        hayWeb ? casilla(conWeb, 'buscar.web.siempre', 'buscar.webSi.detalle') : null,
-        hayWeb ? casilla(abierta, 'buscar.webTodo', 'buscar.webTodo.detalle') : null,
-        el('div', {
-          className: 'cs-fila-botones',
-          children: [
-            el('button', {
-              className: 'cg-boton',
-              attrs: { type: 'button' },
-              text: t('buscar.agregarSitios'),
-              on: {
-                click: () => {
-                  hoja.cerrar();
-                  abrirAlta({ termino: entrada.value.trim() });
-                },
+    return [
+      el('h3', { className: 'cs-hoja-titulo', text: t('buscar.parte.que') }),
+      el('p', { className: 'field__label', text: t('buscar.sitios.titulo') }),
+      chipsSitios,
+      el('p', { className: 'cs-nota', text: textoAyudaSitios() }),
+      el('label', {
+        className: 'field',
+        children: [el('span', { className: 'field__label', text: t('buscar.paginas') }), paginas],
+      }),
+      hayWeb ? casilla(conWeb, 'buscar.web.siempre', 'buscar.webSi.detalle') : null,
+      hayWeb ? casilla(abierta, 'buscar.webTodo', 'buscar.webTodo.detalle') : null,
+      casilla(compacta, 'buscar.vista.compacta', 'buscar.vista.compacta.detalle'),
+      el('div', {
+        className: 'cs-fila-botones',
+        children: [
+          el('button', {
+            className: 'cg-boton',
+            attrs: { type: 'button' },
+            text: t('buscar.agregarSitios'),
+            on: {
+              click: () => {
+                hoja.cerrar();
+                abrirAlta({ termino: entrada.value.trim() });
               },
-            }),
-            el('button', {
-              className: 'cg-boton',
-              attrs: { type: 'button' },
-              text: t('buscar.varias'),
-              on: {
-                click: () => {
-                  hoja.cerrar();
-                  abrirVarias('');
-                },
+            },
+          }),
+          el('button', {
+            className: 'cg-boton',
+            attrs: { type: 'button' },
+            text: t('buscar.varias'),
+            on: {
+              click: () => {
+                hoja.cerrar();
+                abrirVarias('');
               },
-            }),
-          ],
-        }),
-      ].filter(Boolean),
-    });
-    hoja.addEventListener('cg-cerrar', () => pintarInicio(), { once: true });
+            },
+          }),
+        ],
+      }),
+    ].filter(Boolean);
+  }
+
+  /** Lo que difiere de lo normal en «Qué buscar»: cuenta en «Filtros (N)». */
+  function queBuscarActivo() {
+    const a = [];
+    const activos = sitios.filter(x => !apagados.has(x.nombre)).length;
+    if (sitios.length && activos < sitios.length) {
+      a.push(t('buscar.marca.sitios', { n: activos, total: sitios.length }));
+    }
+    if (hayWeb && conWeb.checked) a.push(t('buscar.marca.web'));
+    if (hayWeb && abierta.checked) a.push(t('buscar.marca.webTodo'));
+    return a;
   }
 
   // Alta de sitios con solo su dirección: clipscout la configura y la prueba.
@@ -289,11 +315,6 @@ export function createBuscarView(root) {
 
   /* ── Antes de buscar: qué va a pasar y los primeros pasos ───────── */
   const resumenInicio = el('p', { className: 'buscar__resumen-inicio' });
-  const cambiarOpciones = el('button', {
-    className: 'cg-boton cg-boton--fantasma',
-    attrs: { type: 'button' },
-    on: { click: () => abrirOpciones() },
-  });
   const botonAgregar = el('button', {
     className: 'cg-boton',
     attrs: { type: 'button', id: 'agregar-sitios' },
@@ -310,7 +331,7 @@ export function createBuscarView(root) {
       resumenInicio,
       el('div', {
         className: 'cs-fila-botones',
-        children: [cambiarOpciones, botonAgregar, botonVarias],
+        children: [botonAgregar, botonVarias],
       }),
     ],
   });
@@ -319,18 +340,14 @@ export function createBuscarView(root) {
   const otras = el('a', { className: 'buscar__otras', attrs: { href: '#/actividad', hidden: '' } });
 
   /* ── Resultados ─────────────────────────────────────────────────── */
-  // Una sola fila con la marca de cada sitio: recuento y estado (⏳ buscando, ⚠ error); al final,
-  // «Filtros (N)». Sustituye a la lista de progreso + las pestañas por sitio de antes.
+  // Una sola fila con la marca de cada sitio: recuento y estado (⏳ buscando, ⚠ error). Sustituye
+  // a la lista de progreso + las pestañas por sitio de antes.
   const marcasSitios = document.createElement('cg-chips');
   marcasSitios.setAttribute('unico', '');
   marcasSitios.className = 'buscar__pestanas';
-  // «Filtros (N)» va FUERA de la fila deslizable: siempre a la vista, a la derecha.
-  const botonFiltros = el('button', {
-    className: 'cg-boton buscar__boton-filtros',
-    attrs: { type: 'button', 'aria-haspopup': 'dialog' },
-    on: { click: () => abrirFiltros() },
-  });
-  const pintarBotonFiltros = n => {
+  // «Filtros (N)», junto a la caja: N cuenta lo activo de las dos partes de la hoja.
+  const pintarBotonFiltros = () => {
+    const n = filtrosActivos().length + queBuscarActivo().length;
     const hijos = [icono('filtros'), el('span', { text: t('buscar.filtros') })];
     if (n) hijos.push(el('span', { className: 'buscar__cuenta-filtros', text: n }));
     botonFiltros.replaceChildren(...hijos);
@@ -347,12 +364,56 @@ export function createBuscarView(root) {
   });
   // Filtros activos, cada uno con su ✕ (solo si hay alguno).
   const marcasFiltros = el('div', { className: 'buscar__marcas', attrs: { hidden: '' } });
-  const lineaEstado = el('div', { className: 'buscar__estado', attrs: { 'aria-live': 'polite' } });
+  const lineaEstado = el('div', { className: 'buscar__estado' });
+  const estadoGiro = el('span', { className: 'buscar__girando', attrs: { 'aria-hidden': 'true' } });
+  const estadoTexto = el('span', { attrs: { 'aria-live': 'polite' } });
+  const contadorBoton = alPulsar =>
+    el('button', {
+      className: 'buscar__contador',
+      attrs: { type: 'button', hidden: '' },
+      on: { click: alPulsar },
+    });
+  const cuentaTengo = contadorBoton(() => {
+    filtroTengo.checked = false;
+    ocultarTengo = false;
+    pintarResultados();
+  });
+  const cuentaEnviados = contadorBoton(() => {
+    filtroEnviados.checked = false;
+    ocultarEnviados = false;
+    pintarResultados();
+  });
+  const cuentaDescartados = contadorBoton(() => {
+    descartados.clear();
+    pintarResultados();
+  });
+  const botonParar = el('button', {
+    className: 'cg-boton cg-boton--fantasma buscar__parar',
+    attrs: { type: 'button', hidden: '' },
+    on: { click: () => pararBusqueda() },
+  });
+  lineaEstado.append(
+    el('button', {
+      className: 'buscar__estado-texto',
+      attrs: { type: 'button', 'aria-haspopup': 'dialog' },
+      children: [estadoGiro, estadoTexto],
+      on: { click: () => abrirProgreso() },
+    }),
+    cuentaTengo,
+    cuentaEnviados,
+    cuentaDescartados,
+    botonParar
+  );
   const zonaSugeridos = el('div', { className: 'buscar__sugeridos', attrs: { hidden: '' } });
   const rejilla = el('div', {
     className: 'buscar__rejilla',
     attrs: { role: 'listbox', 'aria-multiselectable': 'true' },
   });
+  /** Grande (por defecto: dos por fila en el móvil) o lista compacta, según la casilla. */
+  function aplicarVista() {
+    rejilla.classList.toggle('buscar__rejilla--grande', !compacta.checked);
+  }
+  aplicarVista();
   const vacio = el('div', { className: 'buscar__vacio cs-vacio' });
   // «Descargar todo» y la carpeta, abajo (al alcance del pulgar), encima de la barra.
   const pieAccion = el('div', { className: 'buscar__pie-accion', attrs: { hidden: '' } });
@@ -360,7 +421,7 @@ export function createBuscarView(root) {
     className: 'buscar__resultados',
     attrs: { hidden: '' },
     children: [
-      el('div', { className: 'buscar__fila-marcas', children: [marcasSitios, botonFiltros] }),
+      el('div', { className: 'buscar__fila-marcas', children: [marcasSitios] }),
       marcasFiltros,
       lineaEstado,
       zonaSugeridos,
@@ -642,10 +703,14 @@ export function createBuscarView(root) {
       text: t('buscar.filtros.limpiar'),
       on: { click: () => limpiarFiltros() },
     });
-    hojaFiltros = abrirHoja({
+    let hoja = null;
+    const cerrarla = { cerrar: () => hoja?.cerrar() };
+    hojaFiltros = hoja = abrirHoja({
       titulo: t('buscar.filtros'),
       clase: 'buscar__hoja-filtros',
       contenido: [
+        ...parteQueBuscar(cerrarla),
+        el('h3', { className: 'cs-hoja-titulo', text: t('buscar.parte.filtrar') }),
         campo('buscar.orden', selectOrden),
         campo('buscar.filtro.contener', filtroContener),
         campo('buscar.filtro.excluir', filtroExcluir),
@@ -686,10 +751,17 @@ export function createBuscarView(root) {
       () => {
         hojaFiltros = null;
         verN = null;
+        pintarInicio();
+        pintarResultados();
       },
       { once: true }
     );
+    pintarVerN();
     pintarResultados();
+  }
+  /** El botón principal del pie: «Ver N» con resultados; «Listo» antes de buscar. */
+  function pintarVerN() {
+    if (verN && zonaResultados.hidden) verN.textContent = t('buscar.filtros.listo');
   }
 
   /** Los filtros activos (lo que difiere de lo de fábrica), para las marcas y el «Filtros (N)». */
@@ -780,6 +852,7 @@ export function createBuscarView(root) {
   }
   function limpiarFiltros() {
     for (const f of filtrosActivos()) f.quitar();
+    pintarInicio();
     pintarResultados();
   }
 
@@ -843,6 +916,7 @@ export function createBuscarView(root) {
   const seleccion = window.cgSeleccion
     ? window.cgSeleccion(rejilla, {
         item: '.buscar__tarjeta',
+        lista: true,
         clave: n => n.dataset.id,
         alCambiar: claves => {
           barraSeleccion.cuenta = claves.length;
@@ -936,6 +1010,7 @@ export function createBuscarView(root) {
     }
     const nota = chipsSitios.parentElement?.querySelector(':scope > .cs-nota');
     if (nota) nota.textContent = textoAyudaSitios();
+    pintarBotonFiltros();
   }
 
   /** Antes de buscar: a cuántos sitios irá y con cuántas páginas; o el primer paso si no hay. */
@@ -943,8 +1018,6 @@ export function createBuscarView(root) {
     const enlace = tipoDeEntrada(entrada.value) === 'enlace';
     boton.setAttribute('aria-label', t(enlace ? 'buscar.boton.enlace' : 'buscar.boton'));
     boton.title = boton.getAttribute('aria-label');
-    botonOpciones.setAttribute('aria-label', t('buscar.opciones'));
-    botonOpciones.title = t('buscar.opciones');
     const activos = sitios.filter(s => !apagados.has(s.nombre));
     if (enlace) resumenInicio.textContent = t('buscar.ayuda.enlace');
     else if (sitios.length === 0) resumenInicio.textContent = t('buscar.sinSitios');
@@ -955,8 +1028,7 @@ export function createBuscarView(root) {
         paginas: paginas.value,
       });
     }
-    cambiarOpciones.textContent = t('buscar.opciones');
-    cambiarOpciones.hidden = sitios.length === 0;
+    pintarBotonFiltros();
     botonAgregar.textContent = t('buscar.agregarSitios');
     botonAgregar.className = sitios.length === 0 ? 'cg-boton cg-boton--principal' : 'cg-boton';
     botonVarias.textContent = t('buscar.varias');
@@ -997,7 +1069,10 @@ export function createBuscarView(root) {
   /* ── Búsqueda ───────────────────────────────────────────────────── */
   /** Para la búsqueda EN EL SERVIDOR (cerrar la página ya no la para). */
   async function pararBusqueda() {
-    const id = trabajo;
+    // Parada AL INSTANTE en la pantalla, aunque el servidor tarde unos segundos en cortar las
+    // peticiones en vuelo (un sitio que no responde puede tardar su tope entero).
+    const id = trabajo || trabajoVisto;
+    parada = true;
     terminar(true);
     if (id) {
       await fetch(`/api/buscar/trabajos/${id}/parar`, { method: 'POST' }).catch(() => {});
@@ -1050,6 +1125,7 @@ export function createBuscarView(root) {
     sugeridos = [];
     pestana = 'todos';
     enCola = null;
+    parada = false;
     filas.clear();
     seleccion?.limpiar();
   }
@@ -1295,8 +1371,10 @@ export function createBuscarView(root) {
             copias.set(u, { representante: g.representante, n: g.miembros.length });
           }
         }
-      } else if (m.type === 'fin') return terminar();
-      else if (m.type === 'error') {
+      } else if (m.type === 'fin') {
+        if (m.parada) parada = true;
+        return terminar(Boolean(m.cancelada));
+      } else if (m.type === 'error') {
         toast(m.message, 'error', 6000);
         return terminar();
       }
@@ -1685,6 +1763,7 @@ export function createBuscarView(root) {
     const quedan = [...estado.values()].filter(
       e => e.fase === 'espera' || e.fase === 'busca'
     ).length;
+    if (parada) return t('buscar.estado.parada');
     return enCola
       ? t('buscar.estado.enCola')
       : quedan
@@ -1711,7 +1790,7 @@ export function createBuscarView(root) {
       marcasSitios.replaceChildren(...datosMarcas.map(d => marcaSitio(...d)));
     }
     const activos = filtrosActivos();
-    pintarBotonFiltros(activos.length);
+    pintarBotonFiltros();
     marcasFiltros.hidden = activos.length === 0;
     marcasFiltros.replaceChildren(
       ...activos.map(f =>
@@ -1741,74 +1820,29 @@ export function createBuscarView(root) {
     ultimaPasada = pasada;
     const { lista } = pasada;
 
-    // Una línea: estado de la búsqueda, cuántos se ven y lo oculto que se puede recuperar.
+    // Una línea: estado de la búsqueda, cuántos se ven y lo oculto que se puede recuperar. Los
+    // botones son SIEMPRE los mismos nodos (solo cambia su texto): rehacerlos con cada tanda (cada
+    // 80 ms mientras llegan resultados) se comía el toque en el iPhone y «Parar» no paraba.
     const quedan = buscando;
-    const piezas = [
-      el('button', {
-        className: 'buscar__estado-texto',
-        attrs: { type: 'button', 'aria-haspopup': 'dialog' },
-        children: [
-          quedan
-            ? el('span', { className: 'buscar__girando', attrs: { 'aria-hidden': 'true' } })
-            : null,
-          el('span', {
-            text:
-              (quedan || enCola ? `${textoEstado()} · ` : '') +
-              tp('buscar.resultados', lista.length) +
-              (pasada.repetidos ? ` · ${tp('buscar.repetidos', pasada.repetidos)}` : '') +
-              (pasada.enAlbumes > 0 ? ` · ${tp('buscar.enAlbumes', pasada.enAlbumes)}` : ''),
-          }),
-        ],
-        on: { click: () => abrirProgreso() },
-      }),
-    ];
-    const contador = (n, clave, alPulsar) =>
-      n
-        ? el('button', {
-            className: 'buscar__contador',
-            attrs: { type: 'button' },
-            text: tp(clave, n),
-            on: { click: alPulsar },
-          })
-        : null;
-    piezas.push(
-      contador(ocultarTengo ? pasada.ocultos.get('tengo') || 0 : 0, 'buscar.tengo.cuenta', () => {
-        filtroTengo.checked = false;
-        ocultarTengo = false;
-        pintarResultados();
-      }),
-      contador(
-        ocultarEnviados ? pasada.ocultos.get('enviado') || 0 : 0,
-        'buscar.enviados.cuenta',
-        () => {
-          filtroEnviados.checked = false;
-          ocultarEnviados = false;
-          pintarResultados();
-        }
-      ),
-      descartados.size
-        ? el('button', {
-            className: 'buscar__contador',
-            attrs: { type: 'button' },
-            text: tp('buscar.descartados', descartados.size),
-            on: {
-              click: () => {
-                descartados.clear();
-                pintarResultados();
-              },
-            },
-          })
-        : null,
-      quedan
-        ? el('button', {
-            className: 'cg-boton cg-boton--fantasma buscar__parar',
-            attrs: { type: 'button' },
-            text: t('buscar.parar'),
-            on: { click: () => pararBusqueda() },
-          })
-        : null
+    estadoGiro.hidden = !quedan;
+    estadoTexto.textContent =
+      (quedan || enCola || parada ? `${textoEstado()} · ` : '') +
+      tp('buscar.resultados', lista.length) +
+      (pasada.repetidos ? ` · ${tp('buscar.repetidos', pasada.repetidos)}` : '') +
+      (pasada.enAlbumes > 0 ? ` · ${tp('buscar.enAlbumes', pasada.enAlbumes)}` : '');
+    const contar = (boton, n, clave) => {
+      boton.hidden = !n;
+      if (n) boton.textContent = tp(clave, n);
+    };
+    contar(cuentaTengo, ocultarTengo ? pasada.ocultos.get('tengo') || 0 : 0, 'buscar.tengo.cuenta');
+    contar(
+      cuentaEnviados,
+      ocultarEnviados ? pasada.ocultos.get('enviado') || 0 : 0,
+      'buscar.enviados.cuenta'
     );
-    lineaEstado.replaceChildren(...piezas.filter(Boolean));
+    contar(cuentaDescartados, descartados.size, 'buscar.descartados');
+    botonParar.hidden = !quedan;
+    botonParar.textContent = t('buscar.parar');
 
     // Lo oculto por los filtros (sin contar «ya lo tengo» y «enviado», que tienen su contador).
     const ocultosFiltro = [...pasada.ocultos].filter(([m]) => m !== 'tengo' && m !== 'enviado');
@@ -1842,12 +1876,13 @@ export function createBuscarView(root) {
                 ? t('buscar.nada.ocultos')
                 : t('buscar.nada'),
       }),
-      !buscando && resultados.length && pasada.ocultos.size
+      // Todo oculto por los filtros: se quitan aquí mismo (el botón de filtros es uno, arriba).
+      !buscando && resultados.length && pasada.ocultos.size && filtrosActivos().length
         ? el('button', {
             className: 'cg-boton cg-boton--principal',
             attrs: { type: 'button' },
-            text: t('buscar.filtros'),
-            on: { click: () => abrirFiltros() },
+            text: t('buscar.filtros.limpiar'),
+            on: { click: () => limpiarFiltros() },
           })
         : null,
     ];

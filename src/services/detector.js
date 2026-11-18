@@ -313,7 +313,7 @@ async function detectConfig(searchUrl, { signal } = {}) {
   let htmlNavegador = null;
   if (config.browser.enabled) {
     try {
-      htmlNavegador = await renderPage(searchUrl);
+      htmlNavegador = await renderPage(searchUrl, { signal });
     } catch (error) {
       logger.warn(`Detección: fallo al renderizar ${searchUrl}`, error.message);
       avisos.push(

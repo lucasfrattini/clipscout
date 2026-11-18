@@ -265,8 +265,14 @@ class BrowserPool {
     this.idleTimer.unref?.();
   }
 
-  /** Ejecuta `task(page)` con una pestaña del pool y la cierra siempre. */
-  async withPage(task, { protegeSola = false } = {}) {
+  /**
+   * Ejecuta `task(page)` con una pestaña del pool y la cierra siempre.
+   *
+   * `signal`: al pararse una búsqueda se CIERRA la pestaña en el acto, así la navegación en curso
+   * (que puede tardar hasta `navigationTimeoutMs` con un sitio que no responde) falla ya y libera
+   * su hueco del pool, en vez de terminar su carga para nada.
+   */
+  async withPage(task, { protegeSola = false, signal } = {}) {
     if (!config.browser.enabled) {
       throw new AppError(
         'El navegador está desactivado por configuración',
@@ -274,19 +280,33 @@ class BrowserPool {
         'BROWSER_DISABLED'
       );
     }
+    const cancelada = () => new AppError('Búsqueda parada', 499, 'ABORTED');
+    if (signal?.aborted) throw cancelada();
 
     await this.acquireSlot();
     let page = null;
+    let alAbortar = null;
     try {
+      if (signal?.aborted) throw cancelada();
       const browser = await this.getBrowser();
       page = await browser.newPage();
+      if (signal) {
+        const pestana = page;
+        alAbortar = () => pestana.close().catch(() => {});
+        signal.addEventListener('abort', alAbortar, { once: true });
+        if (signal.aborted) throw cancelada();
+      }
       await page.setUserAgent(
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
       );
       page.setDefaultNavigationTimeout(config.browser.navigationTimeoutMs);
       if (!protegeSola) await protegerPestana(page);
       return await task(page);
+    } catch (error) {
+      if (signal?.aborted) throw cancelada();
+      throw error;
     } finally {
+      if (alAbortar) signal.removeEventListener('abort', alAbortar);
       if (page) {
         await page.close().catch(() => {});
       }
@@ -348,23 +368,26 @@ async function autoScroll(page) {
 }
 
 /** Renderiza una URL con JS y devuelve el HTML final. */
-async function renderPage(url, { scroll = true } = {}) {
+async function renderPage(url, { scroll = true, signal } = {}) {
   await assertUrlIsSafe(url);
 
-  return pool.withPage(async page => {
-    await page.goto(url, {
-      waitUntil: config.browser.waitUntil,
-      timeout: config.browser.navigationTimeoutMs,
-    });
+  return pool.withPage(
+    async page => {
+      await page.goto(url, {
+        waitUntil: config.browser.waitUntil,
+        timeout: config.browser.navigationTimeoutMs,
+      });
 
-    if (scroll) {
-      await autoScroll(page);
-      // NOTA: page.waitForTimeout fue eliminado en Puppeteer v22.
-      await new Promise(resolve => setTimeout(resolve, config.browser.settleMs));
-    }
+      if (scroll) {
+        await autoScroll(page);
+        // NOTA: page.waitForTimeout fue eliminado en Puppeteer v22.
+        await new Promise(resolve => setTimeout(resolve, config.browser.settleMs));
+      }
 
-    return page.content();
-  });
+      return page.content();
+    },
+    { signal }
+  );
 }
 
 /**
@@ -400,91 +423,94 @@ async function renderPageWithInfiniteScroll(url, options = {}) {
     onRound,
   } = options;
 
-  return pool.withPage(async page => {
-    await page.goto(url, {
-      waitUntil: config.browser.waitUntil,
-      timeout: config.browser.navigationTimeoutMs,
-    });
-
-    const startedAt = Date.now();
-    let previousCount = 0;
-    let sinCambios = 0;
-    let rounds = 0;
-    let motivo = 'sin-contenido-nuevo';
-
-    // Una ronda: bajar del todo y devolver cuántos enlaces hay ahora
-    const scrollOnce = () =>
-      page.evaluate(() => {
-        window.scrollTo(0, document.body.scrollHeight);
-        return document.querySelectorAll('a[href]').length;
+  return pool.withPage(
+    async page => {
+      await page.goto(url, {
+        waitUntil: config.browser.waitUntil,
+        timeout: config.browser.navigationTimeoutMs,
       });
 
-    // Recuento inicial, antes de tocar nada
-    previousCount = await scrollOnce().catch(() => 0);
+      const startedAt = Date.now();
+      let previousCount = 0;
+      let sinCambios = 0;
+      let rounds = 0;
+      let motivo = 'sin-contenido-nuevo';
 
-    while (rounds < maxRounds) {
-      if (signal?.aborted) {
-        motivo = 'cancelado';
-        break;
-      }
-      if (Date.now() - startedAt > maxDurationMs) {
-        motivo = 'tiempo-agotado';
-        break;
-      }
-      if (previousCount >= maxElements) {
-        motivo = 'tope-de-elementos';
-        break;
-      }
+      // Una ronda: bajar del todo y devolver cuántos enlaces hay ahora
+      const scrollOnce = () =>
+        page.evaluate(() => {
+          window.scrollTo(0, document.body.scrollHeight);
+          return document.querySelectorAll('a[href]').length;
+        });
 
-      await new Promise(resolve => setTimeout(resolve, settleMs));
+      // Recuento inicial, antes de tocar nada
+      previousCount = await scrollOnce().catch(() => 0);
 
-      let count;
-      try {
-        count = await scrollOnce();
-      } catch (error) {
-        // La pestaña dejó de responder: se para y se aprovecha lo que haya
-        logger.warn(`Scroll interrumpido en ${url}`, error.message);
-        motivo = 'error-de-navegador';
-        break;
-      }
-
-      rounds += 1;
-      const nuevos = count - previousCount;
-      previousCount = count;
-
-      onRound?.({ round: rounds, totalElements: count, nuevos });
-
-      if (nuevos <= 0) {
-        sinCambios += 1;
-        // Un solo lote lento cortaría la exploración antes de tiempo, así
-        // que hacen falta varias rondas seguidas en blanco para creerse
-        // que ya no queda nada.
-        if (sinCambios >= stableRounds) {
-          motivo = 'sin-contenido-nuevo';
+      while (rounds < maxRounds) {
+        if (signal?.aborted) {
+          motivo = 'cancelado';
           break;
         }
-      } else {
-        sinCambios = 0;
+        if (Date.now() - startedAt > maxDurationMs) {
+          motivo = 'tiempo-agotado';
+          break;
+        }
+        if (previousCount >= maxElements) {
+          motivo = 'tope-de-elementos';
+          break;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, settleMs));
+
+        let count;
+        try {
+          count = await scrollOnce();
+        } catch (error) {
+          // La pestaña dejó de responder: se para y se aprovecha lo que haya
+          logger.warn(`Scroll interrumpido en ${url}`, error.message);
+          motivo = 'error-de-navegador';
+          break;
+        }
+
+        rounds += 1;
+        const nuevos = count - previousCount;
+        previousCount = count;
+
+        onRound?.({ round: rounds, totalElements: count, nuevos });
+
+        if (nuevos <= 0) {
+          sinCambios += 1;
+          // Un solo lote lento cortaría la exploración antes de tiempo, así
+          // que hacen falta varias rondas seguidas en blanco para creerse
+          // que ya no queda nada.
+          if (sinCambios >= stableRounds) {
+            motivo = 'sin-contenido-nuevo';
+            break;
+          }
+        } else {
+          sinCambios = 0;
+        }
+
+        if (rounds >= maxRounds) motivo = 'tope-de-rondas';
       }
 
-      if (rounds >= maxRounds) motivo = 'tope-de-rondas';
-    }
-
-    return {
-      html: await page.content(),
-      rounds,
-      totalElements: previousCount,
-      motivo,
-      durationMs: Date.now() - startedAt,
-    };
-  });
+      return {
+        html: await page.content(),
+        rounds,
+        totalElements: previousCount,
+        motivo,
+        durationMs: Date.now() - startedAt,
+      };
+    },
+    { signal }
+  );
 }
 
 /**
  * Renderiza y además captura las peticiones de red de tipo media, que es como
  * se cazan los videos que nunca aparecen en el HTML.
  */
-async function renderPageWithMedia(url, { isMediaUrl } = {}) {
+async function renderPageWithMedia(url, { isMediaUrl, signal } = {}) {
   await assertUrlIsSafe(url);
 
   return pool.withPage(
@@ -575,7 +601,7 @@ async function renderPageWithMedia(url, { isMediaUrl } = {}) {
       const html = await page.content();
       return { html, domVideos, mediaRequests };
     },
-    { protegeSola: true }
+    { protegeSola: true, signal }
   );
 }
 
@@ -585,64 +611,69 @@ async function renderPageWithMedia(url, { isMediaUrl } = {}) {
  * caja o no navegó). Es lo único que funciona con los buscadores montados con JavaScript, que
  * convierten `?q=` en `/search/<término>/` o similares.
  */
-async function enviarBusqueda(url, termino) {
+async function enviarBusqueda(url, termino, { signal } = {}) {
   await assertUrlIsSafe(url);
 
-  return pool.withPage(async page => {
-    await page.goto(url, {
-      waitUntil: config.browser.waitUntil,
-      timeout: config.browser.navigationTimeoutMs,
-    });
-    const selector = await page.evaluate(() => {
-      const visible = el => {
-        const r = el.getBoundingClientRect();
-        const s = getComputedStyle(el);
-        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
-      };
-      const candidatos = [
-        ...document.querySelectorAll('input[type="search"], input[type="text"], input:not([type])'),
-      ];
-      const pista = el =>
-        /search|busca|query|keyword|^q$|^s$|^k$/i.test(
-          [el.name, el.id, el.placeholder, el.className, el.getAttribute('aria-label')].join(' ')
-        );
-      const elegido =
-        candidatos.find(el => el.type === 'search' && pista(el)) ||
-        candidatos.find(el => pista(el) && visible(el)) ||
-        candidatos.find(pista);
-      if (!elegido) return null;
-      elegido.setAttribute('data-clipscout-busqueda', '1');
-      return '[data-clipscout-busqueda="1"]';
-    });
-    if (!selector) return null;
-    const antes = page.url();
-    // Las cajas ocultas (detrás de un icono de lupa) no aceptan teclas: se les da el valor directo.
-    await page.$eval(
-      selector,
-      (el, valor) => {
-        el.focus();
-        el.value = valor;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-      },
-      termino
-    );
-    await Promise.all([
-      page
-        .waitForNavigation({
-          waitUntil: 'domcontentloaded',
-          timeout: config.browser.navigationTimeoutMs,
-        })
-        .catch(() => null),
-      page.$eval(selector, el => {
-        const form = el.form;
-        if (form?.requestSubmit) form.requestSubmit();
-        else if (form) form.submit();
-        else el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      }),
-    ]);
-    const despues = page.url();
-    return despues !== antes ? despues : null;
-  });
+  return pool.withPage(
+    async page => {
+      await page.goto(url, {
+        waitUntil: config.browser.waitUntil,
+        timeout: config.browser.navigationTimeoutMs,
+      });
+      const selector = await page.evaluate(() => {
+        const visible = el => {
+          const r = el.getBoundingClientRect();
+          const s = getComputedStyle(el);
+          return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+        };
+        const candidatos = [
+          ...document.querySelectorAll(
+            'input[type="search"], input[type="text"], input:not([type])'
+          ),
+        ];
+        const pista = el =>
+          /search|busca|query|keyword|^q$|^s$|^k$/i.test(
+            [el.name, el.id, el.placeholder, el.className, el.getAttribute('aria-label')].join(' ')
+          );
+        const elegido =
+          candidatos.find(el => el.type === 'search' && pista(el)) ||
+          candidatos.find(el => pista(el) && visible(el)) ||
+          candidatos.find(pista);
+        if (!elegido) return null;
+        elegido.setAttribute('data-clipscout-busqueda', '1');
+        return '[data-clipscout-busqueda="1"]';
+      });
+      if (!selector) return null;
+      const antes = page.url();
+      // Las cajas ocultas (detrás de un icono de lupa) no aceptan teclas: se les da el valor directo.
+      await page.$eval(
+        selector,
+        (el, valor) => {
+          el.focus();
+          el.value = valor;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        },
+        termino
+      );
+      await Promise.all([
+        page
+          .waitForNavigation({
+            waitUntil: 'domcontentloaded',
+            timeout: config.browser.navigationTimeoutMs,
+          })
+          .catch(() => null),
+        page.$eval(selector, el => {
+          const form = el.form;
+          if (form?.requestSubmit) form.requestSubmit();
+          else if (form) form.submit();
+          else el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        }),
+      ]);
+      const despues = page.url();
+      return despues !== antes ? despues : null;
+    },
+    { signal }
+  );
 }
 
 module.exports = {

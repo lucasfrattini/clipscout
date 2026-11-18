@@ -1,32 +1,10 @@
 /**
  * Cabecera de una fila (48 px) de cada pantalla, con el componente común <cg-cabecera>: título a
- * la izquierda, acciones y el logo a la derecha. El logo abre el menú de Clipgeist (las otras
- * apps, la guía, «Salir»), que en el móvil sustituye a la cabecera antigua de dos filas.
+ * la izquierda y acciones a la derecha. Las otras apps de Clipgeist (y la guía, «Salir») ya no van
+ * en el logo: son el último botón de la barra, «Apps», igual en las tres apps.
  */
 import { el } from './dom.js';
 import { t, alCambiarIdioma } from './i18n/index.js';
-
-/** Abre la hoja de apps de index.html (#hoja-apps). */
-export function abrirMenuApps() {
-  document.getElementById('hoja-apps')?.abrir?.();
-}
-
-/** El botón del logo, igual en todas las cabeceras. */
-export function botonLogo() {
-  const boton = el('button', {
-    className: 'cs-logo',
-    attrs: { type: 'button', 'aria-haspopup': 'dialog' },
-    children: [el('img', { attrs: { src: '/img/logo.png', alt: '', width: 30, height: 30 } })],
-    on: { click: abrirMenuApps },
-  });
-  const rotular = () => {
-    boton.setAttribute('aria-label', t('crew.aria'));
-    boton.title = t('crew.aria');
-  };
-  rotular();
-  alCambiarIdioma(rotular);
-  return boton;
-}
 
 /**
  * `<cg-cabecera>` con título traducido. `tituloClave` puede cambiarse luego con `poner(clave)`.
@@ -37,7 +15,6 @@ export function crearCabecera({ tituloClave, id, atras = null, acciones = [] }) 
   const cab = document.createElement('cg-cabecera');
   if (atras) cab.setAttribute('atras', '');
   cab.append(h1, el('div', { className: 'cs-cabecera-acciones', children: [...acciones] }));
-  cab.querySelector('.cs-cabecera-acciones').append(botonLogo());
   let clave = tituloClave;
   let destino = atras;
   const pintar = () => {

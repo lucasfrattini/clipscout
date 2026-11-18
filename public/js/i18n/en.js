@@ -1173,4 +1173,18 @@ export const en = {
   'explorer.noExiste': 'That site no longer exists.',
   'aj.sitios.hint.corto':
     'The switch decides whether it is searched by default. In “⋯”: edit, direct file, figures and delete.',
+  // 2.21: bar with Advanced and Apps; a single filters button; large view; instant stop.
+  'nav.avanzada': 'Advanced',
+  'nav.apps': 'Apps',
+  'explorer.avanzada': 'Advanced search',
+  'buscar.parte.que': 'What to search',
+  'buscar.parte.filtrar': 'Filter results',
+  'buscar.vista.compacta': 'Compact list',
+  'buscar.vista.compacta.detalle':
+    'Small rows, more results per screen (remembered on this device)',
+  'buscar.marca.sitios': 'Sites: {n} of {total}',
+  'buscar.marca.web': 'Also on the web',
+  'buscar.marca.webTodo': 'Whole web',
+  'buscar.estado.parada': 'Search stopped',
+  'buscar.filtros.listo': 'Done',
 };

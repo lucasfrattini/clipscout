@@ -30,10 +30,17 @@ function initRouter(views) {
     ajustes: document.getElementById('view-ajustes'),
   };
   /**
-   * Qué destino de la barra se ilumina: el editor de sitio (#/explorer) se abre desde Ajustes y
-   * el análisis de un enlace (#/video) es parte de Buscar.
+   * Qué destino de la barra se ilumina: #/explorer a secas es «Avanzada»; el editor de un sitio
+   * (#/explorer/<n>) se abre desde Ajustes, y el análisis de un enlace (#/video) es parte de Buscar.
    */
-  const DESTINO = { explorer: 'ajustes', video: 'buscar' };
+  const destinoDe = (name, completo) =>
+    name === 'explorer'
+      ? /^explorer\/\d/.test(completo)
+        ? 'ajustes'
+        : 'explorer'
+      : name === 'video'
+        ? 'buscar'
+        : name;
 
   /**
    * Fija `<title>` y `<meta name="description">` según la vista activa.
@@ -51,11 +58,12 @@ function initRouter(views) {
   let actual = null;
   function activate(name, { updateHash = true } = {}) {
     // «ajustes/sitios»: la vista es la primera parte; el resto lo lee la propia vista.
-    name = String(name).split('/')[0];
+    const completo = String(name);
+    name = completo.split('/')[0];
     if (!sections[name]) name = 'buscar';
 
     aplicarCabecera(name);
-    barra?.activar?.(`#/${DESTINO[name] || name}`);
+    barra?.activar?.(`#/${destinoDe(name, completo)}`);
 
     for (const [key, section] of Object.entries(sections)) {
       section.hidden = key !== name;
@@ -165,6 +173,10 @@ async function main() {
   };
 
   initRouter(views);
+  // «Apps», el último botón de la barra (igual en las tres apps): las otras apps, la guía y Salir.
+  document
+    .getElementById('boton-apps')
+    ?.addEventListener('click', () => document.getElementById('hoja-apps')?.abrir?.());
   await initCrewCabecera(document.getElementById('crew-apps'));
   document.getElementById('guia').addEventListener('click', () => {
     document.getElementById('hoja-apps')?.cerrar?.();

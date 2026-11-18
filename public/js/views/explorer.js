@@ -1106,13 +1106,15 @@ export function createExplorerView(container, { limits }) {
     ],
   });
 
-  // «Avanzado» ya no está en el menú: es el editor de un sitio, al que se llega desde Ajustes →
-  // Búsqueda → Sitios → «Editar» (#/explorer/<n>). #/explorer a secas sigue funcionando.
+  // Dos entradas a la misma pantalla: «Avanzada» en la barra (#/explorer: recorrer una página o
+  // un sitio, como la pestaña «Avanzado» de antes de la 2.20) y el editor de un sitio, desde
+  // Ajustes → Búsqueda → Sitios → «Editar» (#/explorer/<n>), con «Atrás» a Ajustes.
   const cabecera = crearCabecera({
-    tituloClave: 'explorer.editor',
+    tituloClave: 'explorer.avanzada',
     id: 'explorer-cabecera',
     atras: '#/ajustes/busqueda',
   });
+  cabecera.atras(null);
   setChildren(container, [cabecera.nodo, explorerShell]);
   actualizarCarril('configurar');
 
@@ -2130,7 +2132,10 @@ export function createExplorerView(container, { limits }) {
   return {
     async focus() {
       const pedido = window.location.hash.replace(/^#\/explorer\/?/, '').split('/')[0];
-      if (/^\d+$/.test(pedido) && pedido !== editando) {
+      const esEditor = /^\d+$/.test(pedido);
+      cabecera.poner(esEditor ? 'explorer.editor' : 'explorer.avanzada');
+      cabecera.atras(esEditor ? '#/ajustes/busqueda' : null);
+      if (esEditor && pedido !== editando) {
         editando = pedido;
         const nombre = await profileBar.elegirPorIndice(Number(pedido));
         if (nombre) toast(t('explorer.editando', { nombre }));

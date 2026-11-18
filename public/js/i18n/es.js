@@ -1180,4 +1180,18 @@ export const es = {
   'explorer.noExiste': 'Ese sitio ya no existe.',
   'aj.sitios.hint.corto':
     'El interruptor decide si se busca en él por defecto. En «⋯»: editar, fichero directo, cifras y borrar.',
+  // 2.21: barra con Avanzada y Apps; un solo botón de filtros; vista grande; parada al instante.
+  'nav.avanzada': 'Avanzada',
+  'nav.apps': 'Apps',
+  'explorer.avanzada': 'Búsqueda avanzada',
+  'buscar.parte.que': 'Qué buscar',
+  'buscar.parte.filtrar': 'Filtrar resultados',
+  'buscar.vista.compacta': 'Lista compacta',
+  'buscar.vista.compacta.detalle':
+    'Filas pequeñas, más resultados por pantalla (se recuerda en este dispositivo)',
+  'buscar.marca.sitios': 'Sitios: {n} de {total}',
+  'buscar.marca.web': 'También en la web',
+  'buscar.marca.webTodo': 'En toda la web',
+  'buscar.estado.parada': 'Búsqueda parada',
+  'buscar.filtros.listo': 'Listo',
 };

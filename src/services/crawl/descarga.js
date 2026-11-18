@@ -20,8 +20,9 @@ const { analizarRespuesta, analizarError, combinar } = require('../../lib/blocki
  */
 async function renderPageOrFallback(url, { signal }) {
   try {
-    return await renderPage(url);
+    return await renderPage(url, { signal });
   } catch (error) {
+    if (signal?.aborted) throw error;
     logger.warn(`Navegador falló en ${url}, se reintenta por HTTP`, error.message);
     return fetchHtmlWithRetry(url, { signal, timeout: config.http.fileScanTimeoutMs });
   }
@@ -43,12 +44,13 @@ async function fetchPage(url, { useJavaScript, signal, diagnostico = null }) {
 
   if (useJavaScript) {
     try {
-      const html = await renderPage(url);
+      const html = await renderPage(url, { signal });
       // Un challenge devuelto con 200 se ve igual de bien en el navegador:
       // hay que mirar el contenido, no solo el estado.
       anotar(analizarRespuesta({ html }));
       return html;
     } catch (error) {
+      if (signal?.aborted) throw error;
       logger.warn(`Puppeteer falló en ${url}, usando HTTP directo`, error.message);
     }
   }

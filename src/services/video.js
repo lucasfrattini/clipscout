@@ -373,7 +373,7 @@ async function extractVideos(
   // MÉTODO 1 — Puppeteer
   if (useJavaScript && config.browser.enabled) {
     try {
-      const rendered = await renderPageWithMedia(url, { isMediaUrl: isVideoUrl });
+      const rendered = await renderPageWithMedia(url, { isMediaUrl: isVideoUrl, signal });
       html = rendered.html;
       methods.puppeteer = true;
 

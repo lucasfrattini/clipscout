@@ -197,7 +197,9 @@ async function restaurar() {
   return { retomadas: enMarcha.length + esperando.length, terminadas };
 }
 
-const enCurso = () => [...busquedas.values()].filter(b => b.estado === 'curso').length;
+// Una parada cuyas peticiones aún se están cortando sigue ocupando su hueco.
+const enCurso = () =>
+  [...busquedas.values()].filter(b => b.estado === 'curso' || b.cortando).length;
 
 /**
  * Marcas de cada resultado que la pantalla usa para filtrar: idioma probable y palabra bloqueada.
@@ -269,6 +271,7 @@ function arrancar(b) {
   // Lo que llega sin duración se completa después con una petición ligera (evento `duracion`).
   const completador = duraciones.crear({ signal, publicar: evento => publicar(b, evento) });
   const emitir = evento => {
+    if (b.parada) return; // parada: lo que aún llegue de peticiones a medio cortar no cuenta
     if (evento.type === 'resultados' && yaVistos.size > 0) {
       const nuevos = (evento.items || []).filter(it => !yaVistos.has(it.url));
       if (nuevos.length === 0) return;
@@ -282,14 +285,16 @@ function arrancar(b) {
     .then(async r => {
       // Las duraciones en vuelo llegan ANTES del fin: quien mira cierra el stream con el `fin`.
       if (!signal.aborted) await completador.esperar();
-      publicar(b, { type: 'fin', ...r, cancelada: signal.aborted });
+      if (!b.parada) publicar(b, { type: 'fin', ...r, cancelada: signal.aborted });
     })
     .catch(error => {
+      if (b.parada) return;
       logger.warn(`Error en la búsqueda: ${error.message}`);
       publicar(b, { type: 'error', message: error.message });
     })
     .finally(() => {
-      cerrar(b);
+      if (!b.terminadaEn) cerrar(b);
+      b.cortando = false;
       despachar();
     });
 }
@@ -365,7 +370,18 @@ function parar(id) {
     cerrar(b);
     return true;
   }
+  if (b.estado !== 'curso' || b.parada) return true;
+  // Parada AL INSTANTE para quien mira: se publica el fin ya, aunque las peticiones en vuelo
+  // (un sitio que no responde puede tardar su tope entero) tarden un poco más en cortarse. Lo
+  // que llegue después se descarta; la siguiente de la cola arranca cuando acaben de cortarse.
+  b.parada = true;
+  b.cortando = true;
   b.controller.abort();
+  const total = b.eventos
+    .filter(e => e.type === 'resultados')
+    .reduce((n, e) => n + (e.items?.length || 0), 0);
+  publicar(b, { type: 'fin', total, cancelada: true, parada: true });
+  cerrar(b);
   return true;
 }
 

@@ -29,12 +29,6 @@ body {
   align-items: center;
   gap: 2px;
 }
-.cs-logo img {
-  display: block;
-  width: 30px;
-  height: 30px;
-}
-
 /* Logo de la barra lateral (escritorio) */
 .cs-marca {
   display: flex;
@@ -60,7 +54,7 @@ cg-cabecera[data-sin-atras] > .cg-cabecera-atras {
   display: none;
 }
 
-/* Menú del logo: las tres apps, guía y salir */
+/* Hoja «Apps» (último botón de la barra): las tres apps, guía y salir */
 .cs-apps.cc-apps {
   display: flex;
   flex-direction: column;
@@ -399,21 +393,21 @@ cg-cabecera.buscar__cabecera > .buscar__fila {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-right: calc(-1 * var(--space-4));
 }
 cg-chips.buscar__pestanas {
   flex: 1 1 auto;
   min-width: 0;
-  margin-left: calc(-1 * var(--space-4));
-  padding: 2px 0 2px var(--space-4);
+  margin: 0 calc(-1 * var(--space-4));
+  padding: 2px var(--space-4);
 }
 #view-buscar > cg-cabecera {
   margin-bottom: 0;
 }
+/* El único botón de filtros, junto a la caja: «Filtros» y el número de lo activo. */
 .buscar__boton-filtros {
   flex: none;
-  padding: 0 14px;
-  margin-right: var(--space-4);
+  gap: 6px;
+  padding: 0 12px;
   border-radius: var(--cg-radio-total);
   background: var(--cg-texto);
   border-color: var(--cg-texto);
@@ -498,7 +492,10 @@ cg-chips.buscar__pestanas {
   margin: 0;
 }
 
-/* Lista compacta: casilla · miniatura · título y datos · «⋯». Unas ocho filas por pantalla. */
+/* Lista compacta: casilla · miniatura · título y datos · «⋯». Unas ocho filas por pantalla.
+   Sin `content-visibility`: en el iPhone (WebKit, sin anclaje del desplazamiento) las filas fuera
+   de pantalla medían lo estimado y no lo real, y cada fila rehecha por encima (duraciones que
+   llegan, «ya lo tengo», lo enviado) movía la lista: la página «subía sola». */
 .buscar__rejilla {
   display: flex;
   flex-direction: column;
@@ -516,9 +513,6 @@ cg-chips.buscar__pestanas {
   border-radius: 0;
   background: none;
   overflow: visible;
-  /* Lo que queda fuera de la pantalla no se pinta (listas de miles, CS-14). */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 63px;
 }
 .buscar__tarjeta--tengo,
 .buscar__tarjeta--enviado {
@@ -614,18 +608,10 @@ cg-chips.buscar__pestanas {
 .buscar__mas:hover {
   background: var(--c-surface-2);
 }
-/* La selección de cg-ui encoge tarjetas y les pone un círculo: en una lista se usa la casilla. */
-.buscar__rejilla .cg-sel-item,
-.buscar__rejilla.cg-modo-seleccion .cg-sel-item:not(.cg-seleccionado),
-.buscar__rejilla .cg-sel-item.cg-seleccionado {
-  transform: none;
-  outline: 0;
-}
-.buscar__rejilla.cg-modo-seleccion .cg-sel-item::after {
-  display: none;
-}
-.buscar__rejilla .cg-sel-item.cg-seleccionado {
-  background: var(--cg-acento-suave);
+/* Selección: cgSeleccion(…, {lista: true}) de cg-ui (fondo, sin encoger ni círculo; la casilla
+   es la nuestra). En la vista grande, un borde alrededor de la tarjeta en vez de la raya. */
+.buscar__rejilla--grande .cg-sel-item.cg-seleccionado {
+  box-shadow: 0 0 0 2px var(--cg-acento);
 }
 
 /* «Descargar todo», abajo y siempre a mano (encima de la barra de navegación). */
@@ -707,17 +693,110 @@ html.cg-con-barra:not(.cg-seleccionando):has(
     margin: 0;
     padding: 4px 0;
   }
-  .buscar__boton-filtros {
-    margin-right: 0;
-  }
   .buscar__tarjeta {
     grid-template-columns: 40px 128px minmax(0, 1fr) 44px;
     min-height: 82px;
-    contain-intrinsic-size: auto 83px;
   }
   .buscar__imagen {
     width: 128px;
     height: 72px;
+  }
+}
+
+/* Vista grande (por defecto): miniatura a todo el ancho de su columna (16:9), dos por fila en el
+   móvil; debajo, título en dos líneas y duración · sitio; la casilla sobre la miniatura (arriba a
+   la izquierda, 48 px de zona táctil) y «⋯» abajo a la derecha. */
+.buscar__rejilla--grande {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 8px;
+  margin: 0 -4px;
+  padding-top: 4px;
+}
+.buscar__rejilla--grande .buscar__tarjeta {
+  position: relative;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 4px 0;
+  min-height: 0;
+  padding: 0 0 2px;
+  border: 0;
+  border-radius: 10px;
+}
+.buscar__rejilla--grande .buscar__tarjeta--miembro {
+  padding-left: 0;
+}
+.buscar__rejilla--grande .buscar__imagen {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+}
+.buscar__rejilla--grande .buscar__duracion {
+  right: 5px;
+  bottom: 5px;
+  font-size: 0.75rem;
+}
+.buscar__rejilla--grande .buscar__casilla {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 48px;
+  height: 48px;
+  margin: 0;
+}
+.buscar__rejilla--grande .buscar__casilla::before {
+  background: rgb(255 255 255 / 85%);
+  border-color: rgb(0 0 0 / 45%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 35%);
+}
+.buscar__rejilla--grande .buscar__casilla[aria-checked='true']::before {
+  background-color: var(--cg-acento);
+  border-color: var(--cg-acento);
+}
+.buscar__rejilla--grande .buscar__texto {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-content: flex-start;
+  min-height: 44px;
+  padding-left: 2px;
+}
+.buscar__rejilla--grande .buscar__texto strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+.buscar__rejilla--grande .buscar__meta {
+  padding-right: 34px;
+}
+.buscar__rejilla--grande .buscar__mas {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+}
+@media (min-width: 769px) {
+  .buscar__rejilla--grande {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 18px 14px;
+    margin: 0;
+  }
+}
+
+/* Avanzada (#/explorer) en el móvil: los enlaces de texto, con zona táctil de 44 px. */
+@media (max-width: 768px) {
+  #view-explorer .link-toggle,
+  #view-explorer .explorer-atajo a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
 

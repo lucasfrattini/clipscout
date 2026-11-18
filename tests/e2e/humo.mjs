@@ -3,8 +3,9 @@
 // propia prueba, y los datos van a una carpeta temporal (DATA_DIR, CREW_PATH y PROFILES_PATH).
 //
 //   asistente (usuario → JDownloader → alta de un sitio → apps → móvil)
-//   → condiciones de uso → buscar en el sitio falso → elegir varios resultados y enviarlos a la
-//   cola falsa → Actividad → Ajustes → Sitios → editor de sitio.
+//   → condiciones de uso → buscar en el sitio falso (vista grande y compacta; un solo botón de
+//   filtros) → elegir varios resultados y enviarlos a la cola falsa → Actividad → Ajustes →
+//   Sitios → editor de sitio → Avanzada → Apps → «Parar» con un sitio que no responde.
 //
 // Fase 3 (cómoda con una mano), todo a 390×844: en cada pantalla se mide que el primer contenido
 // útil empiece antes de 160 px, que ningún control visible mida menos de 44 px de alto y que no
@@ -20,6 +21,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { cerrar, crearSitio } from './_comun.mjs';
 
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TOPE_MS = Number(process.env.E2E_TOPE_MS) || 180000;
@@ -92,48 +94,16 @@ async function medir(pagina, nombre, selectorPrimero) {
   medidas[nombre] = m;
   await capturar(pagina, nombre, false);
   const fallos = [];
-  if (m.primerContenido === null) fallos.push('sin primer contenido');
-  else if (m.primerContenido >= 160) fallos.push(`primer contenido a ${m.primerContenido} px`);
+  // selectorPrimero null: no se mide dónde empieza (pantallas con su propia guía, como Avanzada).
+  if (selectorPrimero && m.primerContenido === null) fallos.push('sin primer contenido');
+  else if (m.primerContenido !== null && m.primerContenido >= 160)
+    fallos.push(`primer contenido a ${m.primerContenido} px`);
   if (m.pequenos.length) fallos.push(`controles < 44 px: ${m.pequenos.join(', ')}`);
   if (m.desbordaHorizontal) fallos.push('desplazamiento horizontal');
   if (fallos.length) throw new Error(`[${nombre}] ${fallos.join(' · ')}`);
   return m;
 }
 const medidas = {};
-
-/* ── Sitio falso: portada con buscador, listado paginado y fichas con su vídeo ── */
-function crearSitio() {
-  return http.createServer((req, res) => {
-    const url = new URL(req.url, 'http://127.0.0.1');
-    const html = cuerpo => {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`<html><body>${cuerpo}</body></html>`);
-    };
-    if (url.pathname === '/') {
-      return html('<a href="/ayuda">ayuda</a><form action="/resultados"><input name="q"></form>');
-    }
-    if (url.pathname === '/resultados') {
-      const q = url.searchParams.get('q') || '';
-      const pagina = Number(url.searchParams.get('page') || '1');
-      const fichas =
-        q && pagina <= 2 ? Array.from({ length: 8 }, (_, i) => i + 1 + (pagina - 1) * 8) : [];
-      return html(`<h1>Resultados de ${q}</h1>
-        ${fichas.map(n => `<a href="/v/${n}/clip-de-prueba-${n}">Clip de prueba ${n}</a>`).join('')}
-        <a href="/ayuda">ayuda</a><a href="/contacto">contacto</a>
-        <nav>${[2, 3].map(p => `<a href="/resultados?q=${encodeURIComponent(q)}&page=${p}">${p}</a>`).join('')}</nav>`);
-    }
-    if (url.pathname.startsWith('/v/')) {
-      const n = url.pathname.split('/')[2];
-      return html(`<title>Clip de prueba ${n}</title><video src="/media/clip-${n}.mp4"></video>`);
-    }
-    if (url.pathname.startsWith('/media/')) {
-      res.writeHead(200, { 'Content-Type': 'video/mp4', 'Content-Length': '1024' });
-      return res.end(req.method === 'HEAD' ? undefined : Buffer.alloc(1024));
-    }
-    res.writeHead(404);
-    return res.end('no');
-  });
-}
 
 /* ── JDownloader falso (la «Deprecated API»): la cola donde acaba lo enviado ── */
 function crearJd(recibidos) {
@@ -176,8 +146,8 @@ async function limpiar() {
     await Promise.race([new Promise(r => servidor.once('exit', r)), esperar(5000)]);
     if (servidor.exitCode === null) servidor.kill('SIGKILL');
   }
-  sitio.close();
-  jd.close();
+  cerrar(sitio);
+  cerrar(jd);
   fs.rmSync(datos, { recursive: true, force: true });
 }
 
@@ -210,7 +180,6 @@ try {
     CRAWL_PAGE_DELAY_MS: '0',
     THROTTLE_MIN_INTERVAL_MS: '0',
     HTTP_RETRY_BASE_DELAY_MS: '0',
-    THUMBNAILS_ENABLED: 'false',
   });
   // «./server.js»: así no lo confunde una limpieza que busca «node server.js».
   servidor = spawn(process.execPath, ['./server.js'], {
@@ -318,23 +287,64 @@ try {
   await pagina.locator('.buscar__entrada').fill('playa');
   await pagina.locator('.buscar__entrada').press('Enter');
   await pagina.locator('.buscar__tarjeta').first().waitFor({ timeout: 60000 });
-  // Terminada: ya no queda el botón «Parar» en la línea de estado.
-  await pagina.waitForFunction(() => !document.querySelector('.buscar__parar'), null, {
+  // Terminada: el botón «Parar» de la línea de estado ya no se ve.
+  await pagina.waitForFunction(() => document.querySelector('.buscar__parar')?.hidden, null, {
     timeout: 90000,
   });
   await esperar(500);
   await pagina.evaluate(() => window.scrollTo(0, 0));
-  const lista = await medir(pagina, 'buscar-resultados', '.buscar__tarjeta');
-  if (lista.filasEnPantalla < 7) {
-    throw new Error(`solo ${lista.filasEnPantalla} resultados enteros en pantalla (mínimo 7)`);
+  // Un solo botón de filtros (antes había dos: opciones junto a la caja y «Filtros» en las marcas).
+  const botonesFiltros = await pagina.evaluate(
+    () =>
+      [...document.querySelectorAll('#view-buscar button')].filter(b => {
+        const r = b.getBoundingClientRect();
+        const nombre = (b.getAttribute('aria-label') || b.textContent || '').trim();
+        return r.width > 0 && /^(filtros|opciones)/i.test(nombre);
+      }).length
+  );
+  if (botonesFiltros !== 1) throw new Error(`hay ${botonesFiltros} botones de filtros (uno)`);
+  // Vista grande (por defecto): dos por fila, miniatura de 170 px o más y 4 enteros o más.
+  const grande = await medir(pagina, 'buscar-resultados', '.buscar__tarjeta');
+  const miniatura = await pagina.evaluate(() => {
+    const r = document.querySelector('.buscar__imagen').getBoundingClientRect();
+    return { ancho: Math.round(r.width), alto: Math.round(r.height) };
+  });
+  if (miniatura.ancho < 170) throw new Error(`miniatura de ${miniatura.ancho} px (mínimo 170)`);
+  if (grande.filasEnPantalla < 4) {
+    throw new Error(`solo ${grande.filasEnPantalla} resultados enteros en pantalla (mínimo 4)`);
   }
-  registro('resultados en pantalla:', lista.filasEnPantalla);
+  registro(
+    'vista grande:',
+    grande.filasEnPantalla,
+    'enteros; miniatura',
+    JSON.stringify(miniatura)
+  );
+  // La hoja de filtros: dos partes; «Lista compacta» se elige ahí y se recuerda.
   await pagina.locator('.buscar__boton-filtros').click();
   await pagina.locator('cg-hoja.buscar__hoja-filtros[abierta]').waitFor();
   await esperar(400);
   await capturar(pagina, 'buscar-filtros', false);
+  const partes = await pagina.locator('cg-hoja.buscar__hoja-filtros h3').allTextContents();
+  if (partes.join('|') !== 'Qué buscar|Filtrar resultados') {
+    throw new Error(`partes de la hoja de filtros: ${partes.join(' | ')}`);
+  }
+  await pagina.locator('label.cs-casilla', { hasText: 'Lista compacta' }).click();
   await pagina.keyboard.press('Escape');
   await esperar(400);
+  const lista = await medir(pagina, 'buscar-compacta', '.buscar__tarjeta');
+  if (lista.filasEnPantalla < 7) {
+    throw new Error(`lista compacta: solo ${lista.filasEnPantalla} enteros (mínimo 7)`);
+  }
+  registro('lista compacta:', lista.filasEnPantalla, 'enteros');
+  await pagina.reload();
+  await pagina.locator('.buscar__tarjeta').first().waitFor();
+  if (await pagina.locator('.buscar__rejilla--grande').count()) {
+    throw new Error('la lista compacta no se recuerda al recargar');
+  }
+  await pagina.evaluate(() => localStorage.setItem('clipscout:buscar-vista', 'grande'));
+  await pagina.reload();
+  await pagina.locator('.buscar__rejilla--grande .buscar__tarjeta').first().waitFor();
+  await esperar(500);
 
   // Selección: pulsación larga en una fila y la casilla de otra; se envían desde la barra de acción.
   const filas = pagina.locator('.buscar__tarjeta');
@@ -415,12 +425,29 @@ try {
   await esperar(400);
   await capturar(pagina, 'editor-sitio', false);
 
-  // Menú del logo: las otras apps (aquí no hay ninguna conectada) y «Salir».
-  await pagina.locator('#view-explorer .cs-logo').click();
+  // Avanzada (segundo botón de la barra): la pantalla de recorrer una página o un sitio.
+  const orden = await pagina
+    .locator('cg-barra-inferior > a:not([data-marca]), cg-barra-inferior > button[data-icono]')
+    .allTextContents();
+  if (orden.map(x => x.trim()).join('|') !== 'Buscar|Avanzada|Actividad|Ajustes|Apps') {
+    throw new Error(`barra: ${orden.map(x => x.trim()).join(' | ')}`);
+  }
+  await pagina.locator('cg-barra-inferior a[href="#/explorer"]').click();
+  await pagina.locator('#explorer-cabecera', { hasText: 'Búsqueda avanzada' }).waitFor();
+  if (!(await pagina.locator('cg-barra-inferior a[href="#/explorer"][data-activo]').count())) {
+    throw new Error('«Avanzada» no queda marcada en la barra');
+  }
+  // Es la pantalla de siempre (con su guía de pasos): se mide lo táctil, no dónde empieza.
+  await medir(pagina, 'avanzada', null);
+
+  // «Apps», el último botón de la barra: las otras apps (aquí ninguna conectada) y «Salir».
+  await pagina.locator('#boton-apps').click();
   await pagina.locator('#hoja-apps[abierta]').waitFor();
   await esperar(400);
   await capturar(pagina, 'menu-apps', false);
   await pagina.keyboard.press('Escape');
+  await esperar(400);
+
   // Escritorio: la misma estructura con la barra lateral (solo capturas, para revisarlas).
   if (CAPTURAS) {
     await pagina.emulateMedia({ colorScheme: 'dark' });
@@ -439,6 +466,33 @@ try {
     await esperar(400);
     await capturar(pagina, 'escritorio-ajustes', false);
   }
+  // «Parar» con un sitio que no responde (30 s): parada al instante, en pantalla y en el servidor.
+  await pagina.emulateMedia({ colorScheme: 'light' });
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await pagina.goto(`${base}/#/buscar`);
+  await pagina.locator('.buscar__entrada').fill('lento');
+  await pagina.locator('.buscar__entrada').press('Enter');
+  await pagina.locator('.buscar__parar:not([hidden])').waitFor();
+  await esperar(1500);
+  const t0 = Date.now();
+  await pagina.locator('.buscar__parar').click();
+  await pagina.waitForFunction(
+    () =>
+      document.querySelector('.buscar__parar')?.hidden &&
+      document.querySelector('.buscar__estado .buscar__girando')?.hidden &&
+      /parada/i.test(document.querySelector('.buscar__estado')?.textContent || ''),
+    null,
+    { timeout: 1000 }
+  );
+  let paradaServidor = null;
+  for (let i = 0; i < 30 && paradaServidor === null; i += 1) {
+    const cola = (await (await pagina.request.get(`${base}/api/buscar/cola`)).json()).busquedas;
+    if (cola.find(x => x.q === 'lento')?.estado === 'fin') paradaServidor = Date.now() - t0;
+    else await esperar(100);
+  }
+  if (paradaServidor === null) throw new Error('el servidor sigue con la búsqueda tras parar');
+  registro('«Parar»: en el servidor en', paradaServidor, 'ms');
+
   registro('medidas', JSON.stringify(medidas));
   if (errores.length) throw new Error(`Errores en la página: ${errores.join(' | ')}`);
   codigo = 0;

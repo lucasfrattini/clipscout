@@ -1,5 +1,27 @@
 # Cambios
 
+## 2.21.0 — ajustes de la fase 3 tras usarla en el iPhone
+
+- **La página ya no se va sola hacia arriba** (iPhone). Las filas de resultados llevaban
+  `content-visibility: auto`: en WebKit, sin anclaje del desplazamiento, las de fuera de pantalla
+  medían lo estimado y no lo real, y cada fila rehecha por encima (duraciones, «ya lo tengo», lo
+  enviado) movía la lista. Fuera; una prueba con WebKit emulando un iPhone lo vigila.
+- **Barra: Buscar · Avanzada · Actividad · Ajustes · Apps.** Vuelve **Avanzada** (recorrer una
+  página o un sitio, lo de la pestaña «Avanzado» de antes); el editor de un sitio sigue en Ajustes
+  → Sitios → Editar. **Apps** es el último botón, como en clonbuster y clipkeeper: las otras apps,
+  la guía y «Salir» (el logo ya no abre nada).
+- **Un solo botón de filtros**, junto a la caja: «Filtros (N)» abre una hoja con **Qué buscar**
+  (sitios, páginas, web, varias búsquedas, vista) y **Filtrar resultados**; N cuenta las dos.
+- **Miniaturas grandes** por defecto: dos resultados por fila en el móvil (miniatura de ~180 px),
+  casilla sobre la miniatura y «⋯» abajo. «Lista compacta» en Filtros, recordada en el dispositivo.
+- **«Parar» para al instante**: la pantalla dice «Búsqueda parada» en el acto (antes el botón se
+  rehacía con cada tanda y el toque se perdía en el iPhone) y el servidor la da por terminada ya,
+  aunque un sitio no responda; corta también las páginas abiertas con el navegador.
+- Paquete común cg-ui 1.3.0 (un solo aviso a la vez, barra con «Apps» al final).
+
+**Al actualizar**: no hay que hacer nada; ninguna ruta de la API cambia. Si preferías la lista de
+antes: Filtros → «Lista compacta».
+
 ## 2.20.0 — cómoda con una mano (fase 3)
 
 - **Navegación nueva**: **Buscar · Actividad · Ajustes**, abajo en el móvil y como barra lateral

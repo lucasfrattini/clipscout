@@ -370,23 +370,26 @@ running after you log out, use a process manager such as systemd or pm2.
 To add sites, press **+ Add sites**, paste their addresses (one per line) and
 a term those sites have; the test result tells you which ones work.
 
-The app has three places, at the bottom of the screen on a phone and as a side bar on a computer:
-**Search**, **Activity** (queued searches, packages sent to JDownloader and scheduled searches)
-and **Settings** (Search · Downloads · Clipgeist · System). It is made to be used with one hand:
+The app has five buttons, at the bottom of the screen on a phone and as a side bar on a computer:
+**Search**, **Advanced** (walk a page or a whole site by hand), **Activity** (queued searches,
+packages sent to JDownloader and scheduled searches), **Settings** (Search · Downloads · Clipgeist ·
+System) and, always last, **Apps** (the other Clipgeist apps, using the address you are browsing
+from, the guide and **Log out**). It is made to be used with one hand:
 
-- The search box sits in the top row; search options (which sites, pages per site, several
-  searches at once) are behind the sliders button, and result filters open in a sheet from the
-  **Filters** button. Only the active filters stay on screen, each with its ✕.
-- Results are a compact list (about eight per phone screen). **Long-press** a row, or tick its box,
-  to select several; the bottom bar then offers **Download**, **All** and **Remove**. Removing is
-  undone with **Undo**.
+- The search box sits in the top row with a single **Filters (N)** button next to it. Its sheet has
+  two parts: **What to search** (which sites, pages per site, the web, several searches at once,
+  large or compact results) and **Filter results**. N counts what is active in both; the active
+  result filters also stay on screen, each with its ✕.
+- Results come **large** by default (two per row on a phone, with a big thumbnail) or as a
+  **compact list** (about eight per screen), remembered on each device. **Long-press** a result,
+  or tick its box, to select several; the bottom bar then offers **Download**, **All** and
+  **Remove**. Removing is undone with **Undo**.
 - What you **already have** (clipkeeper) and what you **already sent** to JDownloader are hidden
   by default, with a counter to show them, and never go into **Download all**.
-- The clipscout logo opens the other Clipgeist apps (using the address you are browsing from,
-  so it works from a phone), the guide and **Log out**.
+- **Stop** stops a search at once, even if a site is not answering.
 
-The **site editor** (it used to be **Advanced**: _Settings → Search → Sites → ⋯ → Edit_, or
-`#/explorer`) is the full explorer, for going deep on one site by hand:
+**Advanced** (`#/explorer`) is the full explorer, for going deep on one site by hand; the same
+screen is the **site editor** (_Settings → Search → Sites → ⋯ → Edit_):
 
 1. **Addresses to explore** — the page where the walk starts. You can use
    `{q}` where the search term goes and `{page}` where the page number goes.

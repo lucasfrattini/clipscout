@@ -27,9 +27,9 @@
     <a class="skip-link" href="#main" data-i18n="app.saltar">Saltar al contenido</a>
 
     <!--
-      Navegación (fase 3): Buscar · Actividad · Ajustes. Abajo en el móvil, barra lateral en
-      escritorio (componente común cg-ui). «Avanzado» ya no está aquí: es el editor de un sitio
-      (Ajustes → Búsqueda → Sitios → Editar); #/explorer sigue funcionando.
+      Navegación: Buscar · Avanzada · Actividad · Ajustes · Apps. Abajo en el móvil, barra lateral
+      en escritorio (componente común cg-ui). «Apps» es siempre el último botón, igual en las tres
+      apps de Clipgeist: abre la hoja con las otras apps, la guía y «Salir».
     -->
     <cg-barra-inferior data-i18n="nav.aria" data-i18n-attr="etiqueta" etiqueta="Herramientas">
       <a data-marca class="cs-marca" href="/">
@@ -42,12 +42,18 @@
       <a href="#/buscar" data-icono="buscar" data-vista="buscar"
         ><span data-i18n="nav.buscar">Buscar</span></a
       >
+      <a href="#/explorer" data-icono="lista" data-vista="explorer"
+        ><span data-i18n="nav.avanzada">Avanzada</span></a
+      >
       <a href="#/actividad" data-icono="actividad" data-vista="actividad"
         ><span data-i18n="nav.actividad">Actividad</span></a
       >
       <a href="#/ajustes" data-icono="ajustes" data-vista="ajustes"
         ><span data-i18n="nav.ajustes">Ajustes</span></a
       >
+      <button type="button" id="boton-apps" data-icono="apps" aria-haspopup="dialog">
+        <span data-i18n="nav.apps">Apps</span>
+      </button>
     </cg-barra-inferior>
 
     <div class="layout">
@@ -80,8 +86,8 @@
     </div>
 
     <!--
-      Menú del logo: las tres apps de Clipgeist (con la dirección desde la que se ve esta página),
-      la guía y «Salir». Lo abre el botón del logo de cada cabecera.
+      Hoja «Apps»: las tres apps de Clipgeist (con la dirección desde la que se ve esta página), la
+      guía y «Salir». La abre el último botón de la barra.
     -->
     <cg-hoja id="hoja-apps" titulo="Clipgeist">
       <nav

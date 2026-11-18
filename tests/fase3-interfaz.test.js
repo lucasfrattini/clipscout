@@ -137,15 +137,20 @@ test('POST /api/ajustes/jdownloader/enviados responde con lo apuntado en los paq
 
 /* ── La interfaz: navegación nueva y lo que se movió ─────────────────── */
 
-test('index.html: Buscar · Actividad · Ajustes en la barra, sin «Avanzado»', () => {
+test('index.html: Buscar · Avanzada · Actividad · Ajustes · Apps en la barra (Apps la última)', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const barra = html.slice(
     html.indexOf('<cg-barra-inferior'),
     html.indexOf('</cg-barra-inferior>')
   );
   const destinos = [...barra.matchAll(/href="#\/(\w+)" data-icono/g)].map(m => m[1]);
-  assert.deepEqual(destinos, ['buscar', 'actividad', 'ajustes']);
-  assert.ok(!barra.includes('explorer'), '«Avanzado» ya no va en la barra');
+  assert.deepEqual(destinos, ['buscar', 'explorer', 'actividad', 'ajustes']);
+  assert.match(barra, /<button[^>]*id="boton-apps"[^>]*data-icono="apps"/);
+  assert.ok(
+    barra.lastIndexOf('boton-apps') > barra.lastIndexOf('href="#/'),
+    '«Apps» es el último botón'
+  );
   assert.match(html, /id="view-actividad"/);
-  assert.match(html, /id="view-explorer"/, '#/explorer sigue existiendo (editor de sitio)');
+  assert.match(html, /id="view-explorer"/);
+  assert.match(html, /id="hoja-apps"/);
 });
