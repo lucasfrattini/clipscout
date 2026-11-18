@@ -154,15 +154,13 @@ async function paquete(id) {
 /**
  * Al restaurar crew.json, las claves de conexión se quedan como están AHORA: las otras apps ya
  * usan las actuales y una copia de antes las dejaría sin poder llamarnos (y a nosotros sin poder
- * llamarlas).
+ * llamarlas). Y lo mismo el usuario y la contraseña (CS-18): antes volvía la contraseña de la
+ * copia sin avisar, y quien la había cambiado se quedaba fuera.
  */
-function conClavesActuales(restaurado) {
-  let actual = {};
-  try {
-    actual = JSON.parse(require('node:fs').readFileSync(config.crew.path, 'utf8'));
-  } catch {
-    return restaurado;
-  }
+function conClavesActuales(restaurado, actual) {
+  if (!actual) return restaurado;
+  if (actual.acceso) restaurado.acceso = actual.acceso;
+  else delete restaurado.acceso;
   for (const c of restaurado.conexiones || []) {
     const ahora = (actual.conexiones || []).find(x => x.url === c.url && x.app === c.app);
     if (!ahora) continue;
@@ -184,9 +182,18 @@ async function restaurar(id) {
   for (const { nombre } of copia.ficheros) {
     const origen = path.join(carpeta(), copia.id, nombre);
     // Que sea JSON válido ANTES de pisar nada.
-    let texto = await fs.readFile(origen, 'utf8');
+    const texto = await fs.readFile(origen, 'utf8');
     const datos = JSON.parse(texto);
-    if (nombre === 'crew.json') texto = `${JSON.stringify(conClavesActuales(datos), null, 2)}\n`;
+    if (nombre === 'crew.json') {
+      // Por la cola de cambios de crew.json (CS-18): antes se escribía por fuera y podía pisar,
+      // o ser pisado por, un cambio que estuviera guardándose a la vez.
+      await require('./crew').cambiar(actual => {
+        const nuevo = conClavesActuales(datos, structuredClone(actual));
+        for (const k of Object.keys(actual)) delete actual[k];
+        Object.assign(actual, nuevo);
+      });
+      continue;
+    }
     await escribirTexto(rutas[nombre], texto);
   }
   await podar();

@@ -433,7 +433,15 @@ export function createBuscarView(root) {
   const marcasFiltros = el('div', { className: 'buscar__marcas', attrs: { hidden: '' } });
   const lineaEstado = el('div', { className: 'buscar__estado' });
   const estadoGiro = el('span', { className: 'buscar__girando', attrs: { 'aria-hidden': 'true' } });
-  const estadoTexto = el('span', { attrs: { 'aria-live': 'polite' } });
+  // CS-18: el texto de estado cambia con cada tanda (cada 80 ms); con `aria-live` un lector de
+  // pantalla lo recitaba sin parar. Ahora se anuncia aparte, solo cuando cambia la fase
+  // (en cola, buscando, terminada, parada).
+  const estadoTexto = el('span');
+  const anuncioEstado = el('span', {
+    className: 'visually-hidden',
+    attrs: { role: 'status', 'aria-live': 'polite' },
+  });
+  let ultimoAnuncio = '';
   const contadorBoton = alPulsar =>
     el('button', {
       className: 'buscar__contador',
@@ -463,7 +471,7 @@ export function createBuscarView(root) {
     el('button', {
       className: 'buscar__estado-texto',
       attrs: { type: 'button', 'aria-haspopup': 'dialog' },
-      children: [estadoGiro, estadoTexto],
+      children: [estadoGiro, estadoTexto, anuncioEstado],
       on: { click: () => abrirProgreso() },
     }),
     cuentaTengo,
@@ -2041,6 +2049,12 @@ export function createBuscarView(root) {
       tp('buscar.resultados', lista.length) +
       (pasada.repetidos ? ` · ${tp('buscar.repetidos', pasada.repetidos)}` : '') +
       (pasada.enAlbumes > 0 ? ` · ${tp('buscar.enAlbumes', pasada.enAlbumes)}` : '');
+    const fase = quedan || enCola || parada ? textoEstado() : tp('buscar.resultados', lista.length);
+    const anuncio = quedan || enCola ? fase.replace(/\d+/g, '') : fase;
+    if (anuncio !== ultimoAnuncio) {
+      ultimoAnuncio = anuncio;
+      anuncioEstado.textContent = fase;
+    }
     const contar = (boton, n, clave) => {
       boton.hidden = !n;
       if (n) boton.textContent = tp(clave, n);

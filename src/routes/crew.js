@@ -41,10 +41,13 @@ const manejar = fn => async (req, res) => {
   try {
     res.json(await fn(req, res));
   } catch (error) {
+    // `error` además de `detail`: el mismo formato que el resto de la API (CS-18).
     if (error instanceof crew.ErrorCrew) {
-      return res.status(error.status).json({ detail: error.message });
+      return res.status(error.status).json({ detail: error.message, error: error.message });
     }
-    res.status(500).json({ detail: 'Error interno.' });
+    res
+      .status(500)
+      .json({ detail: 'Error interno.', error: 'Error interno.', code: 'INTERNAL_ERROR' });
   }
 };
 

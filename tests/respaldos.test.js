@@ -61,3 +61,15 @@ test('descargar y restaurar desde Ajustes (y restaurar se puede deshacer)', asyn
   const malo = await fetch(`${api}/..%2F..%2Fetc/restaurar`, { method: 'POST' });
   assert.equal(malo.status, 404);
 });
+
+test('CS-18: restaurar no devuelve la contraseña de la copia; el resto, sí', async () => {
+  escribir('crew.json', { instancia: 'Antes', acceso: { usuario: 'ana', hash: 'viejo' } });
+  const id = '2020-01-01';
+  fs.mkdirSync(path.join(dir, 'respaldos', id), { recursive: true });
+  fs.copyFileSync(path.join(dir, 'crew.json'), path.join(dir, 'respaldos', id, 'crew.json'));
+  escribir('crew.json', { instancia: 'Ahora', acceso: { usuario: 'ana', hash: 'nuevo' } });
+  await respaldos.restaurar(id);
+  const crew = JSON.parse(fs.readFileSync(path.join(dir, 'crew.json'), 'utf8'));
+  assert.equal(crew.instancia, 'Antes');
+  assert.equal(crew.acceso.hash, 'nuevo', 'la contraseña de ahora se queda');
+});

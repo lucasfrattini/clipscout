@@ -37,6 +37,10 @@ function errorHandler(error, req, res, next) {
         error: 'Error interno del servidor',
         code: 'INTERNAL_ERROR',
       };
+  // CS-18: un solo formato de error en toda la API. Estas rutas daban `{error, code}` y las de
+  // Ajustes y del protocolo `{detail}`; ahora todas llevan los dos (`detail` = `error`), así que
+  // quien leyera uno u otro sigue funcionando.
+  body.detail = body.error;
 
   // La traza solo se expone fuera de producción
   if (config.env !== 'production' && statusCode >= 500) {
