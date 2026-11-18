@@ -1,5 +1,5 @@
 import { ajustes } from '../api.js';
-import { el, clear, toast, enfocarAlAbrir } from '../dom.js';
+import { el, clear, toast, enfocarAlAbrir, copyToClipboard } from '../dom.js';
 import { t, tp, texto, atributo, alCambiarIdioma, idiomaActual } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
@@ -583,7 +583,29 @@ export function createBuscarView(root) {
   const selTodos = accionSel('check', 'buscar.sel.todos', () => seleccionarTodos());
   const selQuitar = accionSel('cerrar', 'buscar.sel.quitar', () => quitarSeleccion());
   const selPrimeros = accionSel('lista', 'buscar.sel.primeros', () => elegirPrimeros());
-  barraSeleccion.append(selDescargar, selTodos, selPrimeros, selQuitar);
+  // CS-N10: copiar o exportar los enlaces elegidos. cg-ui no tiene icono de copiar: se pone aquí
+  // el SVG con la misma clase (cg-ui no añade el suyo si el botón ya lleva uno).
+  const selCopiar = accionSel('copiar', 'buscar.sel.copiar', () => copiarSeleccion());
+  {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'cg-icono');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const hoja = document.createElementNS(ns, 'rect');
+    for (const [k, v] of Object.entries({ x: 8, y: 8, width: 12, height: 12, rx: 2 })) {
+      hoja.setAttribute(k, String(v));
+    }
+    const detras = document.createElementNS(ns, 'path');
+    detras.setAttribute(
+      'd',
+      'M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8'
+    );
+    svg.append(hoja, detras);
+    selCopiar.prepend(svg);
+  }
+  barraSeleccion.append(selDescargar, selTodos, selPrimeros, selCopiar, selQuitar);
 
   root.append(
     cabecera,
@@ -1093,6 +1115,47 @@ export function createBuscarView(root) {
         texto: t('buscar.sel.primeros.n', { n }),
         fn: () => seleccion?.poner(lista.slice(0, n)),
       })),
+    });
+  }
+  /** CS-N10: los elegidos al portapapeles (uno por línea) o a un fichero .txt / .csv. */
+  function copiarSeleccion() {
+    const claves = seleccion?.claves || [];
+    if (!claves.length) return;
+    const porEnlace = new Map(resultados.map(r => [enlaceDe(r), r]));
+    const filas = claves.map(l => porEnlace.get(l) || { url: l });
+    const nombre = `clipscout-${(ultimaBusqueda || 'enlaces').replace(/[^\p{L}\p{N}]+/gu, '-').slice(0, 40)}`;
+    const bajar = (texto, tipo, ext) => {
+      const url = URL.createObjectURL(new Blob([texto], { type: tipo }));
+      const a = el('a', { attrs: { href: url, download: `${nombre}.${ext}` } });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+    menuAcciones({
+      titulo: t('buscar.copiar.titulo'),
+      subtitulo: tp('buscar.resultados', claves.length),
+      acciones: [
+        {
+          texto: t('buscar.copiar.portapapeles'),
+          fn: async () => {
+            const ok = await copyToClipboard(claves.join('\n'));
+            toast(ok ? tp('buscar.copiar.copiados', claves.length) : t('resultados.noCopiado'));
+          },
+        },
+        {
+          texto: t('buscar.copiar.txt'),
+          fn: () => bajar(`${claves.join('\n')}\n`, 'text/plain;charset=utf-8', 'txt'),
+        },
+        {
+          texto: t('buscar.copiar.csv'),
+          // El módulo de exportar solo se pide al usarlo (no entra en la carga inicial).
+          fn: async () => {
+            const { csvDeResultados } = await import('../exportFormats.js');
+            bajar(csvDeResultados(filas), 'text/csv;charset=utf-8', 'csv');
+          },
+        },
+      ],
     });
   }
   function quitarSeleccion() {

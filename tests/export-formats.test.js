@@ -210,3 +210,22 @@ test('la lista de descarga es solo URLs, sin cabecera ni comentarios', () => {
     assert.match(linea, /^https?:\/\//);
   }
 });
+
+test('CS-N10: csvDeResultados (lo elegido en Buscar), con el mismo escapado', () => {
+  const csv = ex.csvDeResultados([
+    {
+      sourceUrl: 'https://ejemplo.com/v/1',
+      url: 'https://cdn.ejemplo.com/1.mp4',
+      title: '=Playa, "norte"',
+      durationSeconds: 61.4,
+      sitio: 'Sitio A',
+    },
+    { url: 'https://ejemplo.com/v/2', title: 'Sin más' },
+  ]);
+  assert.strictEqual(
+    csv,
+    'enlace,titulo,duracion_segundos,sitio,fichero\r\n' +
+      `https://ejemplo.com/v/1,"'=Playa, ""norte""",61,Sitio A,https://cdn.ejemplo.com/1.mp4\r\n` +
+      'https://ejemplo.com/v/2,Sin más,,,\r\n'
+  );
+});

@@ -453,6 +453,12 @@ try {
   await pagina.getByRole('button', { name: 'Los 5 primeros' }).click();
   await pagina.locator('cg-barra-accion[cuenta="5"]').waitFor();
   registro('«los 5 primeros»: elegidos');
+  // CS-N10: copiar los elegidos (y la barra de selección, con 5 acciones, sigue midiendo ≥ 44 px).
+  await medir(pagina, 'buscar-seleccion-5', '.buscar__tarjeta');
+  await pagina.locator('cg-barra-accion button[data-icono="copiar"]').click();
+  await pagina.getByRole('button', { name: 'Copiar los enlaces' }).click();
+  await pagina.getByText('5 enlaces copiados').waitFor();
+  registro('copiar: 5 enlaces');
   await pagina.reload();
   await pagina.locator('.buscar__tarjeta').first().waitFor();
 

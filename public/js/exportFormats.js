@@ -117,3 +117,21 @@ export function construirFilas(urls, { info, grupoDe } = {}) {
     };
   });
 }
+
+/**
+ * CS-N10: CSV de resultados de Buscar (los elegidos): enlace, título, duración y sitio. Con el
+ * mismo escapado (comas, comillas, saltos y fórmulas) que el del Explorador.
+ */
+export function csvDeResultados(resultados) {
+  const filas = [['enlace', 'titulo', 'duracion_segundos', 'sitio', 'fichero']];
+  for (const r of resultados) {
+    filas.push([
+      r.sourceUrl || r.url || '',
+      r.title || '',
+      Number.isFinite(r.durationSeconds) ? String(Math.round(r.durationSeconds)) : '',
+      r.sitio || '',
+      r.sourceUrl && r.url !== r.sourceUrl ? r.url : '',
+    ]);
+  }
+  return `${filas.map(f => f.map(escaparCSV).join(',')).join('\r\n')}\r\n`;
+}

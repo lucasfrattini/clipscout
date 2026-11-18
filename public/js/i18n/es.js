@@ -1392,4 +1392,11 @@ export const es = {
   'buscar.recientes': 'Recientes',
   'buscar.recientes.repetir': 'Buscar otra vez «{q}»',
   'buscar.recientes.borrar': 'Borrar el historial',
+  'buscar.sel.copiar': 'Copiar',
+  'buscar.copiar.titulo': 'Copiar o exportar',
+  'buscar.copiar.portapapeles': 'Copiar los enlaces',
+  'buscar.copiar.txt': 'Descargar una lista (.txt)',
+  'buscar.copiar.csv': 'Descargar una tabla (.csv)',
+  'buscar.copiar.copiados.uno': '1 enlace copiado',
+  'buscar.copiar.copiados.varios': '{n} enlaces copiados',
 };
