@@ -1014,3 +1014,89 @@ cg-chips.actividad__pestanas {
   font-size: 0.85rem;
   overflow-wrap: anywhere;
 }
+
+/* ── «Recoger» (CS-N1): botón del pie y su hoja ────────────────────── */
+.buscar__recoger {
+  flex: none;
+  margin-left: auto;
+  padding-inline: 12px;
+  font-size: 0.9rem;
+}
+.recoger .cs-casilla {
+  min-height: 44px;
+}
+.recoger__n button {
+  min-width: 52px;
+}
+.recoger__carpeta {
+  justify-content: flex-start;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recoger__estado,
+.recoger__tengo,
+.recoger__fuera {
+  margin: 8px 0;
+  color: var(--c-text-muted);
+  font-size: 0.9rem;
+}
+.recoger__tengo {
+  color: inherit;
+}
+.recoger__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.recoger__fila {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 44px;
+}
+.recoger__mini {
+  flex: none;
+  width: 72px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--c-border);
+}
+.recoger__texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.recoger__texto strong {
+  overflow: hidden;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recoger__texto small {
+  color: var(--c-text-muted);
+}
+.recoger__mandar {
+  width: 100%;
+}
+.recoger__mas summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.recoger__mas summary::before {
+  content: '▸';
+  transition: transform 0.15s;
+}
+.recoger__mas[open] summary::before {
+  transform: rotate(90deg);
+}

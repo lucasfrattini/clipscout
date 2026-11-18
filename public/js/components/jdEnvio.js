@@ -118,6 +118,8 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
     /** Personas y etiquetas de clipkeeper (para proponer la carpeta sola al buscar). */
     catalogo: () => catalogo,
     nuevaCarpeta,
+    /** La ventana de carpeta, sin «Preguntar cada vez» (Recoger). */
+    elegirCarpeta,
     ultima: () => ultima,
     /** Avisa cuando se sabe si hay JDownloader (para repintar botones por fila). */
     alCargar: fn => alCargar.add(fn),

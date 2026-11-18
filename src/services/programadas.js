@@ -11,8 +11,7 @@ const crew = require('./crew');
 const fondo = require('./busquedasFondo');
 const jd = require('./jdownloader');
 const filtrosGlobales = require('./filtrosGlobales');
-const estadisticas = require('./estadisticas');
-const { palabras, textoDe, contieneAlguna, bloqueadaPor } = require('../lib/filtros');
+const { elegir } = require('../lib/recoger');
 
 /**
  * Búsquedas programadas: una búsqueda guardada que se repite sola cada N días y manda a
@@ -94,6 +93,13 @@ function limpiar(entrada = {}, anterior = {}) {
     contener: texto(entrada.contener ?? anterior.contener, 500),
     excluir: texto(entrada.excluir ?? anterior.excluir, 500),
     cadaDias: numero(entrada.cadaDias ?? anterior.cadaDias, 7, 1, 90),
+    // «Recoger» (CS-N1): como mucho N por vuelta (0 = todo lo nuevo, como antes), solo lo que
+    // lleva el nombre y en qué orden se eligen. Las de antes no los tienen y no cambian.
+    n: numero(entrada.n ?? anterior.n, 0, 0, 200),
+    soloConNombre: Boolean(entrada.soloConNombre ?? anterior.soloConNombre ?? false),
+    orden: ['largos', 'calidad'].includes(entrada.orden ?? anterior.orden)
+      ? (entrada.orden ?? anterior.orden)
+      : null,
     // «También en toda la web»: desactivada salvo que se marque (las guardadas antes, igual).
     abierta: Boolean(entrada.abierta ?? anterior.abierta ?? false),
     activa: Boolean(entrada.activa ?? anterior.activa ?? true),
@@ -138,13 +144,13 @@ async function quitar(id) {
 }
 
 /**
- * Qué resultados se mandan. Pura, para poder probarla: no sabe nada de red.
+ * Qué resultados se mandan: la misma función de elección que «Recoger» (CS-04, `lib/recoger.js`).
+ * Pura, para poder probarla: no sabe nada de red.
  *
- * Un VÍDEO se manda una vez: se comparan enlaces por su identidad (`claveEnlace`: misma ficha
- * con o sin «www.», barra final, parámetros de seguimiento…) y, con `grupos` (los repetidos que
- * la búsqueda detectó: el mismo vídeo en varios sitios o fichas), de cada grupo sale solo el
- * primero que pasa los filtros. Si cualquier miembro del grupo se mandó en una vuelta anterior
- * (`yaEnviados`, claves), no se manda ninguno.
+ * Un VÍDEO se manda una vez (misma ficha escrita de otra forma, o el mismo vídeo en varios sitios:
+ * de cada grupo sale uno) y nada de lo enviado en una vuelta anterior (`yaEnviados`, claves). Las
+ * programadas de «Recoger» (`n`) además: solo lo que lleva el nombre, las más largas (o de más
+ * calidad) primero y como mucho `n` (el corte lo hace `terminar`, tras quitar lo que ya tengo).
  *
  * Devuelve los elegidos (con `claves`: todo lo que hay que recordar como enviado al mandarlo) y
  * cuántos se descartaron y por qué.
@@ -156,76 +162,19 @@ function filtrar(
   bloqueadas = filtrosGlobales.bloqueadas(),
   grupos = []
 ) {
-  const contener = palabras(prog.contener);
-  const excluir = palabras(prog.excluir);
-  const minimo = (prog.minutosMinimo || 0) * 60;
-  const enviados = new Set([...yaEnviados].map(claveEnlace));
-  // Grupo de cada enlace (por la url del resultado), y todas las claves de cada grupo (también
-  // las de las fichas, que es lo que se manda).
-  const grupoDe = new Map();
-  (Array.isArray(grupos) ? grupos : []).forEach((g, i) => {
-    for (const u of g?.miembros || []) grupoDe.set(claveEnlace(u), i);
+  return elegir(items, {
+    nombre: prog.persona || prog.termino,
+    soloConNombre: Boolean(prog.soloConNombre),
+    // Sin `orden` (las de antes), el de la búsqueda.
+    orden: prog.orden || null,
+    minutosMinimo: prog.minutosMinimo,
+    sinDuracion: prog.sinDuracion,
+    contener: prog.contener,
+    excluir: prog.excluir,
+    bloqueadas,
+    yaEnviados,
+    grupos,
   });
-  const enlaceDe = it => it?.sourceUrl || it?.url;
-  const grupoDeItem = it =>
-    grupoDe.get(claveEnlace(it?.url)) ?? grupoDe.get(claveEnlace(enlaceDe(it)));
-  const clavesGrupo = new Map();
-  for (const it of items) {
-    const g = grupoDeItem(it);
-    if (g === undefined || !enlaceDe(it)) continue;
-    if (!clavesGrupo.has(g)) clavesGrupo.set(g, new Set());
-    clavesGrupo.get(g).add(claveEnlace(enlaceDe(it)));
-    if (it.url) clavesGrupo.get(g).add(claveEnlace(it.url));
-  }
-  const vistos = new Set();
-  const gruposElegidos = new Set();
-  const elegidos = [];
-  const descartes = {
-    repetido: 0,
-    enviado: 0,
-    duracion: 0,
-    contener: 0,
-    excluir: 0,
-    bloqueada: 0,
-  };
-  for (const it of items) {
-    const link = enlaceDe(it);
-    const clave = link ? claveEnlace(link) : '';
-    const g = link ? grupoDeItem(it) : undefined;
-    if (!link || vistos.has(clave) || (g !== undefined && gruposElegidos.has(g))) {
-      descartes.repetido += 1;
-      continue;
-    }
-    vistos.add(clave);
-    const claves = g === undefined ? [clave] : [...clavesGrupo.get(g)];
-    if (claves.some(k => enviados.has(k))) {
-      descartes.enviado += 1;
-      continue;
-    }
-    const d = it.durationSeconds;
-    if (Number.isFinite(d) ? d < minimo : !prog.sinDuracion && minimo > 0) {
-      descartes.duracion += 1;
-      continue;
-    }
-    // Las palabras bloqueadas de Ajustes mandan sobre todo lo demás: se cuentan aparte para que
-    // el resumen diga por qué no se mandó.
-    if (bloqueadaPor(it, bloqueadas)) {
-      descartes.bloqueada += 1;
-      continue;
-    }
-    const texto = textoDe({ ...it, sourceUrl: link });
-    if (contieneAlguna(texto, excluir)) {
-      descartes.excluir += 1;
-      continue;
-    }
-    if (contener.length && !contieneAlguna(texto, contener)) {
-      descartes.contener += 1;
-      continue;
-    }
-    if (g !== undefined) gruposElegidos.add(g);
-    elegidos.push({ link, item: it, claves });
-  }
-  return { elegidos, descartes };
 }
 
 /** Pone la búsqueda en la cola de fondo (la misma que las búsquedas a mano). Devuelve su id. */
@@ -274,30 +223,6 @@ function esperarBusqueda(id) {
     if (baja === null) acabar();
     if (terminado) baja?.();
   });
-}
-
-/** Quita lo que clipkeeper ya tiene. Si no está conectado o falla, no quita nada. */
-async function quitarLoQueTengo(elegidos, persona) {
-  const quedan = [];
-  let tengo = 0;
-  for (let i = 0; i < elegidos.length; i += 200) {
-    const tanda = elegidos.slice(i, i + 200);
-    const r = await crew
-      .buscarEnClipkeeper(
-        tanda.map(e => e.item.title || ''),
-        tanda.map(e => e.item.durationSeconds ?? null),
-        persona
-      )
-      .catch(() => ({ resultados: [] }));
-    const res = r.resultados || [];
-    tanda.forEach((e, j) => {
-      if (res.length === tanda.length && res[j]?.coincidencias?.length) {
-        tengo += 1;
-        estadisticas.sumarEnlace(e.link, { yaLoTenias: 1 });
-      } else quedan.push(e);
-    });
-  }
-  return { quedan, tengo };
 }
 
 /**
@@ -368,8 +293,14 @@ async function terminar(id, prog, busqueda) {
       filtrosGlobales.bloqueadas(),
       grupos
     );
-    const { quedan, tengo } = await quitarLoQueTengo(elegidos, prog.persona);
+    // `n` (las de «Recoger»): como mucho N, contados después de quitar lo que ya tengo.
+    const { quedan, tengo, papelera } = await require('./recoger').quitarLoQueTengo(
+      elegidos,
+      prog.persona || (prog.n ? prog.termino : ''),
+      prog.n || 0
+    );
     descartes.tengo = tengo;
+    if (papelera) descartes.papelera = papelera;
     let mandados = 0;
     let fallo = error || null;
     if (quedan.length) {

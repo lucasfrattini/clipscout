@@ -14,6 +14,19 @@ const { hostDe } = require('../services/web');
 const router = express.Router();
 
 /** GET /api/buscar/sitios — dónde se puede buscar (configuraciones guardadas con {q}). */
+/**
+ * POST /api/recoger/propuesta {busqueda, nombre?, n, soloConNombre, orden, minutosMinimo} —
+ * «Recoger» (CS-N1): de lo que encontró esa búsqueda, los N que llevan el nombre, que no tengo,
+ * sin repetidos y los más largos. Solo PROPONE: se manda con la ruta de envío de siempre.
+ */
+router.post('/recoger/propuesta', async (req, res) => {
+  try {
+    res.json(firmarDatos(await require('../services/recoger').proponer(req.body || {})));
+  } catch (error) {
+    errores.responder(req, res, error, logger);
+  }
+});
+
 router.get('/buscar/sitios', async (req, res, next) => {
   try {
     const sitios = await listarSitios();

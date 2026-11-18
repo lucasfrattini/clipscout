@@ -711,6 +711,39 @@ async function buscarEnClipkeeper(titulos, duraciones, persona = '') {
 }
 
 /**
+ * «Lo que tengo de esta persona o término» (CS-N1 «Recoger»): `POST /api/crew/v1/tengo` de
+ * clipkeeper 0.36+. `{conectado:false}` sin clipkeeper; `{disponible:false}` si es anterior (404)
+ * o no responde: quien llama pregunta entonces con `/buscar`, como «ya lo tengo».
+ */
+async function tengoEnClipkeeper(termino, limite = 2000) {
+  const { conexiones = [] } = await datos();
+  const destino = conexiones.find(c => c.app === 'clipkeeper' && c.activa);
+  if (!destino) return { conectado: false, disponible: false, videos: [], personas: [] };
+  try {
+    const r = await llamar(`${destino.url}/api/crew/v1/tengo`, {
+      method: 'POST',
+      headers: { 'X-Api-Key': destino.api_key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ termino, limite }),
+    });
+    if (r.status !== 200) {
+      return { conectado: true, disponible: false, estado: r.status, videos: [], personas: [] };
+    }
+    const j = await r.json();
+    return {
+      conectado: true,
+      disponible: true,
+      clipkeeper: destino.nombre,
+      total: Number(j.total) || 0,
+      truncado: Boolean(j.truncado),
+      personas: Array.isArray(j.personas) ? j.personas : [],
+      videos: Array.isArray(j.videos) ? j.videos : [],
+    };
+  } catch {
+    return { conectado: true, disponible: false, videos: [], personas: [] };
+  }
+}
+
+/**
  * Destinos para descargar: carpetas de las bibliotecas de clipkeeper con lo que heredará lo que
  * llegue a cada una (personas y etiquetas comunes). {conectado: false} sin clipkeeper.
  */
@@ -895,6 +928,7 @@ module.exports = {
   escanearClipkeeper,
   reglaClipkeeper,
   buscarEnClipkeeper,
+  tengoEnClipkeeper,
   destinosClipkeeper,
   APP,
   APPS,

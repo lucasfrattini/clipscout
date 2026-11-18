@@ -456,6 +456,40 @@ try {
   await pagina.reload();
   await pagina.locator('.buscar__tarjeta').first().waitFor();
 
+  // «Recoger» (CS-N1): propuesta a la vista y un solo botón. Los títulos falsos no llevan
+  // «playa»: con «solo los que llevan el nombre» no hay nada; sin ella, 10 sin repetidos entre
+  // los dos sitios y sin los ya enviados.
+  await pagina.locator('.buscar__recoger').click();
+  await pagina.locator('cg-hoja.recoger[abierta]').waitFor();
+  await pagina.locator('.recoger__mandar', { hasText: 'Nada nuevo' }).waitFor();
+  await pagina.locator('.recoger__mas summary').click();
+  await pagina.locator('cg-hoja.recoger label.cs-casilla', { hasText: 'llevan el nombre' }).click();
+  await pagina.locator('.recoger__mas summary').click();
+  await pagina.locator('cg-chips.recoger__n button[value="10"]').click();
+  await pagina.locator('.recoger__mandar', { hasText: 'Mandar 10' }).waitFor();
+  await esperar(400);
+  // Una hoja: no se mide dónde empieza (no es una pantalla), sí los controles y el ancho.
+  await medir(pagina, 'recoger', null);
+  const propuestos = await pagina.locator('.recoger__fila strong').allTextContents();
+  if (new Set(propuestos).size !== 10) {
+    throw new Error(`Recoger: no son 10 distintos: ${propuestos.join(', ')}`);
+  }
+  if (!/ya enviados/.test(await pagina.locator('.recoger__fuera').textContent())) {
+    throw new Error('Recoger: no dice que deja fuera lo ya enviado');
+  }
+  const antesRecoger = recibidos.length;
+  await pagina.locator('.recoger__mandar').click();
+  await pagina.locator('button[data-tipo="etiqueta"]').click();
+  await pagina.locator('.dialog__input').fill('Recogida');
+  await pagina.locator('.dialog__input').press('Enter');
+  for (let i = 0; i < 100 && recibidos.length === antesRecoger; i += 1) await esperar(100);
+  const recogidos = String(recibidos.at(-1)?.links || '')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (recogidos.length !== 10) throw new Error(`Recoger mandó ${recogidos.length} (10)`);
+  if (recogidos.some(l => enlaces.includes(l))) throw new Error('Recoger reenvió lo ya enviado');
+  registro('recoger: 10 enviados', propuestos.join(' | '));
+
   // Actividad: la búsqueda, el paquete enviado y las programadas, en un sitio.
   await pagina.locator('cg-barra-inferior a[href="#/actividad"]').click();
   await pagina.locator('.cs-fila').first().waitFor();

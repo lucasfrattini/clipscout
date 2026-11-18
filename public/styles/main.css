@@ -2082,12 +2082,13 @@ a {
  *
  * El z-index tiene que ganarle a TODO lo demás del documento, incluidos los
  * toasts (60): un diálogo tapado por un toast es indistinguible de un
- * diálogo que no abrió.
+ * diálogo que no abrió. Y también a las hojas de cg-ui (1000/1100): la carpeta de
+ * «Recoger» se elige con este diálogo encima de su hoja.
  */
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 1200;
   display: flex;
   align-items: center;
   justify-content: center;

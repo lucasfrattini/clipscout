@@ -420,6 +420,23 @@ export function createActividadView(raiz) {
       ),
     });
     cada.value = String(v.cadaDias || 7);
+    // «Recoger» (CS-N1): como mucho N por vuelta, solo lo que lleva el nombre y en qué orden.
+    const maximo = el('input', {
+      className: 'input',
+      attrs: { type: 'number', min: '0', max: '200', inputmode: 'numeric' },
+    });
+    maximo.value = String(v.n ?? 0);
+    const soloNombre = el('input', { attrs: { type: 'checkbox' } });
+    soloNombre.checked = Boolean(v.soloConNombre);
+    const ordenSel = el('select', {
+      className: 'input',
+      children: [
+        el('option', { attrs: { value: '' }, text: t('aj.prog.orden.busqueda') }),
+        el('option', { attrs: { value: 'largos' }, text: t('recoger.orden.largos') }),
+        el('option', { attrs: { value: 'calidad' }, text: t('recoger.orden.calidad') }),
+      ],
+    });
+    ordenSel.value = v.orden || '';
     ajustes
       .destinos()
       .then(d => {
@@ -457,6 +474,9 @@ export function createActividadView(raiz) {
         campo(t('aj.prog.carpeta'), carpeta, t('aj.prog.carpeta.hint')),
         carpetas,
         campo(t('aj.prog.cada'), cada),
+        campo(t('aj.prog.maximo'), maximo, t('aj.prog.maximo.hint')),
+        casilla(soloNombre, t('recoger.soloNombre')),
+        campo(t('recoger.orden'), ordenSel),
         campo(t('aj.prog.minutos'), minutos),
         casilla(sinDuracion, t('aj.prog.sinDuracion')),
         campo(t('aj.prog.contener'), contener, t('aj.prog.contener.hint')),
@@ -490,6 +510,9 @@ export function createActividadView(raiz) {
           contener: contener.value,
           excluir: excluir.value,
           cadaDias: Number(cada.value),
+          n: Number(maximo.value) || 0,
+          soloConNombre: soloNombre.checked,
+          orden: ordenSel.value || null,
           activa: p ? p.activa : true,
         });
         toast(t('aj.prog.guardada'));

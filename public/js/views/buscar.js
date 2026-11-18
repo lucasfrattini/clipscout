@@ -447,6 +447,13 @@ export function createBuscarView(root) {
     attrs: { type: 'button', hidden: '' },
     on: { click: () => pararBusqueda() },
   });
+  // «Recoger» (CS-N1), a la derecha de la línea de estado: a mano en cuanto hay resultados.
+  const botonRecoger = el('button', {
+    className: 'cg-boton buscar__recoger',
+    attrs: { type: 'button', hidden: '' },
+    on: { click: () => abrirRecogerHoja() },
+  });
+  texto(botonRecoger, 'recoger.boton');
   lineaEstado.append(
     el('button', {
       className: 'buscar__estado-texto',
@@ -457,7 +464,8 @@ export function createBuscarView(root) {
     cuentaTengo,
     cuentaEnviados,
     cuentaDescartados,
-    botonParar
+    botonParar,
+    botonRecoger
   );
   const zonaSugeridos = el('div', { className: 'buscar__sugeridos', attrs: { hidden: '' } });
   const rejilla = el('div', {
@@ -588,13 +596,18 @@ export function createBuscarView(root) {
   const jd = createJdEnvio({ visibles: () => visibles().map(enlaceDe) });
   // La misma página (un álbum con varios vídeos) se manda una sola vez: JDownloader ya la abre entera.
   async function descargar(links) {
-    const unicos = [...new Set(links)];
-    if (!unicos.length) return null;
     const titulo = new Map(resultados.map(r => [enlaceDe(r), r.title || '']));
-    const r = await jd.enviar(unicos, {
+    const unicos = [...new Set(links)];
+    return descargarCon(unicos, {
       ...(destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija }),
       titulos: unicos.map(l => titulo.get(l) || ''),
     });
+  }
+  /** Manda con carpeta, regla y títulos dados (también «Recoger») y lo apunta como enviado. */
+  async function descargarCon(links, opciones) {
+    const unicos = [...new Set(links)];
+    if (!unicos.length) return null;
+    const r = await jd.enviar(unicos, opciones);
     if (r) {
       // Memoria de lo enviado: desde ya salen ocultos (con su contador) y fuera de «todo».
       const ahora = Date.now();
@@ -934,6 +947,24 @@ export function createBuscarView(root) {
       click: () => descargar(paraDescargarTodo(visibles(), { tengo: enBiblioteca, enviados })),
     },
   });
+  /*
+   * «Recoger» (CS-N1): de lo encontrado, los N que llevan el nombre, que no tengo y los más
+   * largos, con la propuesta a la vista y un solo botón. El módulo se carga al abrirlo.
+   */
+  async function abrirRecogerHoja() {
+    const id = trabajoVisto || trabajo;
+    if (!id) return;
+    const { abrirRecoger } = await import('./recoger.js');
+    abrirRecoger({
+      busqueda: id,
+      nombre: ultimaBusqueda || entrada.value.trim(),
+      minDuracion,
+      destino: () => ({ carpeta: destinoFijo, regla: reglaFija }),
+      elegirCarpeta: () => jd.elegirCarpeta(),
+      enviar: (links, opciones) => descargarCon(links, opciones),
+      jdConfigurado: jd.configurado(),
+    });
+  }
   pieAccion.append(destino, descargarTodo);
   jd.alCargar(() => {
     pintarDestinos();
@@ -2000,6 +2031,11 @@ export function createBuscarView(root) {
     // «Descargar todo»: sin lo que ya tienes ni lo enviado, aunque se esté mostrando.
     const paraTodo = paraDescargarTodo(lista, { tengo: enBiblioteca, enviados });
     pieAccion.hidden = !jd.configurado() || lista.length === 0;
+    // Recoger, solo al buscar un nombre o una palabra (no un enlace pegado).
+    botonRecoger.hidden =
+      !(trabajoVisto || trabajo) ||
+      resultados.length === 0 ||
+      tipoDeEntrada(ultimaBusqueda) !== 'palabra';
     descargarTodo.textContent = t('buscar.descargarTodo', { n: paraTodo.length });
     descargarTodo.disabled = paraTodo.length === 0;
 

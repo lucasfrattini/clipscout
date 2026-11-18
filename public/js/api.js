@@ -402,6 +402,12 @@ export const ajustes = {
     request(`/ajustes/programadas/${encodeURIComponent(id)}/ahora`, { method: 'POST', body: '{}' }),
 };
 
+/** «Recoger» (CS-N1): la propuesta de lo que se mandaría de una búsqueda. */
+export const recoger = {
+  propuesta: datos =>
+    request('/recoger/propuesta', { method: 'POST', body: JSON.stringify(datos) }),
+};
+
 /** Fase 5: diagnóstico, copia de la suite y versiones (Ajustes → Sistema). */
 export const sistema = {
   diagnostico: () => request('/diagnostico'),
