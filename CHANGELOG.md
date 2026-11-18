@@ -1,5 +1,37 @@
 # Cambios
 
+## 2.24.0 — funciones nuevas (fase 6)
+
+- **Recoger** (en Buscar, junto a los resultados): de lo que encontró la búsqueda de una persona o
+  un término, los N vídeos que llevan su nombre, que no tienes (se pregunta a clipkeeper; lo de su
+  papelera tampoco vuelve), sin repetidos —también el mismo título en dos sitios— y los más largos
+  o de más calidad. Se ve la lista antes de mandar, con un solo botón «Mandar N a <carpeta>», una
+  etiqueta opcional y «Repetir cada semana».
+- **Programadas** con la misma elección: «como mucho N», «solo con el nombre» y orden.
+- **Avisos**: punto en Actividad y pestaña Avisos (programada que manda algo o falla, descarga
+  terminada o con fallos, sitio roto, búsqueda larga terminada); en Ajustes → Sistema, además,
+  notificaciones del navegador.
+- **Proxy de salida en Ajustes** (Sistema), en caliente; «Probar» dice con qué dirección sales.
+- **Historial**: «Recientes» en Buscar, a un toque. **Copiar** lo seleccionado (enlaces, .txt o
+  .csv). **Compartir** un enlace desde el móvil a clipscout (instalada como app).
+- **Búsqueda web**: si no hay buscador, se explica cómo ponerlo en vez de esconder la opción.
+- **Suite**: contrato común sin fallos ni avisos; «Permitir acceso desde otros dispositivos» en el
+  asistente de escritorio; desinstalar la app suelta no toca la suite.
+- Seguridad: sin el nombre de usuario sin sesión, cabeceras de aislamiento, enlaces solo http(s),
+  contador de intentos que no se vacía entero; la guía de JDownloader limita su API al equipo de
+  clipscout.
+
+**Al actualizar**: no hay que hacer nada; ninguna ruta de antes cambia y `detail` sigue en todos
+los errores. Cambia: `GET /api/crew/v1/status` **sin clave** responde (solo app y versión; con
+una clave mala, 401 como antes); las copias de la suite dan `copia_no_valida`, `copia_de_otra_app`
+y `copia_mas_nueva` (antes `copia_invalida` y `version_mas_nueva`); renovar una conexión con otra
+URL da 403; borrar una conexión que no existe da 404; el diagnóstico nombra `conexion:<app>`. Rutas
+nuevas: `/api/recoger/propuesta`, `/api/avisos`, `/api/avisos/leidos`, `/api/buscar/historial`,
+`PUT /api/ajustes/proxy`, `PUT /api/asistente/red`, `/api/auth/configurar` y `/compartir`. Ficheros
+nuevos en la carpeta de datos: `avisos.json` e `historial.json`. Con clipkeeper anterior a 0.36,
+Recoger pregunta vídeo a vídeo (como «ya lo tengo»). En Docker, el proxy de `OUTBOUND_PROXY` sigue
+mandando mientras no guardes otro en Ajustes.
+
 ## 2.23.0 — un solo producto (fase 5)
 
 - **Errores con código**: toda respuesta de error lleva `{codigo, detail, params}` y `detail` llega

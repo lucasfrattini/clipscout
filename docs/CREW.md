@@ -86,8 +86,9 @@ lista de permisos de clipkeeper.
 - **Renovar** (`POST /conexiones/renovar`, `{app, url, clave}`): la usan las apps al arrancar (y
   cada hora hasta conseguirlo) para cada conexión cuya clave guardada no empiece por `cgc_`. Con la
   clave de administración se busca la conexión por `app` + `url` (o la única de esa app; si no hay,
-  se crea); con una de conexión, la de esa conexión. Respuesta `{clave:"cgc_…"}`. Una versión
-  vieja responde `404`: se deja como está y se reintenta.
+  se crea); con una de conexión, la de esa conexión, y **otra `url` da `403 prohibido`** (antes de
+  la 2.24 clipscout la aceptaba sin cambiarla). Respuesta `{id, clave:"cgc_…"}` (`id` desde la
+  2.24). Una versión vieja responde `404`: se deja como está y se reintenta.
 - Cada conexión guarda las **tres últimas** claves de entrada emitidas: si las dos apps renuevan a
   la vez, las dos siguen valiendo. Ajustes → Conexiones → «Revocar su clave» las borra todas.
 - Crear una conexión o cambiar su URL desde Ajustes exige sesión de usuario o la clave de
@@ -123,7 +124,9 @@ Todas las rutas cuelgan de `/api/crew/v1`.
 
 ### `GET /status`
 
-Quién soy. Sirve para el botón **Probar** de una conexión.
+Quién soy. Sirve para el botón **Probar** de una conexión. **Sin clave** es público y responde solo
+`crew`, `protocolo`, `app` y `version` (clipscout desde la 2.24, como las otras dos); con una clave
+válida, todo; con una incorrecta, `401 clave_invalida` (así «Probar» comprueba la clave).
 
 ```json
 {
@@ -158,7 +161,9 @@ Registrar una conexión **entrante**: la usa otra app para darse de alta aquí (
 
 ### `DELETE /conexiones/{id}`
 
-Quitar una conexión. Opcional para llamadas entre apps; siempre disponible desde la propia interfaz.
+Quitar una conexión (y revocar las claves que se le dieron). Opcional para llamadas entre apps;
+siempre disponible desde la propia interfaz. En clipscout, desde la 2.24, una `id` que no existe da
+`404 no_encontrado` (antes `200`).
 
 ## Flujo «Conectar» (desde la interfaz de la app A)
 
@@ -187,8 +192,9 @@ Todas las respuestas de error, en las tres apps:
 - `error_interno` lleva `params.id` (8 hex), que también aparece en el registro de la app.
 - clipscout añade los suyos: `cancelado`, `remoto_no_responde`, `no_disponible`,
   `direccion_bloqueada`, `demasiadas_peticiones`, `ajustes_ilegibles`, `ya_hay_usuario`,
-  `sin_usuario`, `credenciales_incorrectas`, `copia_invalida`, `version_mas_nueva`. Además
-  conserva los campos de antes (`error`, `code`).
+  `sin_usuario`, `credenciales_incorrectas`, `copia_no_valida`, `copia_de_otra_app`,
+  `copia_mas_nueva` (los tres de las copias, comunes con las otras apps desde la 2.24; antes
+  `copia_invalida` y `version_mas_nueva`). Además conserva los campos de antes (`error`, `code`).
 
 ## Diagnóstico y salud (SU-11, fase 5)
 
@@ -197,7 +203,7 @@ Todas las respuestas de error, en las tres apps:
 - `GET /api/diagnostico` (sesión o clave de administración): `{app, version, arranque,
 estado: "ok|degradado", comprobaciones: [{nombre, ok, detalle}], ultimos_errores: [{fecha,
 codigo, id}]}`. En clipscout: `ajustes`, `carpeta_datos`, `navegador`, `proxy_salida`,
-  `gestor_descargas` y `conexion_<app>` por cada conexión.
+  `gestor_descargas` y `conexion:<app>` por cada conexión (`conexion_<app>` hasta la 2.23).
 - `GET /api/diagnostico/registro?lineas=200` → `{lineas: [...]}` (máx. 2.000).
 - `GET /api/diagnostico/informe`: zip con `diagnostico.json` y `registro.txt` (últimas 2.000
   líneas) sin rutas absolutas (`<ruta>`), nombres de fichero (`<fichero>`) ni claves (`<clave>`).
@@ -209,7 +215,8 @@ codigo, id}]}`. En clipscout: `ajustes`, `carpeta_datos`, `navegador`, `proxy_sa
   conexión): zip con `manifiesto.json` `{app, version, esquema, fecha, contenido: [...]}` y los
   datos de la app, sin contraseñas, claves ni sesiones.
 - `POST /api/crew/v1/copia/restaurar` (mismo permiso; el zip en el cuerpo): comprueba manifiesto,
-  app y versión (no restaura una copia de una versión más nueva: `version_mas_nueva`), guarda lo
+  app y versión (otra app: `400 copia_de_otra_app`; no es un zip o está dañada: `400
+copia_no_valida`; de una versión más nueva: `409 copia_mas_nueva`), guarda lo
   actual, restaura y responde `reiniciar: true`. Lo que no exista en el equipo nuevo queda «no
   disponible», nunca se borra.
 - clipscout: `esquema` 1; `contenido` = `crew.json` (sin secretos), `profiles.json`,
@@ -241,6 +248,28 @@ sí, y entonces las rutas pasan a `/api/crew/v2`.
 - clipkeeper: `POST /entrada` (llegada desde clipscout)
 
 ## Añadido en 2026-11 (clipscout)
+
+### Primer usuario: `POST /api/auth/configurar`
+
+Desde la 2.24, alias de `POST /api/auth/primer-usuario` (el nombre de clipkeeper y clonbuster).
+
+### clipscout → clipkeeper: `POST /api/crew/v1/tengo` («Recoger», 2.24)
+
+«Recoger» pregunta de una vez lo que ya hay de una persona o término (contrato de clipkeeper
+0.36, en `FASE6-SPEC`): `{termino, limite}` → `{total, truncado, personas: [{nombre, videos}],
+videos: [{titulo, fichero, duracion, origen_url, estado: "ok"|"papelera", …}]}`. Un resultado se da
+por tenido si coincide `origen_url`, o la duración ±2 s con título parecido, o (sin título) la
+duración ±1 s; lo que está en la papelera de clipkeeper tampoco se vuelve a traer. Un clipkeeper
+anterior responde `404`: entonces se pregunta resultado a resultado con `POST /buscar`, como «ya lo
+tengo».
+
+### Suite (lanzador común)
+
+- El asistente de escritorio tiene «Permitir acceso desde otros dispositivos»: escribe `red` o
+  `local` en `escuchar.txt` de la carpeta de datos y, si existe la carpeta común `../suite/`,
+  también en `suite/escuchar.txt` (la lee el lanzador común). Vale al reiniciar.
+- La salud que mira el lanzador de escritorio es `/api/salud` (503 si no puede trabajar).
+- Desinstalar la app suelta con la suite instalada no toca el programa ni la carpeta de la suite.
 
 ### clipscout → clipkeeper: `POST /api/crew/v1/escanear`
 

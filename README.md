@@ -83,16 +83,26 @@ progress, real cancellation and export.
   folder.
 - **Play in place**: **⋯ → Play** plays a result in a sheet, without leaving the list. The video is
   streamed through your server (seeking works), so the browser never talks to the site.
+- **Collect** (**Collect** next to the results): of what a search for a person or a term found,
+  the N videos that carry the name, that you don't have yet (it asks clipkeeper), without
+  duplicates and longest (or best quality) first — shown before sending, with one button
+  **Send N to <folder>** and an optional **repeat every week**.
 - **Scheduled searches** (_Activity → Scheduled_, or **Repeat every week…** from the result filters): a saved search repeats every few days and sends only
   what is new to JDownloader — with a minimum length, words it must or must not contain, and
   a person or category for clipkeeper. The same video found on several sites is sent once.
-  Starts empty.
+  Optionally at most N per run, only those carrying the name, longest first. Starts empty.
+- **Alerts**: a dot on _Activity_ (and a browser notification if you allow it in _Settings →
+  System_) when a scheduled search sends something or fails, a download finishes or fails, a
+  site breaks or a long search ends.
+- **Recent searches** a tap away, **copy or export** the selected links (.txt / .csv), and
+  **Share** a link from the phone straight into clipscout (installed web app).
 - **Works with Clipgeist**: lists your clipkeeper folders as download
   destinations and tells you which videos you already have.
 - **Per-site numbers** (_Settings → Search → Sites_, in each site's **⋯**): searches, results, how many with
   length, blocks, sent, already owned and failed downloads.
-- **Outbound proxy** (`OUTBOUND_PROXY`) for networks that block some sites. If it stops answering,
-  clipscout says so (Buscar and _Settings → System_, with **Test**) instead of every site timing out.
+- **Outbound proxy** (_Settings → System_, or `OUTBOUND_PROXY`) for networks that block some
+  sites; **Test** shows the address you go out with. If it stops answering, clipscout says so
+  instead of every site timing out.
 - **Broken-site warning**: a site that returns nothing twice in a row is flagged in _Activity_ and
   _Settings → Sites_, with **Set up again** in its **⋯**.
 - **Safe to run**: SSRF protection, per-host throttling, rate limiting, memory
