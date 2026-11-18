@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const path = require('node:path');
 
 const config = require('../config');
@@ -53,7 +54,34 @@ let cola = Promise.resolve();
  * se asumía «vacío», la app quedaba sin contraseña y la siguiente escritura borraba contraseña,
  * conexiones, programadas y ajustes.
  */
+/*
+ * CS-06: crew.json se leía y se interpretaba en CADA llamada (varias por petición). Ahora se
+ * guarda en memoria y solo se vuelve a leer si el fichero cambió (otro proceso, una copia
+ * restaurada, una edición a mano): basta un `stat`, mucho más barato que leer y analizar. Se
+ * entrega siempre una copia, para que nadie cambie la caché por accidente.
+ */
+let cache = null; // { firma, datos }
+const firmaDe = st => `${st.ino}:${st.size}:${st.mtimeMs}`;
+
 async function leer() {
+  let firma = null;
+  try {
+    firma = firmaDe(await fs.promises.stat(config.crew.path));
+  } catch {
+    firma = null; // no existe aún (o no se puede ver): lo decide la lectura de siempre
+  }
+  if (firma && cache?.firma === firma) return structuredClone(cache.datos);
+  const datos = await leerSinCache();
+  if (firma) cache = { firma, datos: structuredClone(datos) };
+  return datos;
+}
+
+/** Para las pruebas y para quien escribe crew.json por otra vía: olvida la caché. */
+function olvidarCache() {
+  cache = null;
+}
+
+async function leerSinCache() {
   try {
     const r = await leerJson(config.crew.path);
     if (r.recuperado) {
@@ -76,7 +104,9 @@ async function leer() {
 }
 
 async function escribir(datos) {
+  cache = null;
   await escribirJson(config.crew.path, datos, { copia: true });
+  cache = null;
 }
 
 /** Lee, aplica `fn` y escribe, en serie: dos peticiones a la vez no se pisan. */
@@ -835,6 +865,7 @@ function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
 
 module.exports = {
   esperarEscrituras,
+  olvidarCache,
   autoconectar,
   asegurarConexion,
   claveEntorno,

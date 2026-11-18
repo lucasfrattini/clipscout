@@ -99,6 +99,7 @@ function limpiar(entrada = {}, anterior = {}) {
     activa: Boolean(entrada.activa ?? anterior.activa ?? true),
     ultimaVez: anterior.ultimaVez || null,
     ultimo: anterior.ultimo || null,
+    ...(anterior.enCurso ? { enCurso: anterior.enCurso } : {}),
   };
 }
 
@@ -227,13 +228,19 @@ function filtrar(
   return { elegidos, descartes };
 }
 
-/** Lanza la búsqueda en segundo plano y espera a que acabe. Devuelve sus resultados. */
-function buscar(termino, carpeta = '', abierta = false) {
-  // Pasa por la misma cola que las búsquedas a mano: si hay otras en marcha, espera su turno.
-  const id = fondo.iniciar(
+/** Pone la búsqueda en la cola de fondo (la misma que las búsquedas a mano). Devuelve su id. */
+function iniciarBusqueda(termino, carpeta = '', abierta = false) {
+  return fondo.iniciar(
     { q: termino, web: true, abierta: abierta === true },
     { carpeta, origen: 'programada' }
   );
+}
+
+/**
+ * Espera a que acabe la búsqueda `id` y devuelve sus resultados. Se suscribe desde el primer
+ * evento: una búsqueda retomada tras un reinicio trae también lo que encontró antes del corte.
+ */
+function esperarBusqueda(id) {
   return new Promise(resolver => {
     const items = [];
     let grupos = [];
@@ -263,6 +270,8 @@ function buscar(termino, carpeta = '', abierta = false) {
       } else if (e.type === 'error') error = e.message;
       if (e.type === 'fin' || e.type === 'error') acabar();
     });
+    // La búsqueda ya no existe (caducó): termina sin resultados.
+    if (baja === null) acabar();
     if (terminado) baja?.();
   });
 }
@@ -301,14 +310,48 @@ async function lanzar(id) {
   const prog = (d.programadas || []).find(p => p.id === id);
   if (!prog) throw new crew.ErrorCrew('No existe esa búsqueda programada.', 404);
   if (enCurso) throw new crew.ErrorCrew('Ya hay una búsqueda programada en marcha.', 409);
-  let busqueda;
+  let idBusqueda;
   try {
-    busqueda = buscar(prog.termino, prog.carpeta, prog.abierta);
+    // Pasa por la misma cola que las búsquedas a mano: si hay otras en marcha, espera su turno.
+    idBusqueda = iniciarBusqueda(prog.termino, prog.carpeta, prog.abierta);
   } catch (error) {
     throw new crew.ErrorCrew(error.message, error.status || 500);
   }
   enCurso = id;
-  return { terminada: terminar(id, prog, busqueda) };
+  // CS-03: se anota qué búsqueda es, para recoger su resultado aunque la app se reinicie a medias
+  // (antes se retomaba la búsqueda pero nadie la recogía, y a los 5 minutos se lanzaba otra).
+  await crew
+    .cambiar(d => {
+      const p = (d.programadas || []).find(x => x.id === id);
+      if (p) p.enCurso = { busqueda: idBusqueda, desde: new Date().toISOString() };
+    })
+    .catch(error => logger.warn(`Programada «${prog.termino}»: ${error.message}`));
+  return { terminada: terminar(id, prog, esperarBusqueda(idBusqueda)) };
+}
+
+/**
+ * CS-03: al arrancar, las programadas que estaban en marcha. Si su búsqueda sigue (se retomó del
+ * disco, o terminó justo antes del corte), se vuelve a esperar y se trata su resultado como
+ * siempre; si ya no existe, se olvida la marca y se lanzará cuando le toque.
+ */
+async function reenganchar() {
+  await fondo.restaurado();
+  const { programadas = [] } = await crew.datos();
+  const existe = new Set(fondo.lista().map(b => b.id));
+  for (const prog of programadas.filter(p => p.enCurso)) {
+    if (!enCurso && existe.has(prog.enCurso.busqueda)) {
+      enCurso = prog.id;
+      logger.info(`Programada «${prog.termino}»: se recoge la búsqueda retomada tras el reinicio`);
+      terminar(prog.id, prog, esperarBusqueda(prog.enCurso.busqueda)).catch(error =>
+        logger.warn(`Programada «${prog.termino}»: ${error.message}`)
+      );
+    } else {
+      await crew.cambiar(d => {
+        const p = (d.programadas || []).find(x => x.id === prog.id);
+        if (p && (!enCurso || enCurso !== p.id)) delete p.enCurso;
+      });
+    }
+  }
 }
 
 /** Filtra lo encontrado, lo manda y guarda el resumen en `ultimo`. */
@@ -360,6 +403,7 @@ async function terminar(id, prog, busqueda) {
       if (p) {
         p.ultimaVez = fecha;
         p.ultimo = ultimo;
+        delete p.enCurso;
       }
     });
     await almacenEnviados.cambiar(e => {
@@ -369,12 +413,23 @@ async function terminar(id, prog, busqueda) {
     logger.info(`Programada «${prog.termino}»: ${items.length} resultados, ${mandados} enviados`);
   } finally {
     enCurso = null;
+    // Si algo falló antes de guardar el resumen, que la marca no deje la programada parada.
+    if (!ultimo) {
+      await crew
+        .cambiar(datos => {
+          const p = (datos.programadas || []).find(x => x.id === id);
+          if (p) delete p.enCurso;
+        })
+        .catch(() => {});
+    }
   }
   return ultimo;
 }
 
 function toca(p, ahora = Date.now()) {
   if (!p.activa) return false;
+  // En marcha (también si se retomó tras un reinicio): no se lanza otra encima.
+  if (p.enCurso) return false;
   if (!p.ultimaVez) return true;
   return ahora - Date.parse(p.ultimaVez) >= p.cadaDias * 86400000;
 }
@@ -401,6 +456,7 @@ let reloj = null;
 function arrancar() {
   if (reloj) return;
   migrarEnviados().catch(error => logger.warn(`Programadas: ${error.message}`));
+  reenganchar().catch(error => logger.warn(`Programadas: ${error.message}`));
   reloj = setInterval(() => {
     comprobar().catch(error => logger.warn(`Búsquedas programadas: ${error.message}`));
   }, CADA_MS);
@@ -426,4 +482,5 @@ module.exports = {
   arrancar,
   migrarEnviados,
   enviadosDe,
+  reenganchar,
 };

@@ -277,7 +277,16 @@ async function limpiarHuerfanos() {
  * que estaban en marcha vuelven las PRIMERAS de la cola (con lo que les faltaba), y las que
  * esperaban, detrás y en su orden. Un fichero del formato 1 (hasta 2.21) se pasa al 2.
  */
-async function restaurar() {
+let promesaRestaurar = Promise.resolve();
+/** Se resuelve cuando ya se leyó lo guardado (para quien depende de ello, p. ej. programadas). */
+const restaurado = () => promesaRestaurar.catch(() => {});
+
+function restaurar() {
+  promesaRestaurar = restaurarAhora();
+  return promesaRestaurar;
+}
+
+async function restaurarAhora() {
   let datos;
   try {
     datos = JSON.parse(await fs.promises.readFile(fichero(), 'utf8'));
@@ -596,6 +605,7 @@ module.exports = {
   lista,
   marcar,
   restaurar,
+  restaurado,
   guardarAhora,
   guardarAlApagar,
   entradaPendiente,
