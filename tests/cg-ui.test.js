@@ -34,7 +34,8 @@ test('index.html carga el paquete común con defer y antes que la app', () => {
   assert.match(html, /<link rel="stylesheet" href="\/cg\/cg-ui\.css" \/>/);
   assert.match(html, /<script src="\/cg\/cg-ui\.js" defer><\/script>/);
   assert.ok(
-    html.indexOf('/cg/cg-ui.js') < html.indexOf('/js/app.js'),
+    // El <script> de la app (los modulepreload de CS-15 solo descargan, no ejecutan).
+    html.indexOf('/cg/cg-ui.js') < html.indexOf('<script type="module" src="/js/app.js"'),
     'cg-ui.js tiene que ir antes que app.js para que los componentes existan al arrancar'
   );
 });
