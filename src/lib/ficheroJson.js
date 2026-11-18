@@ -33,13 +33,27 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
  * `rename` con reintentos: en Windows falla con EPERM/EBUSY/EACCES si otro proceso (antivirus,
  * indexador) tiene el destino abierto un instante. En Linux y macOS sale a la primera.
  */
-async function renombrar(origen, destino) {
+const REINTENTABLES = ['EPERM', 'EBUSY', 'EACCES'];
+
+async function renombrar(origen, destino, { intentos = 5, rename = fsp.rename } = {}) {
   for (let intento = 0; ; intento += 1) {
     try {
-      return await fsp.rename(origen, destino);
+      return await rename(origen, destino);
     } catch (error) {
-      if (intento >= 5 || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code)) throw error;
+      if (intento >= intentos || !REINTENTABLES.includes(error.code)) throw error;
       await esperar(50 * (intento + 1));
+    }
+  }
+}
+
+/** Lo mismo, síncrono (CS-21): se espera de verdad sin promesas, con `Atomics.wait`. */
+function renombrarSync(origen, destino, { intentos = 5, renameSync = fs.renameSync } = {}) {
+  for (let intento = 0; ; intento += 1) {
+    try {
+      return renameSync(origen, destino);
+    } catch (error) {
+      if (intento >= intentos || !REINTENTABLES.includes(error.code)) throw error;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50 * (intento + 1));
     }
   }
 }
@@ -77,7 +91,7 @@ function escribirTextoSync(destino, texto) {
   const temporal = temporalDe(destino);
   try {
     fs.writeFileSync(temporal, texto, { encoding: 'utf8', mode: MODO_FICHERO });
-    fs.renameSync(temporal, destino);
+    renombrarSync(temporal, destino);
   } catch (error) {
     fs.rmSync(temporal, { force: true });
     throw error;
@@ -148,4 +162,6 @@ module.exports = {
   escribirJson,
   leerJson,
   ErrorIlegible,
+  renombrar,
+  renombrarSync,
 };

@@ -1,6 +1,6 @@
 {
   "name": "clipscout",
-  "version": "2.18.0",
+  "version": "2.19.0",
   "description": "clipscout — explora los enlaces y recursos multimedia de un sitio web recorriendo su paginación.",
   "main": "server.js",
   "engines": {
@@ -15,7 +15,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run lint && npm run format:check && npm test"
+    "check": "npm run lint && npm run format:check && npm test",
+    "e2e": "node tests/e2e/humo.mjs"
   },
   "dependencies": {
     "axios": "^1.11.0",

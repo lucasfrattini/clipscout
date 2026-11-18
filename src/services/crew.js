@@ -91,6 +91,9 @@ function cambiar(fn) {
   return paso;
 }
 
+/** Espera a que terminen las escrituras de crew.json en curso (apagado ordenado). */
+const esperarEscrituras = () => cola;
+
 /**
  * Instalación conjunta de Clipgeist (igual en las tres apps): con `CLIPGEIST_CLAVE` en el entorno,
  * ESA es la clave de API de esta app (manda sobre la guardada, que no se toca), y las
@@ -831,6 +834,7 @@ function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
 }
 
 module.exports = {
+  esperarEscrituras,
   autoconectar,
   asegurarConexion,
   claveEntorno,

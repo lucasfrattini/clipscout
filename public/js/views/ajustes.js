@@ -50,6 +50,7 @@ export function createAjustesView(raiz) {
     ['seguridad', 'aj.tab.seguridad', () => [tarjetaAcceso(), tarjetaSesiones(), tarjetaClave()]],
     ['copia', 'aj.tab.copia', () => [tarjetaRespaldos()]],
     ['apariencia', 'aj.tab.apariencia', () => [tarjetaApariencia()]],
+    ['acerca', 'aj.tab.acerca', () => [tarjetaAcercaDe()]],
   ];
 
   const seccionActual = () => {
@@ -951,6 +952,44 @@ export function createAjustesView(raiz) {
           children: [
             campo(t('aj.apar.idioma'), idioma),
             campo(t('aj.apar.tema'), tema, t('aj.apar.hint')),
+          ],
+        }),
+      ],
+    });
+  }
+
+  /* ── Acerca de: versión, licencia y componentes de terceros (SU-09) ───── */
+
+  function tarjetaAcercaDe() {
+    const enlace = (href, clave) =>
+      el('a', {
+        attrs: { href, target: '_blank', rel: 'noopener' },
+        text: t(clave),
+      });
+    return el('section', {
+      className: 'card',
+      children: [
+        el('div', {
+          className: 'card__header',
+          children: [
+            el('h3', { className: 'card__title', text: t('aj.acerca.titulo') }),
+            el('p', {
+              className: 'card__hint',
+              text: t('aj.esta.hint', { app: general.app, version: general.version }),
+            }),
+          ],
+        }),
+        el('div', {
+          className: 'card__body',
+          children: [
+            el('p', { text: t('aj.acerca.licencia') }),
+            el('ul', {
+              children: [
+                el('li', { children: [enlace('/api/licencia', 'aj.acerca.verLicencia')] }),
+                el('li', { children: [enlace('/api/terceros', 'aj.acerca.terceros')] }),
+                el('li', { children: [enlace('https://clipgeist.com/', 'aj.acerca.web')] }),
+              ],
+            }),
           ],
         }),
       ],

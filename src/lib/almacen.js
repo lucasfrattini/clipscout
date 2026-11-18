@@ -1,10 +1,9 @@
 'use strict';
 
-const fs = require('node:fs/promises');
 const path = require('node:path');
 
 const logger = require('./logger');
-const { escribirJson, leerJson, ErrorIlegible } = require('./ficheroJson');
+const { escribirJson, leerJson, ErrorIlegible, renombrar } = require('./ficheroJson');
 
 /**
  * Un fichero JSON propio en la carpeta de datos (paquetes de JDownloader, estadísticas…), con la
@@ -36,7 +35,8 @@ function crearAlmacen(ruta, defecto = () => ({}), { copia = true } = {}) {
         `${path.basename(ruta())} ilegible y sin copia buena, se aparta: ${error.message}`
       );
       const apartado = `${ruta()}.corrupto-${new Date().toISOString().replace(/[:.]/g, '-')}`;
-      await fs.rename(ruta(), apartado).catch(() => {});
+      // Con reintentos (CS-21): en Windows el antivirus puede tenerlo abierto un instante.
+      await renombrar(ruta(), apartado).catch(() => {});
       return defecto();
     }
   }

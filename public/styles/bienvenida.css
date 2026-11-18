@@ -1,0 +1,152 @@
+/* Asistente de primer arranque: pantalla completa, un paso por pantalla, botón principal abajo. */
+body {
+  margin: 0;
+  background: var(--cc-fondo);
+  color: var(--cc-texto);
+  font-family: var(--cc-letra);
+}
+.asis {
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.asis-cab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+.asis-cab img {
+  border-radius: 10px;
+}
+.asis-marca .cc-crew {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cc-tenue);
+}
+.asis-progreso {
+  height: 6px;
+  margin: 16px 0 6px;
+  border-radius: 3px;
+  background: var(--cc-borde);
+  overflow: hidden;
+}
+.asis-progreso span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--cc-acento);
+  transition: width 0.25s ease;
+}
+.asis-paso {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--cc-tenue);
+}
+.asis-cuerpo {
+  flex: 1;
+  outline: none;
+}
+.asis-cuerpo h1 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+}
+/* El foco va al título al cambiar de paso (lectores de pantalla); sin marco, que no es un control. */
+.asis-cuerpo h1:focus {
+  outline: none;
+}
+.asis-cuerpo > p {
+  margin: 0 0 16px;
+  color: var(--cc-tenue);
+  line-height: 1.5;
+}
+.asis-cuerpo .field {
+  margin-bottom: 14px;
+}
+.asis-opciones {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+.asis-opcion {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--cc-borde);
+  border-radius: var(--cc-radio);
+  background: var(--cc-carta);
+  cursor: pointer;
+}
+.asis-app {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--cc-borde);
+  border-radius: var(--cc-radio);
+  background: var(--cc-carta);
+}
+.asis-app-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+}
+.asis-ok {
+  color: var(--cc-ok);
+}
+.asis-qr {
+  width: min(240px, 70vw);
+  margin: 8px auto 12px;
+  display: block;
+  border-radius: 8px;
+}
+.asis-direccion {
+  text-align: center;
+  font-family: var(--cc-mono);
+  font-size: 1.05rem;
+  word-break: break-all;
+}
+.asis-nota {
+  font-size: 0.9rem;
+  color: var(--cc-tenue);
+}
+.asis-error {
+  min-height: 1.2em;
+  margin: 8px 0 0;
+  color: var(--cc-mal);
+}
+.asis-pie {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 10px;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+  background: var(--cc-fondo);
+}
+.asis-pie .button {
+  min-height: 48px;
+}
+.asis-siguiente {
+  flex: 1;
+}
+.asis-atras[hidden] {
+  display: none;
+}
+.asis-cuerpo ul {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+}

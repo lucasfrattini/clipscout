@@ -276,6 +276,7 @@ What happens then:
 | ----------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `OUTBOUND_PROXY`  | _(empty)_        | Optional outbound proxy for crawls and the browser, e.g. `http://192.168.1.10:8118` (the Privoxy of a VPN container). Useful when your ISP blocks a site                                                                    |
 | `ADMIN_PASSWORD`  | _(empty)_        | Fixes the password from the environment (only its hash is kept in memory), username in `ADMIN_USER` (default `admin`, case-insensitive). Otherwise it is set in Settings → Security. Scripts use the `X-Api-Key` admin key. |
+| `DATA_DIR`        | `data/`          | Folder for all of clipscout's data. When set, `crew.json` and `profiles.json` live inside it too (unless `CREW_PATH`/`PROFILES_PATH` say otherwise). Not set: nothing changes                                               |
 | `CREW_PATH`       | `data/crew.json` | API key, instance name and connections                                                                                                                                                                                      |
 | `CREW_TIMEOUT_MS` | `6000`           | Timeout when talking to another Clipgeist app                                                                                                                                                                               |
 
@@ -417,7 +418,15 @@ loopback addresses, on purpose.
 npm install
 npm run dev      # auto-reload
 npm run check    # lint + formatting + tests — run before committing
+npm run e2e      # browser smoke test (needs Playwright with Chromium; see tests/e2e/humo.mjs)
 ```
+
+On a fresh install (no user, no sites, no connections) clipscout opens a **first-run assistant**:
+account (or the same one as another Clipgeist app), JDownloader, one to three sites, the other
+apps, and a QR code to open it from your phone. Existing installs never see it. To stop it
+cleanly, `POST /api/apagar` (from the same machine with `X-Clipgeist: 1`, a session or the admin
+key) or send SIGTERM: running and queued searches are saved and resume on the next start.
+**Settings → About** shows the version, the licence and the third-party components.
 
 No build step and no framework: `public/` is served as-is. How the code is
 organised, the API and the design decisions are in

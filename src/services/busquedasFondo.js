@@ -395,6 +395,22 @@ function lista() {
     );
 }
 
+/** Cuántas hay en marcha y en cola (para «¿hay algo en marcha?» del apagado). */
+function contar() {
+  let curso = 0;
+  for (const b of busquedas.values()) if (b.estado === 'curso') curso += 1;
+  return { curso, cola: cola.length };
+}
+
+/**
+ * Apagado ordenado: corta las que están en marcha. Va DESPUÉS de `guardarAlApagar`, con el
+ * fichero ya congelado, así que en disco siguen «en curso» y se retoman al volver a arrancar.
+ */
+function cancelarTodas() {
+  cola.length = 0;
+  for (const b of busquedas.values()) if (b.estado === 'curso') b.controller.abort();
+}
+
 /** La última búsqueda lanzada a mano (para reengancharse desde otro dispositivo o tras recargar). */
 function actual() {
   const b = ultima ? busquedas.get(ultima) : null;
@@ -414,4 +430,6 @@ module.exports = {
   guardarAhora,
   guardarAlApagar,
   entradaPendiente,
+  contar,
+  cancelarTodas,
 };

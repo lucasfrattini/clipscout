@@ -11,7 +11,6 @@ QUE=${1:-todo}
 APP=$(cd empaquetado && python3 -c "import ajustes_app as A; print(A.APP)")
 VERSION=$(cd empaquetado && python3 -c "import ajustes_app as A; print(A.version())")
 CACHE=${CLIPGEIST_CACHE:-$HOME/.cache/clipgeist-empaquetado}
-NODE_V=$(node --version)
 mkdir -p "$CACHE" salida
 case $APP in
   # numpy ≥ 2.2 llama a crealf(), que Wine aún no tiene: para Windows se fija la 2.1.
@@ -23,6 +22,23 @@ PIN_WIN=${PIN_WIN:-}
 echo "▶ $APP $VERSION ($QUE)"
 
 bajar() { [ -s "$CACHE/$2" ] || curl -fL --retry 3 -o "$CACHE/$2" "$1"; }
+# Componentes fijados (SU-09): URL y sha256 en empaquetado/componentes.txt. Se baja a la caché con
+# el nombre del fichero de la URL y se comprueba la huella SIEMPRE (también lo que ya estaba en
+# caché); si no coincide, se borra y se aborta.
+componente() {  # $1 = nombre, $2 = plataforma → imprime la ruta del fichero verificado
+  local linea url sha fichero
+  linea=$(awk -v n="$1" -v p="$2" '$1==n && $2==p {print $3, $4}' empaquetado/componentes.txt)
+  [ -n "$linea" ] || { echo "✗ $1 $2 no está en empaquetado/componentes.txt" >&2; exit 1; }
+  read -r url sha <<<"$linea"
+  fichero="$1-$2-$(basename "$url")"
+  bajar "$url" "$fichero" >&2
+  if ! echo "$sha  $CACHE/$fichero" | sha256sum -c --status; then
+    echo "✗ sha256 de $fichero no coincide con componentes.txt: se borra y se aborta" >&2
+    rm -f "$CACHE/$fichero"
+    exit 1
+  fi
+  echo "$CACHE/$fichero"
+}
 FF=https://github.com/BtbN/FFmpeg-Builds/releases/download/latest
 
 preparar() {
@@ -30,7 +46,10 @@ preparar() {
   if [ "$APP" = clipscout ]; then  # node_modules es JS puro: el mismo vale para Linux y Windows
     rm -rf "$CACHE/app-$APP" && mkdir -p "$CACHE/app-$APP"
     cp -r server.js package.json package-lock.json src public "$CACHE/app-$APP/"
-    (cd "$CACHE/app-$APP" && PUPPETEER_SKIP_DOWNLOAD=true npm ci --omit=dev --no-audit --no-fund --silent && rm package-lock.json)
+    (cd "$CACHE/app-$APP" && PUPPETEER_SKIP_DOWNLOAD=true npm ci --omit=dev --no-audit --no-fund --silent)
+    # Licencias de terceros (lo instalado + Node y el navegador): Ajustes → Acerca de lo sirve.
+    node empaquetado/terceros.js "$CACHE/app-$APP" "$CACHE/app-$APP/TERCEROS.txt"
+    rm "$CACHE/app-$APP/package-lock.json"
   fi
 }
 
@@ -38,13 +57,20 @@ extras() {  # $1 = carpeta del programa, $2 = linux|windows
   local d=$1 so=$2
   if [ "$APP" = clipscout ]; then
     mkdir -p "$d/node" && cp -r "$CACHE/app-$APP" "$d/app"
+    local zip_node zip_nav
     if [ "$so" = windows ]; then
-      bajar "https://nodejs.org/dist/$NODE_V/node-$NODE_V-win-x64.zip" "node-$NODE_V-win.zip"
-      unzip -o -q -j "$CACHE/node-$NODE_V-win.zip" "node-$NODE_V-win-x64/node.exe" -d "$d/node"
+      zip_node=$(componente node windows)
+      unzip -o -q -j "$zip_node" "$(basename "$zip_node" .zip | sed 's/^node-windows-//')/node.exe" -d "$d/node"
+      zip_nav=$(componente chrome-headless-shell windows)
     else
-      bajar "https://nodejs.org/dist/$NODE_V/node-$NODE_V-linux-x64.tar.xz" "node-$NODE_V-linux.tar.xz"
-      tar -xJf "$CACHE/node-$NODE_V-linux.tar.xz" -C "$d/node" --strip-components=2 "node-$NODE_V-linux-x64/bin/node"
+      zip_node=$(componente node linux)
+      tar -xJf "$zip_node" -C "$d/node" --strip-components=2 "$(basename "$zip_node" .tar.xz | sed 's/^node-linux-//')/bin/node"
+      zip_nav=$(componente chrome-headless-shell linux)
     fi
+    # Navegador interno fijado (la versión que espera Puppeteer): navegador/ junto al programa.
+    # ajustes_app.py lo prefiere al del sistema.
+    rm -rf "$d/navegador" && mkdir -p "$d/navegador"
+    unzip -o -q "$zip_nav" -d "$d/navegador.tmp" && mv "$d/navegador.tmp"/*/* "$d/navegador/" && rm -rf "$d/navegador.tmp"
   else
     mkdir -p "$d/bin"
     if [ "$so" = windows ]; then
@@ -80,8 +106,11 @@ linux() {
 }
 
 windows() {
-  bajar "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe" innosetup-6.7.4.exe
-  docker run --rm -v "$RAIZ":/src -v "$CACHE":/cache -w /src tobix/pywine:3.13 bash -euc "
+  local inno
+  inno=$(componente innosetup windows)
+  inno=$(basename "$inno")
+  # Python 3.12, la misma que en Linux.
+  docker run --rm -v "$RAIZ":/src -v "$CACHE":/cache -w /src tobix/pywine:3.12 bash -euc "
       # Se instala desde una copia: pip deja build/ y .egg-info de root en el árbol de trabajo.
       cp -r /src /tmp/w && (cd /tmp/w && wine python -m pip install -q --cache-dir 'Z:\\cache\\pip-win' $PIP $PIN_WIN pyinstaller pystray Pillow 2>&1 | grep -v fixme || true)
       cd empaquetado && wine pyinstaller --noconfirm --log-level WARN \
@@ -89,9 +118,9 @@ windows() {
       test -f dist-win/$APP/$APP.exe
       chown -R $(id -u):$(id -g) /src/empaquetado /cache"
   extras "empaquetado/dist-win/$APP" windows
-  docker run --rm -v "$RAIZ":/src -v "$CACHE":/cache -w /src tobix/pywine:3.13 bash -euc "
+  docker run --rm -v "$RAIZ":/src -v "$CACHE":/cache -w /src tobix/pywine:3.12 bash -euc "
       # El instalador de Inno Setup necesita una pantalla aunque sea silencioso: Xvfb.
-      xvfb-run -a wine /cache/innosetup-6.7.4.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER >/dev/null 2>&1
+      xvfb-run -a wine /cache/$inno /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER >/dev/null 2>&1
       ISCC=\$(find \"\$WINEPREFIX/drive_c\" -iname ISCC.exe | head -1)
       wine \"\$ISCC\" /Q /DApp=$APP /DNombre=$APP /DVersion=$VERSION /DDist=dist-win 'empaquetado\\instalador.iss' 2>&1 | { grep -v fixme || true; }
       test -f salida/$APP-windows.exe

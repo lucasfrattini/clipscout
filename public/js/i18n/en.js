@@ -545,6 +545,13 @@ export const en = {
   'crew.aria': 'Clipgeist apps',
   'head.ajustes.titulo': 'Settings — clipscout',
   'head.ajustes.desc': 'Identity, API key and connections with the other Clipgeist apps.',
+  'aj.tab.acerca': 'About',
+  'aj.acerca.titulo': 'About',
+  'aj.acerca.licencia':
+    'clipscout is free software under the AGPL-3.0-or-later licence. It includes components by other authors, each under its own licence.',
+  'aj.acerca.verLicencia': 'clipscout licence',
+  'aj.acerca.terceros': 'Third-party components',
+  'aj.acerca.web': 'clipgeist.com',
   'aj.esta.titulo': 'General',
   'aj.esta.hint': '{app} · version {version}',
   'aj.instancia.label': 'Instance name',
@@ -1025,4 +1032,57 @@ export const en = {
   'aviso.cifrado':
     'You are connecting from the internet without encryption: your password travels in clear text. Use a private network between your devices or a proxy with HTTPS.',
   'aviso.cerrar': 'Got it',
+  // First-run assistant (public/js/bienvenida.js)
+  'asis.titulo': 'Welcome',
+  'asis.pasoDe': 'Step {n} of {total}',
+  'asis.atras': 'Back',
+  'asis.siguiente': 'Next',
+  'asis.despues': 'I’ll do it later',
+  'asis.guardarSeguir': 'Save and continue',
+  'asis.probando': 'Testing…',
+  'asis.empezar': 'Start using clipscout',
+  'asis.cuenta.titulo': 'Your username and password',
+  'asis.cuenta.texto':
+    'You use them to sign in to clipscout from any device. If you already use another Clipgeist app, you can use the same account.',
+  'asis.cuenta.cual': 'Which account do you use?',
+  'asis.cuenta.nueva': 'Create a new account',
+  'asis.cuenta.misma': 'Use the same account as {app}',
+  'asis.cuenta.misma.pista': 'Type the username and password you use in {app}.',
+  'asis.cuenta.usuario': 'Username',
+  'asis.cuenta.clave': 'Password',
+  'asis.cuenta.minimo': 'At least 8 characters.',
+  'asis.cuenta.codigo': 'First-start code',
+  'asis.cuenta.codigo.pista':
+    'You are connecting from another device: the code is in the app log (“Code to create the user”).',
+  'asis.cuenta.crear': 'Create and continue',
+  'asis.descargas.titulo': 'Where do downloads go?',
+  'asis.descargas.texto':
+    'clipscout finds the videos and sends them to JDownloader, which downloads them to its folder. Type the address of its local API; if you don’t have it yet, you can do it later in Settings → JDownloader.',
+  'asis.descargas.pista': 'Usually http://<jdownloader-computer>:3128',
+  'asis.descargas.probar': 'Test',
+  'asis.sitios.titulo': 'Choose 1 to 3 sites',
+  'asis.sitios.texto':
+    'Paste the address of the sites you want to search: clipscout finds their search page and tests it with a real search. Start with a few; you can add more later.',
+  'asis.sitios.anadir': 'Add sites',
+  'asis.apps.titulo': 'Connect your other apps',
+  'asis.apps.texto':
+    'These Clipgeist apps are on this computer. Once connected they share the session and clipscout knows which videos you already have.',
+  'asis.apps.ninguna':
+    'There are no other Clipgeist apps on this computer. You can connect them any time in Settings → Connections.',
+  'asis.apps.conectada': 'Connected',
+  'asis.apps.automatica': 'Connects by itself (joint install)',
+  'asis.apps.conectar': 'Connect',
+  'asis.apps.conectarCon': 'Connect to {app}',
+  'asis.apps.clave': '{app} admin key',
+  'asis.apps.clave.pista': 'It is in {app} → Settings. It is only used once to register.',
+  'asis.movil.titulo': 'Use it from your phone',
+  'asis.movil.texto': 'Scan the code with your phone camera or type the address:',
+  'asis.movil.qr': 'QR code with the address {dir}',
+  'asis.movil.misma': 'Your phone and this computer must be on the same network (the same Wi-Fi).',
+  'asis.movil.soloLocal':
+    'Right now clipscout only accepts connections from this computer. To use it from your phone, turn on “Allow access from other devices” when installing it (or start it with CLIPGEIST_ESCUCHAR=red).',
+  'asis.movil.docker':
+    'On your phone, open your server’s address with the clipscout port, for example http://192.168.1.10:3001/.',
+  'asis.movil.sinRed':
+    'This computer has no local network address: connect it to your network to use it from your phone.',
 };

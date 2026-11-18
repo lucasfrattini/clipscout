@@ -31,9 +31,20 @@ const MAX_FALLOS = 8;
 const BLOQUEO_MS = 5 * 60 * 1000;
 const MAX_IPS = 10000;
 // Lo mínimo para pintar la pantalla de acceso antes de haber entrado.
-const LIBRES = new Set(['/login', '/login.html', '/js/login.js', '/styles/login.css']);
+// También el asistente de primer arranque (él mismo manda a /login si hay usuario y no sesión).
+const LIBRES = new Set([
+  '/login',
+  '/login.html',
+  '/js/login.js',
+  '/styles/login.css',
+  '/bienvenida',
+  '/bienvenida.html',
+  '/js/bienvenida.js',
+  '/styles/bienvenida.css',
+]);
 const EXENTAS_HOST = new Set(['/api/health', '/api/salud']);
 const CAMBIAN = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const RUTAS_LANZADOR = new Set(['/api/apagar', '/api/estado-trabajos']);
 
 /**
  * Lo único que puede pedir otra app con una clave de conexión (además de nada fuera de
@@ -345,6 +356,18 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
         return res.status(403).json({ detail: 'Petición desde otra web rechazada.' });
       }
 
+      // El lanzador y el instalador (sin sesión) pueden pedir el apagado ordenado y preguntar si
+      // hay algo en marcha, solo desde el propio equipo y con la cabecera de la app (una web no
+      // puede mandarla sin permiso de CORS, que no se da).
+      if (
+        RUTAS_LANZADOR.has(req.path) &&
+        esLocal(req) &&
+        req.get('x-clipgeist') === '1' &&
+        !cruzada
+      ) {
+        return next();
+      }
+
       if (libre(req)) {
         // Las rutas de /api/auth/ quieren saber si hay sesión (estado, salir).
         if (acceso.activo() && req.path.startsWith('/api/auth/')) await sesionDe(req, res);
@@ -354,6 +377,9 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       // 4. Sin usuario: solo el propio equipo
       if (!acceso.activo()) {
         if (esLocal(req)) return next();
+        // El asistente de primer arranque (desde otro dispositivo, con el código) necesita los
+        // módulos y estilos de la interfaz: son ficheros estáticos sin datos.
+        if (req.method === 'GET' && /^\/(js|styles)\//.test(req.path)) return next();
         if (req.method === 'GET' && (req.get('accept') || '').includes('text/html')) {
           return res.redirect(302, '/login');
         }
@@ -404,7 +430,30 @@ function crearAcceso({ retrasoFalloMs = 600 } = {}) {
       if (acceso.activo()) {
         return res.status(409).json({ detail: 'Ya hay un usuario: entra con él.' });
       }
-      const r = await acceso.configurar(req.body || {}, { local: esLocal(req) });
+      const cuerpo = req.body || {};
+      // «Usar la misma cuenta que <app>»: primero el código (desde fuera), para que esto no sirva
+      // para probar contraseñas de la otra app; luego se entra en la otra con lo tecleado.
+      if (cuerpo.cuentaDe) {
+        if (!crew.APPS.includes(cuerpo.cuentaDe) || cuerpo.cuentaDe === crew.APP) {
+          return res.status(400).json({ detail: 'App desconocida.' });
+        }
+        if (!esLocal(req) && !(await acceso.codigoValido(cuerpo.codigo))) {
+          await apuntarFallo(req);
+          return res.status(403).json({ detail: 'Falta el código de primer arranque.' });
+        }
+        const valida = await require('../services/asistente').validarCuentaEn(
+          cuerpo.cuentaDe,
+          String(cuerpo.usuario || '').trim(),
+          String(cuerpo.contrasena || '')
+        );
+        if (!valida) {
+          await apuntarFallo(req);
+          return res
+            .status(401)
+            .json({ detail: `Usuario o contraseña incorrectos en ${cuerpo.cuentaDe}.` });
+        }
+      }
+      const r = await acceso.configurar(cuerpo, { local: esLocal(req) });
       fallos.delete(ipDe(req));
       await abrirSesion(req, res, acceso.usuario());
       return res.json(r);

@@ -1,5 +1,32 @@
 # Cambios
 
+## 2.19.0 — Windows, instalador y primer arranque (fase 2)
+
+- **Apagado ordenado**: `POST /api/apagar` (sesión, clave de administración, o el propio equipo con
+  `X-Clipgeist: 1`) deja de aceptar trabajo nuevo, espera a lo que se está guardando (60 s como
+  mucho), guarda la cola de búsquedas para retomarla y sale con 0. SIGTERM hace lo mismo.
+  `GET /api/estado-trabajos` dice si hay algo en marcha. El instalador de Windows lo pide antes de
+  tocar nada y solo mata si no responde en 75 s.
+- **Asistente de primer arranque** (solo en instalaciones nuevas): usuario (o la misma cuenta que
+  otra app de Clipgeist), JDownloader, de 1 a 3 sitios con alta automática, conectar las otras
+  apps y un QR para abrirlo desde el móvil (generado en el navegador, sin CDN).
+- **`DATA_DIR` es la carpeta de todo**: con él, `crew.json` y `profiles.json` van dentro. Sin él,
+  nada cambia. Nunca se copia ni mueve nada solo: si el `data/` del programa tiene uno y la
+  carpeta nueva no, se avisa en el registro.
+- **Componentes fijados**: Node.js, el navegador interno (el mismo Chrome que espera Puppeteer, ya
+  incluido en el paquete) e Inno Setup con versión y sha256 en `empaquetado/componentes.txt`; si
+  no coincide, la compilación se aborta. Imagen Docker con Node fijado (22.23.0).
+- **Licencias de terceros**: `TERCEROS.txt` en el paquete y en la imagen; **Ajustes → Acerca de**.
+- **Windows**: guardados con reintentos también al apagar; prueba de que ningún proceso abre
+  ventana; la batería de pruebas corre también en Windows (CI).
+- **Prueba de humo** con navegador: `npm run e2e` (asistente → buscar en un sitio falso → enviar a
+  una cola falsa).
+
+**Al actualizar**: no hay que hacer nada. Con usuario ya creado el asistente no aparece; la
+`X-Api-Key`, la cola y las programadas siguen igual. En Docker sin `DATA_DIR` los ajustes siguen en
+`data/crew.json`. Si arrancas con `DATA_DIR` pero sin `CREW_PATH`, mira el registro: si avisa,
+copia tú `crew.json` y `profiles.json` a esa carpeta (o define `CREW_PATH` y `PROFILES_PATH`).
+
 ## 2.18.0 — seguridad (fase 1, común a las tres apps)
 
 - **Claves**: la clave de API pasa a ser la **clave de administración** (mismo valor; sigue abriendo

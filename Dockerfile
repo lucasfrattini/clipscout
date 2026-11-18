@@ -4,7 +4,8 @@
 # (~300 MB, y se desincroniza con las librerías del sistema base), se instala
 # el de Debian y se le apunta con PUPPETEER_EXECUTABLE_PATH.
 
-FROM node:22-bookworm-slim AS deps
+# Imagen base fijada por versión exacta (SU-09); la misma rama de Node que los paquetes.
+FROM node:22.23.0-bookworm-slim AS deps
 
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 
@@ -15,8 +16,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
+# Licencias de terceros de lo instalado (Ajustes → Acerca de → Componentes de terceros).
+COPY empaquetado/terceros.js ./empaquetado/
+RUN node empaquetado/terceros.js /app /app/TERCEROS.txt /dev/null
 
-FROM node:22-bookworm-slim AS runtime
+
+FROM node:22.23.0-bookworm-slim AS runtime
 
 ENV NODE_ENV=production \
     PUPPETEER_SKIP_DOWNLOAD=true \
@@ -37,7 +42,8 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json ./
+COPY package.json LICENSE ./
+COPY --from=deps /app/TERCEROS.txt ./
 COPY server.js ./
 COPY src ./src
 COPY public ./public

@@ -14,7 +14,7 @@ jobs:
         include:
           - os: windows-latest
             so: windows
-          - os: ubuntu-22.04  # glibc antigua: el binario sirve en más distribuciones
+          - os: ubuntu-22.04 # glibc antigua: el binario sirve en más distribuciones
             so: linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
@@ -23,12 +23,12 @@ jobs:
         shell: bash
     env:
       APP: clipscout
-      PUPPETEER_SKIP_DOWNLOAD: "true"
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
       - uses: actions/setup-node@v4
         with:
           node-version: 22

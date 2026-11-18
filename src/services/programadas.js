@@ -407,7 +407,15 @@ function arrancar() {
   reloj.unref?.();
 }
 
+/** Apagado ordenado: no se lanza ninguna más. */
+function detener() {
+  clearInterval(reloj);
+  reloj = null;
+}
+
 module.exports = {
+  detener,
+  enMarcha: () => enCurso !== null,
   listar,
   guardar,
   quitar,

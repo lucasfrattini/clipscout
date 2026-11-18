@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
 const express = require('express');
 
 const config = require('../config');
@@ -28,6 +30,23 @@ router.get('/health', (req, res) => {
     browserEnabled: config.browser.enabled,
   });
 });
+
+/**
+ * Ajustes → Acerca de: la licencia propia y la de los componentes de terceros (SU-09). En el
+ * paquete y en Docker TERCEROS.txt está junto a server.js (se genera al compilar); en el
+ * repositorio, en empaquetado/.
+ */
+const RAIZ = path.join(__dirname, '..', '..');
+function servirTexto(candidatos) {
+  return (req, res) => {
+    const ruta = candidatos.map(c => path.join(RAIZ, c)).find(c => fs.existsSync(c));
+    if (!ruta) return res.status(404).json({ detail: 'No está en esta instalación.' });
+    res.set('Cache-Control', 'no-cache');
+    return res.type('text/plain; charset=utf-8').sendFile(ruta);
+  };
+}
+router.get('/licencia', servirTexto(['LICENSE']));
+router.get('/terceros', servirTexto(['TERCEROS.txt', path.join('empaquetado', 'TERCEROS.txt')]));
 
 router.use(scrapeRoutes);
 router.use(videoRoutes);

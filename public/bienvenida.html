@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es" data-app="clipscout">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>clipscout</title>
+    <link rel="icon" href="/img/favicon.ico" />
+    <link rel="stylesheet" href="/styles/crew.css" />
+    <link rel="stylesheet" href="/styles/main.css" />
+    <link rel="stylesheet" href="/styles/bienvenida.css" />
+  </head>
+  <body>
+    <!-- Asistente de primer arranque (public/js/bienvenida.js): un paso por pantalla. -->
+    <main class="asis" id="asistente">
+      <header class="asis-cab">
+        <img src="/img/crew/clipscout.png" alt="" width="40" height="40" />
+        <span class="asis-marca"><span class="cc-crew">Clipgeist</span> clipscout</span>
+      </header>
+      <div class="asis-progreso" id="asis-progreso" role="progressbar" aria-valuemin="1">
+        <span id="asis-barra"></span>
+      </div>
+      <p class="asis-paso" id="asis-paso" aria-live="polite"></p>
+      <section class="asis-cuerpo" id="asis-cuerpo" tabindex="-1"></section>
+      <p class="asis-error" id="asis-error" role="alert"></p>
+      <footer class="asis-pie">
+        <button type="button" class="button button--secondary asis-atras" id="asis-atras"></button>
+        <button type="button" class="button asis-siguiente" id="asis-siguiente"></button>
+      </footer>
+    </main>
+    <script type="module" src="/js/bienvenida.js"></script>
+  </body>
+</html>

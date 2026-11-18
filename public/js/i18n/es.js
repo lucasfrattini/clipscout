@@ -547,6 +547,13 @@ export const es = {
   'crew.aria': 'Apps de Clipgeist',
   'head.ajustes.titulo': 'Ajustes — clipscout',
   'head.ajustes.desc': 'Identidad, clave de API y conexiones con las otras apps de Clipgeist.',
+  'aj.tab.acerca': 'Acerca de',
+  'aj.acerca.titulo': 'Acerca de',
+  'aj.acerca.licencia':
+    'clipscout es software libre con licencia AGPL-3.0 o posterior. Incluye componentes de otros autores, cada uno con su licencia.',
+  'aj.acerca.verLicencia': 'Licencia de clipscout',
+  'aj.acerca.terceros': 'Componentes de terceros',
+  'aj.acerca.web': 'clipgeist.com',
   'aj.esta.titulo': 'General',
   'aj.esta.hint': '{app} · versión {version}',
   'aj.instancia.label': 'Nombre de esta instancia',
@@ -1032,4 +1039,57 @@ export const es = {
   'aviso.cifrado':
     'Estás entrando desde internet sin cifrado: tu contraseña viaja en claro. Usa una red privada entre tus dispositivos o un proxy con HTTPS.',
   'aviso.cerrar': 'Entendido',
+  // Asistente de primer arranque (public/js/bienvenida.js)
+  'asis.titulo': 'Bienvenida',
+  'asis.pasoDe': 'Paso {n} de {total}',
+  'asis.atras': 'Atrás',
+  'asis.siguiente': 'Siguiente',
+  'asis.despues': 'Lo hago después',
+  'asis.guardarSeguir': 'Guardar y seguir',
+  'asis.probando': 'Probando…',
+  'asis.empezar': 'Empezar a usar clipscout',
+  'asis.cuenta.titulo': 'Tu usuario y contraseña',
+  'asis.cuenta.texto':
+    'Con ellos entras en clipscout desde cualquier dispositivo. Si ya usas otra app de Clipgeist, puedes usar la misma cuenta.',
+  'asis.cuenta.cual': '¿Qué cuenta usas?',
+  'asis.cuenta.nueva': 'Crear una cuenta nueva',
+  'asis.cuenta.misma': 'Usar la misma cuenta que {app}',
+  'asis.cuenta.misma.pista': 'Escribe el usuario y la contraseña con los que entras en {app}.',
+  'asis.cuenta.usuario': 'Usuario',
+  'asis.cuenta.clave': 'Contraseña',
+  'asis.cuenta.minimo': 'Al menos 8 caracteres.',
+  'asis.cuenta.codigo': 'Código de primer arranque',
+  'asis.cuenta.codigo.pista':
+    'Estás entrando desde otro dispositivo: el código está en el registro de la app («Código para crear el usuario»).',
+  'asis.cuenta.crear': 'Crear y seguir',
+  'asis.descargas.titulo': '¿Dónde se descargan?',
+  'asis.descargas.texto':
+    'clipscout encuentra los vídeos y se los manda a JDownloader, que los descarga en su carpeta. Escribe la dirección de su API local; si aún no lo tienes, puedes hacerlo después en Ajustes → JDownloader.',
+  'asis.descargas.pista': 'Normalmente http://<equipo-de-jdownloader>:3128',
+  'asis.descargas.probar': 'Probar',
+  'asis.sitios.titulo': 'Elige de 1 a 3 sitios',
+  'asis.sitios.texto':
+    'Pega la dirección de los sitios donde quieres buscar: clipscout encuentra solo su buscador y lo prueba con una búsqueda de verdad. Empieza con pocos; luego puedes añadir más.',
+  'asis.sitios.anadir': 'Añadir sitios',
+  'asis.apps.titulo': 'Conectar con tus otras apps',
+  'asis.apps.texto':
+    'Estas apps de Clipgeist están en este equipo. Conectadas, comparten la sesión y clipscout sabe qué vídeos ya tienes.',
+  'asis.apps.ninguna':
+    'No hay otras apps de Clipgeist en este equipo. Puedes conectarlas cuando quieras en Ajustes → Conexiones.',
+  'asis.apps.conectada': 'Conectada',
+  'asis.apps.automatica': 'Se conecta sola (instalación conjunta)',
+  'asis.apps.conectar': 'Conectar',
+  'asis.apps.conectarCon': 'Conectar con {app}',
+  'asis.apps.clave': 'Clave de administración de {app}',
+  'asis.apps.clave.pista': 'Está en {app} → Ajustes. Solo se usa una vez para darse de alta.',
+  'asis.movil.titulo': 'Úsalo desde el móvil',
+  'asis.movil.texto': 'Escanea el código con la cámara del móvil o escribe la dirección:',
+  'asis.movil.qr': 'Código QR con la dirección {dir}',
+  'asis.movil.misma': 'El móvil y este equipo tienen que estar en la misma red (la misma wifi).',
+  'asis.movil.soloLocal':
+    'Ahora clipscout solo acepta conexiones de este equipo. Para usarlo desde el móvil, activa «Permitir acceso desde otros dispositivos» al instalarlo (o arráncalo con CLIPGEIST_ESCUCHAR=red).',
+  'asis.movil.docker':
+    'Desde el móvil, abre la dirección de tu servidor con el puerto de clipscout, por ejemplo http://192.168.1.10:3001/.',
+  'asis.movil.sinRed':
+    'Este equipo no tiene una dirección de red local: conéctalo a tu red para usarlo desde el móvil.',
 };

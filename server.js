@@ -14,6 +14,10 @@ const { pool } = require('./src/lib/browser');
 
 const app = createApp();
 
+// CS-26: con DATA_DIR, crew.json y profiles.json van dentro. Si el data/ del programa tiene unos
+// y la carpeta nueva no, solo se avisa (nunca se copia ni se mueve nada solo).
+for (const aviso of config.avisosMigracionDatos()) logger.warn(aviso);
+
 // La carpeta de datos solo para el dueño (700) y los ficheros 600, también los que ya había.
 const path = require('node:path');
 require('./src/lib/permisos')
@@ -68,26 +72,21 @@ const server = config.host
   ? app.listen(config.port, config.host, escuchar)
   : app.listen(config.port, escuchar);
 
-/** Apagado ordenado: cierra el servidor HTTP y el navegador del pool. */
-async function shutdown(signal) {
-  logger.info(`Recibido ${signal}, cerrando...`);
-
-  const forceExit = setTimeout(() => {
-    logger.warn('Cierre forzado tras el timeout');
-    process.exit(1);
-  }, 10000);
-  forceExit.unref?.();
-
-  // Lo primero: la foto de las búsquedas en marcha, antes de que cerrar nada las haga fallar.
-  fondo.guardarAlApagar();
-  server.close(() => logger.info('Servidor HTTP cerrado'));
-  await pool.close().catch(error => logger.warn('Error cerrando el navegador', error.message));
-  clearTimeout(forceExit);
-  process.exit(0);
+// Apagado ordenado (services/apagado.js): lo mismo por POST /api/apagar (lanzador, instalador)
+// que por SIGTERM/SIGINT (Docker, systemd, Ctrl+C). Con una señal se espera menos a lo que esté
+// guardando: Docker mata a los 10 s.
+const apagado = require('./src/services/apagado');
+apagado.configurar({
+  server,
+  cerrarNavegador: () => pool.close(),
+  salir: codigo => process.exit(codigo),
+});
+for (const senal of ['SIGTERM', 'SIGINT']) {
+  process.on(senal, () => {
+    logger.info(`Recibido ${senal}, cerrando...`);
+    apagado.apagar({ motivo: senal, esperaMaxMs: 7000, forzarMs: 9500 });
+  });
 }
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
 
 process.on('unhandledRejection', reason => {
   logger.error('Promesa rechazada sin manejar', reason);

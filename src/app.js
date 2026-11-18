@@ -13,6 +13,8 @@ const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { crearAcceso } = require('./middleware/acceso');
 const credenciales = require('./services/acceso');
 const sesiones = require('./services/sesiones');
+const apagado = require('./services/apagado');
+const asistente = require('./services/asistente');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -37,6 +39,17 @@ function createApp() {
   // Tope de body: nada legítimo se acerca a esto
   app.use(express.json({ limit: '64kb' }));
 
+  // Apagado ordenado (CS-20): cuenta lo que hay en vuelo y, apagando, no acepta nada nuevo. La
+  // autorización ya la ha puesto la guardia (sesión, clave de administración, o el propio equipo
+  // con `X-Clipgeist: 1`, que es lo que manda el lanzador).
+  app.use(apagado.middleware);
+  app.get('/api/estado-trabajos', (req, res) => res.json(apagado.estadoTrabajos()));
+  app.post('/api/apagar', (req, res) => {
+    const { que } = apagado.estadoTrabajos();
+    res.on('finish', () => setImmediate(() => apagado.apagar({ motivo: 'POST /api/apagar' })));
+    res.set('Connection', 'close').json({ ok: true, esperando: que });
+  });
+
   // `protegido` le dice a la interfaz si tiene sentido ofrecer «Salir»; `primerArranque`, que hay
   // que crear el usuario (y `pideCodigo`, si desde aquí hace falta el código del registro);
   // `avisoCifrado`, que se está entrando desde internet sin HTTPS.
@@ -47,9 +60,26 @@ function createApp() {
       ...e,
       primerArranque: !e.protegido,
       pideCodigo: !e.protegido && !acceso.esLocal(req),
+      // Asistente de primer arranque: solo en una instalación nueva (sin usuario ni datos).
+      asistente: !e.protegido && (await asistente.esNueva().catch(() => false)),
+      local: acceso.esLocal(req),
       sesion: Boolean(req.sesion),
       avisoCifrado: acceso.avisoSinCifrar(req),
     });
+  });
+  // Las otras apps de Clipgeist detectadas (asistente, paso 1 y 3). Sin usuario creado, a
+  // cualquiera (sin direcciones si no es este equipo); con usuario, solo con sesión.
+  app.get('/api/auth/apps', async (req, res, next) => {
+    try {
+      const sinUsuario = !credenciales.activo();
+      if (!sinUsuario && !req.sesion) {
+        return res.status(401).json({ detail: 'Hace falta usuario y contraseña.' });
+      }
+      const conUrl = Boolean(req.sesion) || acceso.esLocal(req);
+      return res.json({ apps: await asistente.detectar({ conUrl }) });
+    } catch (error) {
+      return next(error);
+    }
   });
   app.post('/api/auth/login', acceso.login);
   app.post('/api/auth/logout', acceso.logout);

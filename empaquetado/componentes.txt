@@ -1,0 +1,14 @@
+# Componentes que se descargan al compilar los paquetes (empaquetado/compilar.sh), con versión
+# fijada y su sha256: compilar.sh lo comprueba y aborta si no coincide. Nunca «latest».
+# Formato: nombre plataforma url sha256
+#
+# Node.js: la versión de la rama 22 (la de la imagen Docker). sha256 de SHASUMS256.txt de nodejs.org.
+node windows https://nodejs.org/dist/v22.23.0/node-v22.23.0-win-x64.zip 425a5bd68cc95e8eb16bcccd0a75081b48983fc6a26f67126bd4d6c7198231e8
+node linux https://nodejs.org/dist/v22.23.0/node-v22.23.0-linux-x64.tar.xz 14d7de44f235534799f8b171a4050d9a6a4bc99c87e053a25d3d54afa580aa20
+# Navegador interno: Chrome for Testing «headless shell», la MISMA versión que espera la Puppeteer de
+# package-lock.json (puppeteer-core/lib/puppeteer/revisions.js). Al subir Puppeteer, subir esto.
+# sha256 calculados descargando (y comprobado el md5 que publica Google en x-goog-hash).
+chrome-headless-shell windows https://storage.googleapis.com/chrome-for-testing-public/156.0.8078.47/win64/chrome-headless-shell-win64.zip e0af9b23f8051cca4f37ca49cd425e8055701bfc0383c198d67f8d5cc5884249
+chrome-headless-shell linux https://storage.googleapis.com/chrome-for-testing-public/156.0.8078.47/linux64/chrome-headless-shell-linux64.zip 0d5acc62c3e213f8c87d3c298d66ffcf9a236d12ea4b9f85318bf85dbc279daa
+# Inno Setup (solo para compilar el instalador de Windows; no va en el paquete).
+innosetup windows https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c

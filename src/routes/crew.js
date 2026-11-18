@@ -360,6 +360,12 @@ router.put(
 
 /* ── JDownloader (API local) ────────────────────────────────────────── */
 
+/** Asistente, paso «Úsalo desde el móvil»: direcciones de esta app en la red local. */
+router.get(
+  '/asistente/red',
+  manejar(req => require('../services/asistente').direcciones(req))
+);
+
 router.get(
   '/ajustes/jdownloader',
   manejar(() => jd.ajustes())

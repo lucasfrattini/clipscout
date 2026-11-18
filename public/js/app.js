@@ -138,6 +138,15 @@ async function initHealth() {
 /* ── Arranque ──────────────────────────────────────────────────────── */
 
 async function main() {
+  // Instalación nueva (sin usuario ni datos): antes que nada, el asistente de primer arranque.
+  const estado = await fetch('/api/auth/estado')
+    .then(r => r.json())
+    .catch(() => ({}));
+  if (estado.asistente) {
+    location.replace('/bienvenida');
+    return;
+  }
+
   // El idioma va PRIMERO: todo lo que se construya después ya nace traducido
   // y no hay un parpadeo en español antes de pasar a inglés.
   traducirDocumento();

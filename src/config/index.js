@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
@@ -55,21 +56,65 @@ function trustProxyFromEnv(name, fallback) {
 }
 
 /**
- * Carpeta de los datos propios (búsquedas en curso, estadísticas, paquetes de JDownloader,
- * respaldos). Fuera de git, como data/crew.json. Si no se dice nada, la misma carpeta que
- * crew.json; en los tests, sin CREW_PATH, una temporal: que una suite escriba en el data/ del
- * repositorio sería mezclar pruebas con datos de verdad.
+ * Carpeta de los datos (CS-26): búsquedas en curso, estadísticas, paquetes de JDownloader,
+ * respaldos y, por defecto, también `crew.json` (contraseña, claves, conexiones) y
+ * `profiles.json`. Fuera de git.
+ *
+ * - `DATA_DIR` definido: es la carpeta de TODO; `CREW_PATH` y `PROFILES_PATH` siguen mandando si
+ *   se dan. Antes `crew.json` se quedaba en el `data/` del programa, y una segunda instancia
+ *   arrancada con otro `DATA_DIR` escribía en los ajustes de la primera.
+ * - Sin `DATA_DIR`: nada cambia. La carpeta es la de `CREW_PATH` y, sin él, `data/` del programa
+ *   (Docker: /app/data). En los tests, sin `CREW_PATH`, una temporal.
+ *
+ * Pura (recibe el entorno y la raíz del programa) para poder probarla.
  */
-function carpetaDatos() {
-  if (process.env.DATA_DIR) return process.env.DATA_DIR;
-  if (process.env.CREW_PATH) return path.dirname(process.env.CREW_PATH);
-  if (process.env.NODE_TEST_CONTEXT) return path.join(os.tmpdir(), `clipscout-test-${process.pid}`);
-  return path.join(__dirname, '..', '..', 'data');
+function rutasDatos(env = process.env, raiz = path.join(__dirname, '..', '..')) {
+  const programa = path.join(raiz, 'data');
+  let dir;
+  if (env.DATA_DIR) dir = env.DATA_DIR;
+  else if (env.CREW_PATH) dir = path.dirname(env.CREW_PATH);
+  else if (env.NODE_TEST_CONTEXT) dir = path.join(os.tmpdir(), `clipscout-test-${process.pid}`);
+  else dir = programa;
+  const base = env.DATA_DIR ? env.DATA_DIR : programa;
+  return {
+    dir,
+    crew: env.CREW_PATH || path.join(base, 'crew.json'),
+    profiles: env.PROFILES_PATH || path.join(base, 'profiles.json'),
+    programa,
+  };
 }
+
+/**
+ * Migración de CS-26: con `DATA_DIR` definido, si el `data/` del programa tiene `crew.json` (o
+ * `profiles.json`) y la carpeta nueva no, NO se copia ni se mueve nada (podría ser de otra
+ * instancia): solo se avisa en el registro. Devuelve los avisos.
+ */
+function avisosMigracionDatos(env = process.env, raiz, existe = fs.existsSync) {
+  if (!env.DATA_DIR) return [];
+  const r = rutasDatos(env, raiz);
+  const avisos = [];
+  for (const [nombre, ruta, variable] of [
+    ['crew.json', r.crew, 'CREW_PATH'],
+    ['profiles.json', r.profiles, 'PROFILES_PATH'],
+  ]) {
+    if (env[variable]) continue;
+    const viejo = path.join(r.programa, nombre);
+    if (path.resolve(viejo) !== path.resolve(ruta) && existe(viejo) && !existe(ruta)) {
+      avisos.push(
+        `DATA_DIR está definido y ${nombre} ya no se lee de ${viejo}, sino de ${ruta} (que no ` +
+          `existe: se empieza de cero). Si es el de esta instancia, cópialo tú a mano, o define ` +
+          `${variable}=${viejo} para seguir usándolo. No se ha copiado ni movido nada.`
+      );
+    }
+  }
+  return avisos;
+}
+
+const RUTAS = rutasDatos();
 
 const config = {
   datos: {
-    dir: carpetaDatos(),
+    dir: RUTAS.dir,
   },
 
   // Copias de seguridad diarias de data/*.json en data/respaldos/ (services/respaldos.js)
@@ -356,7 +401,7 @@ const config = {
   crew: {
     // Conexión con las otras apps de Clipgeist (clonbuster, clipkeeper): clave de
     // API propia, nombre, URL y conexiones. Fuera del control de versiones.
-    path: process.env.CREW_PATH || path.join(__dirname, '..', '..', 'data', 'crew.json'),
+    path: RUTAS.crew,
     // Tiempo máximo para hablar con otra app de la familia.
     timeoutMs: intFromEnv('CREW_TIMEOUT_MS', 6000),
   },
@@ -364,7 +409,7 @@ const config = {
   profiles: {
     // Configuraciones guardadas, FUERA del control de versiones: cada
     // instalación tiene las suyas y no acaban en el repositorio.
-    path: process.env.PROFILES_PATH || path.join(__dirname, '..', '..', 'data', 'profiles.json'),
+    path: RUTAS.profiles,
     // Tope de perfiles: el body ya está limitado a 64kb, esto acota además
     // lo que se acepta persistir.
     maxProfiles: intFromEnv('MAX_PROFILES', 100),
@@ -457,3 +502,5 @@ const config = {
 };
 
 module.exports = config;
+module.exports.rutasDatos = rutasDatos;
+module.exports.avisosMigracionDatos = avisosMigracionDatos;

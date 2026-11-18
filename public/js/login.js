@@ -46,7 +46,11 @@ function pintar(estado = {}) {
 pintar();
 fetch('/api/auth/estado', { headers: CABECERAS })
   .then(r => r.json())
-  .then(pintar)
+  .then(estado => {
+    // Instalación nueva: el asistente de primer arranque (con el ?codigo= si lo trae).
+    if (estado.asistente) location.replace(`/bienvenida${location.search}`);
+    else pintar(estado);
+  })
   .catch(() => {});
 // Solo con ratón: en el móvil el foco saca el teclado y desplaza la página.
 if (matchMedia('(pointer: fine)').matches) $('usuario').focus();
