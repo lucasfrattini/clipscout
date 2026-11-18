@@ -1,6 +1,7 @@
 'use strict';
 
 const config = require('../config');
+const registro = require('./registro');
 
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 const activeLevel = LEVELS[config.logging.level] ?? LEVELS.info;
@@ -9,7 +10,9 @@ function emit(level, stream, message, meta) {
   if (LEVELS[level] > activeLevel) return;
   const timestamp = new Date().toISOString();
   const suffix = meta === undefined ? '' : ` ${format(meta)}`;
-  stream(`${timestamp} [${level.toUpperCase()}] ${message}${suffix}`);
+  const linea = `${timestamp} [${level.toUpperCase()}] ${message}${suffix}`;
+  stream(linea);
+  registro.escribir(linea);
 }
 
 function format(meta) {

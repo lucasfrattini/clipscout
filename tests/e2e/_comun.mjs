@@ -139,6 +139,8 @@ export async function arrancar(raiz, datos, extra = {}) {
     BROWSER_ENABLED: 'false',
     SECURITY_BLOCK_PRIVATE_ADDRESSES: 'false',
     CLIPGEIST_DETECTAR: 'no',
+    // Nunca a clipgeist.com desde las pruebas (SU-13).
+    CLIPGEIST_VERSIONES_URL: 'http://127.0.0.1:9/versiones.json',
     SEARXNG_URL: '',
     OUTBOUND_PROXY: '',
     CRAWL_PAGE_DELAY_MS: '0',

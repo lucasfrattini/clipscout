@@ -535,6 +535,29 @@ const config = {
 
   logging: {
     level: process.env.LOG_LEVEL || 'info',
+    // Registro en fichero con rotación (SU-11): <datos>/registro/clipscout.log, y al pasar de
+    // `maxBytes` se rota a .1 y .2 (tres ficheros como mucho). `LOG_FILE=0` lo apaga.
+    fichero: process.env.LOG_FILE !== '0',
+    maxBytes: intFromEnv('LOG_FILE_MAX_BYTES', 5 * 1024 * 1024),
+    ficheros: intFromEnv('LOG_FILE_COUNT', 3),
+  },
+
+  // Diagnóstico (SU-11): tiempos máximos de cada comprobación y cuánto vale la del navegador.
+  diagnostico: {
+    timeoutMs: intFromEnv('DIAGNOSTICO_TIMEOUT_MS', 8000),
+    navegadorVigenciaMs: intFromEnv('DIAGNOSTICO_NAVEGADOR_VIGENCIA_MS', 5 * 60 * 1000),
+  },
+
+  // Actualizaciones (SU-13): el fichero de versiones de la web. Una vez al día como mucho, sin
+  // enviar nada. `CLIPGEIST_VERSIONES_URL` solo para pruebas.
+  actualizaciones: {
+    url: (process.env.CLIPGEIST_VERSIONES_URL || 'https://clipgeist.com/versiones.json').trim(),
+    cadaMs: intFromEnv('CLIPGEIST_VERSIONES_CADA_MS', 24 * 60 * 60 * 1000),
+    timeoutMs: intFromEnv('CLIPGEIST_VERSIONES_TIMEOUT_MS', 10000),
+    // En Docker se enseña la orden para actualizar (la imagen se construye desde el repositorio).
+    comandoDocker: (
+      process.env.CLIPGEIST_COMANDO_ACTUALIZAR || 'git pull && docker compose up -d --build'
+    ).trim(),
   },
 };
 

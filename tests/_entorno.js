@@ -21,6 +21,12 @@ globalThis.fetch = (url, opciones = {}) => {
   return fetchOriginal(url, { ...opciones, headers: cabeceras });
 };
 
+// Ninguna prueba sale a clipgeist.com (SU-13): el fichero de versiones apunta a un puerto cerrado
+// salvo que el test monte su propio servidor. Lo heredan también los server.js que arrancan.
+if (!process.env.CLIPGEIST_VERSIONES_URL) {
+  process.env.CLIPGEIST_VERSIONES_URL = 'http://127.0.0.1:9/versiones.json';
+}
+
 if (!process.env.CREW_PATH) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clipscout-test-'));
   process.env.CREW_PATH = path.join(dir, 'crew.json');

@@ -66,6 +66,9 @@ require('./src/services/crew').arrancarMigracion({
   esperaMs: Number(process.env.CLIPGEIST_MIGRACION_ESPERA_MS) || 20000,
 });
 
+// ¿Hay versión nueva? Una vez al día como mucho, sin enviar nada y solo con el ajuste encendido.
+require('./src/services/actualizaciones').arrancar();
+
 // Búsquedas programadas: se mira cada pocos minutos si toca alguna (empieza sin ninguna).
 require('./src/services/programadas').arrancar();
 

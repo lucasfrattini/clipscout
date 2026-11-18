@@ -161,6 +161,9 @@ function conClavesActuales(restaurado, actual) {
   if (!actual) return restaurado;
   if (actual.acceso) restaurado.acceso = actual.acceso;
   else delete restaurado.acceso;
+  // La clave de administración también se queda la de AHORA (los scripts la usan; una copia sin
+  // secretos no la trae y se generaría otra).
+  if (actual.api_key) restaurado.api_key = actual.api_key;
   for (const c of restaurado.conexiones || []) {
     const ahora = (actual.conexiones || []).find(x => x.url === c.url && x.app === c.app);
     if (!ahora) continue;
@@ -176,14 +179,30 @@ function conClavesActuales(restaurado, actual) {
  */
 async function restaurar(id) {
   const copia = await validar(id);
+  const textos = {};
+  for (const { nombre } of copia.ficheros) {
+    textos[nombre] = await fs.readFile(path.join(carpeta(), copia.id, nombre), 'utf8');
+  }
+  const r = await aplicar(textos);
+  logger.info(`Restaurada la copia ${copia.id} (la anterior quedó en ${r.previa})`);
+  return { ok: true, restaurados: r.restaurados, previa: r.previa };
+}
+
+/**
+ * Pone estos ficheros ({nombre: texto JSON}) en su sitio: antes guarda lo actual como
+ * «antes-de-restaurar-…» (restaurar se puede deshacer) y comprueba que TODOS son JSON válido antes
+ * de pisar nada. Lo usan las copias diarias y la copia de la suite (services/copia.js).
+ */
+async function aplicar(textos) {
+  const rutas = ficheros();
+  const validos = {};
+  for (const [nombre, texto] of Object.entries(textos)) {
+    if (!(nombre in rutas)) continue;
+    validos[nombre] = { texto, datos: JSON.parse(texto) };
+  }
   const previa = `antes-de-restaurar-${new Date().toISOString().replace(/[:.]/g, '-')}`;
   await copiarA(previa);
-  const rutas = ficheros();
-  for (const { nombre } of copia.ficheros) {
-    const origen = path.join(carpeta(), copia.id, nombre);
-    // Que sea JSON válido ANTES de pisar nada.
-    const texto = await fs.readFile(origen, 'utf8');
-    const datos = JSON.parse(texto);
+  for (const [nombre, { texto, datos }] of Object.entries(validos)) {
     if (nombre === 'crew.json') {
       // Por la cola de cambios de crew.json (CS-18): antes se escribía por fuera y podía pisar,
       // o ser pisado por, un cambio que estuviera guardándose a la vez.
@@ -208,8 +227,7 @@ async function restaurar(id) {
   await require('./acceso')
     .cargar({ forzar: true })
     .catch(() => {});
-  logger.info(`Restaurada la copia ${copia.id} (la anterior quedó en ${previa})`);
-  return { ok: true, restaurados: copia.ficheros.map(f => f.nombre), previa };
+  return { restaurados: Object.keys(validos), previa };
 }
 
 let reloj = null;
@@ -220,4 +238,13 @@ function arrancar() {
   reloj.unref?.();
 }
 
-module.exports = { asegurarDiario, listar, paquete, restaurar, arrancar, ficheros, sinSecretos };
+module.exports = {
+  asegurarDiario,
+  listar,
+  paquete,
+  restaurar,
+  aplicar,
+  arrancar,
+  ficheros,
+  sinSecretos,
+};

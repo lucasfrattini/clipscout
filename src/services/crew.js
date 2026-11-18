@@ -864,6 +864,8 @@ function autoconectar({ cadaMs = 15000, maxMs = 10 * 60 * 1000 } = {}) {
 }
 
 module.exports = {
+  leer,
+  leerSinCache,
   esperarEscrituras,
   olvidarCache,
   autoconectar,

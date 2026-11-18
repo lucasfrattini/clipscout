@@ -11,6 +11,7 @@ const profileRoutes = require('./profiles');
 const crewRoutes = require('./crew');
 const buscarRoutes = require('./buscar');
 const sitiosRoutes = require('./sitios');
+const sistemaRoutes = require('./sistema');
 
 const router = express.Router();
 
@@ -48,6 +49,8 @@ function servirTexto(candidatos) {
 router.get('/licencia', servirTexto(['LICENSE']));
 router.get('/terceros', servirTexto(['TERCEROS.txt', path.join('empaquetado', 'TERCEROS.txt')]));
 
+// Antes que las del protocolo: la copia de la suite cuelga de /crew/v1 y vale con sesión.
+router.use(sistemaRoutes);
 router.use(scrapeRoutes);
 router.use(videoRoutes);
 router.use(profileRoutes);
