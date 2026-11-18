@@ -13,6 +13,7 @@ export const en = {
   /* ── Header and navigation ─────────────────────────────────────── */
   'app.subtitulo': "Explore a site's links and resources",
   'app.saltar': 'Skip to content',
+  'app.errorCarga': 'This screen could not be loaded: reload the page.',
   'nav.aria': 'Tools',
   'nav.explorador': 'Advanced',
   'nav.videos': 'Videos',

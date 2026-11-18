@@ -13,14 +13,11 @@ import { alCambiarIdioma, cambiarIdioma, idiomaActual, IDIOMAS, t, tp } from '..
 import { cambiarTema, temaGuardado, TEMAS } from '../tema.js';
 import { crearCabecera } from '../cabecera.js';
 import { menuAcciones } from '../hojas.js';
-import { seccionAjustes, SECCIONES_AJUSTES, urlDeApp } from '../unaMano.js';
+import { seccionAjustes, SECCIONES_AJUSTES } from '../unaMano.js';
+import { avisarCambio } from '../appsCrew.js';
 
 const APPS = ['clipkeeper', 'clonbuster', 'clipscout'];
 const PUERTOS = { clipkeeper: 8096, clonbuster: 8095, clipscout: 3001 };
-
-/** Avisa a la cabecera de que cambiaron las conexiones (para repintar sus iconos). */
-const EVENTO = 'clipscout:conexiones';
-export const avisarCambio = () => window.dispatchEvent(new Event(EVENTO));
 
 export function createAjustesView(raiz) {
   let general = null;
@@ -1576,88 +1573,4 @@ export function createAjustesView(raiz) {
       cargar();
     },
   };
-}
-
-/**
- * Las tres apps de Clipgeist, en el menú del logo (hoja #hoja-apps): la actual marcada y las que no
- * están conectadas, apagadas. La dirección de cada una es la guardada, pero vista DESDE ESTE
- * NAVEGADOR: si es «localhost» o el nombre del contenedor, se usa la máquina desde la que se mira
- * clipscout (antes, desde el móvil apuntaban al propio teléfono y no abrían nada).
- */
-export function initCrewCabecera(contenedor) {
-  const pintar = async () => {
-    let conexiones = [];
-    try {
-      conexiones = await ajustes.conexiones();
-    } catch {
-      conexiones = [];
-    }
-    const icono = app =>
-      el('img', { attrs: { src: `/img/crew/${app}.png`, alt: app, width: 36, height: 36 } });
-    const contenido = (app, detalle) => [
-      icono(app),
-      el('span', {
-        className: 'cs-app__texto',
-        children: [el('strong', { text: app }), el('small', { text: detalle })],
-      }),
-    ];
-    contenedor.replaceChildren(
-      ...['clipscout', 'clonbuster', 'clipkeeper'].map(app => {
-        if (app === 'clipscout') {
-          return el('span', {
-            className: 'cc-app cs-app actual',
-            attrs: { 'aria-current': 'page' },
-            children: contenido(app, t('crew.estasAqui')),
-          });
-        }
-        const c = conexiones.find(x => x.app === app);
-        return c
-          ? el('a', {
-              className: 'cc-app cs-app',
-              attrs: {
-                href: urlDeApp(c.url, window.location.hostname),
-                title: t('crew.ir', { nombre: c.nombre }),
-              },
-              children: contenido(app, c.nombre || t('crew.ir', { nombre: app })),
-            })
-          : el('span', {
-              className: 'cc-app cs-app apagada',
-              children: contenido(app, t('crew.sinConectar')),
-            });
-      })
-    );
-  };
-  window.addEventListener(EVENTO, pintar);
-  botonSalir(contenedor.parentElement.querySelector('.cs-apps-acciones'));
-  return pintar();
-}
-
-/**
- * «Salir», en el menú del logo (en el mismo sitio en las tres apps). Solo si hay contraseña: sin
- * ella no hay sesión que cerrar.
- */
-async function botonSalir(destino) {
-  let estado = {};
-  try {
-    estado = await (await fetch('/api/auth/estado')).json();
-  } catch {
-    return;
-  }
-  if (!destino || !estado.protegido || destino.querySelector('.cs-salir')) return;
-  destino.append(
-    el('button', {
-      className: 'cg-boton cs-salir',
-      attrs: {
-        type: 'button',
-        title: estado.usuario ? t('cab.cerrarSesion', { usuario: estado.usuario }) : '',
-      },
-      text: t('cab.salir'),
-      on: {
-        click: async () => {
-          await fetch('/api/auth/logout', { method: 'POST' });
-          location.replace('/login');
-        },
-      },
-    })
-  );
 }

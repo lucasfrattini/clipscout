@@ -3,30 +3,22 @@ import { el, clear, toast, enfocarAlAbrir } from '../dom.js';
 import { t, tp, texto, atributo, alCambiarIdioma, idiomaActual } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
-import { palabras, contieneAlguna, textoDe } from '../filtros.js';
-import { plegarAlbumes, claveAlbum } from '../albumes.js';
+import { palabras } from '../filtros.js';
+import { claveAlbum } from '../albumes.js';
 import { abrirHoja, menuAcciones } from '../hojas.js';
 import { paraDescargarTodo, fechaCorta } from '../unaMano.js';
 import { carpetaPropuesta } from '../carpetas.js';
+import {
+  calcularLista,
+  crearTextoNormal,
+  enlaceDe,
+  nombreDeUrl,
+  tamanosPrimeros,
+  tipoDeEntrada,
+} from '../buscarModelo.js';
 
 /** El «sitio» de lo encontrado en toda la web (no es una configuración guardada). */
 const ID_WEB = -1;
-
-/**
- * Qué escribió la persona en la caja única: un enlace (se sacan sus vídeos), un dominio suelto
- * («ejemplo.com»: se ofrece agregarlo como sitio) o un nombre / una palabra (se busca en todos).
- */
-const ES_ENLACE = /^(?:https?:\/\/\S+|(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/\S+)$/i;
-const ES_DOMINIO = /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}\/?$/i;
-
-function tipoDeEntrada(texto) {
-  const partes = texto.trim().split(/\s+/).filter(Boolean);
-  if (partes.length === 0) return 'palabra';
-  // Uno o varios enlaces (como en la antigua pestaña Vídeos): se sacan sus vídeos.
-  if (partes.every(p => ES_ENLACE.test(p))) return 'enlace';
-  if (partes.length === 1 && ES_DOMINIO.test(partes[0])) return 'dominio';
-  return 'palabra';
-}
 
 /**
  * Buscar: la pantalla de inicio. Se escribe un nombre y se busca en TODOS los sitios guardados a la
@@ -78,18 +70,6 @@ function leerApagados() {
   }
 }
 const guardarApagados = apagados => guardar(CLAVE_SITIOS, JSON.stringify([...apagados]));
-
-function nombreDeUrl(url) {
-  try {
-    const ultimo = decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).pop() || '');
-    return ultimo
-      .replace(/\.[a-z0-9]{2,4}$/i, '')
-      .replace(/[-_.]+/g, ' ')
-      .trim();
-  } catch {
-    return '';
-  }
-}
 
 export function createBuscarView(root) {
   let sitios = []; // { id, nombre }
@@ -545,32 +525,7 @@ export function createBuscarView(root) {
   let verOcultos = false;
   let soloFrase = false; // «frase exacta»: oculta (con contador) lo que no la lleva seguida
   let orden = 'llegada'; // 'llegada' | 'relevancia' | 'duracion'
-  const textos = new WeakMap(); // resultado → texto normalizado
-  const textoNormal = r => {
-    if (!textos.has(r)) textos.set(r, textoDe(r));
-    return textos.get(r);
-  };
-  const enlaceDe = r => r.sourceUrl || r.url;
-  /** Por qué un resultado no se muestra (o null). El orden es el de las explicaciones. */
-  function motivoOculto(r) {
-    if (r.bloqueada) return 'bloqueada';
-    if (ocultarTengo && enBiblioteca.has(enlaceDe(r))) return 'tengo';
-    if (ocultarEnviados && enviados.has(enlaceDe(r))) return 'enviado';
-    if (excluir.length && contieneAlguna(textoNormal(r), excluir)) return 'excluir';
-    if (contener.length && !contieneAlguna(textoNormal(r), contener)) return 'contener';
-    // Sin dato (un enlace pegado no tiene término) no se oculta: no se sabe.
-    if (soloFrase && r.frase === false) return 'frase';
-    if (idiomaFiltro && r.idioma && r.idioma !== 'dudoso' && r.idioma !== idiomaFiltro) {
-      return 'idioma';
-    }
-    if (
-      minDuracion &&
-      !(Number.isFinite(r.durationSeconds) && r.durationSeconds >= minDuracion * 60)
-    ) {
-      return 'duracion';
-    }
-    return null;
-  }
+  const textoNormal = crearTextoNormal(); // resultado → texto normalizado (una vez)
   const descartados = new Set(); // fichas quitadas a mano de esta búsqueda
 
   /**
@@ -589,38 +544,11 @@ export function createBuscarView(root) {
   // la siguiente búsqueda la puede cambiar por otra; una elegida a mano, no.
   let destinoPropuesto = false;
 
-  const esCopia = r => {
-    const c = copias.get(r.url);
-    return Boolean(c && c.representante !== r.url);
-  };
-  // Repetido = el MISMO vídeo (mismo fichero, p. ej. hallado por la búsqueda propia y por la web)
-  // o una copia que detecta el servidor. Los vídeos distintos de un mismo álbum NO lo son.
+  // Repetido = el mismo vídeo o una copia que detecta el servidor (ver buscarModelo.js).
   const clavePagina = r => r.url;
   let cuentaPagina = new Map(); // resultados por página, para el «+N» de cada fila
   const enPestana = r =>
     (pestana === 'todos' || r.sitio === pestana) && !descartados.has(enlaceDe(r));
-  /**
-   * Orden elegido. Los que no tienen el dato van siempre al final (la misma regla que la lista del
-   * Explorador); el orden de llegada desempata, así la lista no baila con cada tanda.
-   */
-  const ordenar = lista => {
-    if (orden === 'llegada') return lista;
-    const valor = r =>
-      orden === 'relevancia'
-        ? r.relevancia
-        : Number.isFinite(r.durationSeconds)
-          ? r.durationSeconds
-          : null;
-    return lista
-      .map((r, i) => ({ r, i, v: valor(r) }))
-      .sort((a, b) => {
-        const sa = Number.isFinite(a.v);
-        const sb = Number.isFinite(b.v);
-        if (sa !== sb) return sa ? -1 : 1;
-        return (sa && b.v - a.v) || a.i - b.i;
-      })
-      .map(x => x.r);
-  };
   /**
    * Álbumes: una ficha con varios ficheros llegaba como varios resultados sueltos. Se pliegan en
    * uno (el primero que pasa los filtros, que se aplican POR FICHERO: así la duración mínima mira
@@ -629,42 +557,30 @@ export function createBuscarView(root) {
    */
   const albumesAbiertos = new Set(); // fichas desplegadas
   let albumes = new Map(); // ficha → miembros visibles (los de la última lista pintada)
-  const plegarRepetidos = lista => {
-    const vistas = new Set();
-    return lista.filter(r => {
-      if (esCopia(r) || vistas.has(clavePagina(r))) return false;
-      vistas.add(clavePagina(r));
-      return true;
-    });
-  };
-  /**
-   * Una sola pasada por pintado (CS-14): antes se ordenaba y filtraba la lista cuatro veces cada
-   * 80 ms mientras llegaban resultados.
-   */
+  /** Lo que se ve de lo encontrado, en una sola pasada (CS-14; la lógica, en buscarModelo.js). */
   function calcular() {
-    const base = ordenar(resultados).filter(enPestana);
-    const motivos = new Map(base.map(r => [r, motivoOculto(r)]));
-    const sinOcultos = base.filter(r => !motivos.get(r));
-    const plegada = ocultarRepetidos ? plegarRepetidos(sinOcultos) : sinOcultos;
-    const conAlbumes = plegarAlbumes(plegada, albumesAbiertos);
-    const lista = conAlbumes.lista;
-    let pintar = lista;
-    albumes = conAlbumes.albumes;
-    if (verOcultos) {
-      const todos = plegarAlbumes(ocultarRepetidos ? plegarRepetidos(base) : base, albumesAbiertos);
-      pintar = todos.lista;
-      albumes = todos.albumes;
-    }
-    const ocultos = new Map();
-    for (const m of motivos.values()) if (m) ocultos.set(m, (ocultos.get(m) || 0) + 1);
-    return {
-      lista,
-      pintar,
-      motivos,
-      ocultos,
-      repetidos: sinOcultos.length - plegada.length,
-      enAlbumes: plegada.length - lista.length,
-    };
+    const pasada = calcularLista(resultados, {
+      orden,
+      enPestana,
+      ocultarRepetidos,
+      copias,
+      albumesAbiertos,
+      verOcultos,
+      filtros: {
+        ocultarTengo,
+        ocultarEnviados,
+        enBiblioteca,
+        enviados,
+        contener,
+        excluir,
+        soloFrase,
+        idioma: idiomaFiltro,
+        minDuracion,
+        textoNormal,
+      },
+    });
+    albumes = pasada.albumes;
+    return pasada;
   }
   let ultimaPasada = null;
   const visibles = () => (ultimaPasada || calcular()).lista;
@@ -1061,7 +977,7 @@ export function createBuscarView(root) {
   /** «Los N primeros» de la lista tal como se ve (filtros y orden incluidos). */
   function elegirPrimeros() {
     const lista = visibles().map(enlaceDe);
-    const tamanos = [5, 10, 20, 50].filter(n => n < lista.length);
+    const tamanos = tamanosPrimeros(lista.length);
     menuAcciones({
       titulo: t('buscar.sel.primeros.titulo'),
       subtitulo: tp('buscar.resultados', lista.length),
@@ -2190,7 +2106,7 @@ export function createBuscarView(root) {
     }
   }
 
-  comprobarProxy();
+  // El aviso del proxy se comprueba al enfocar (también al arrancar): aquí iría repetido.
   cargarSitios().then(() => {
     refrescarCola();
     const hash = window.location.hash;

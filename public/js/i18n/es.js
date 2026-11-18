@@ -13,6 +13,7 @@ export const es = {
   /* ── Cabecera y navegación ─────────────────────────────────────── */
   'app.subtitulo': 'Explora enlaces y recursos de un sitio',
   'app.saltar': 'Saltar al contenido',
+  'app.errorCarga': 'No se pudo cargar esta pantalla: recarga la página.',
   'nav.aria': 'Herramientas',
   'nav.explorador': 'Avanzado',
   'nav.videos': 'Vídeos',

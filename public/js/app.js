@@ -1,9 +1,7 @@
-import { getHealth } from './api.js';
-import { createExplorerView } from './views/explorer.js';
+import { estadoAcceso, getHealth } from './api.js';
 import { createBuscarView } from './views/buscar.js';
-import { createVideoView } from './views/video.js';
-import { createAjustesView, initCrewCabecera } from './views/ajustes.js';
-import { createActividadView } from './views/actividad.js';
+import { initCrewCabecera } from './appsCrew.js';
+import { toast } from './dom.js';
 import { aplicarTema, temaGuardado } from './tema.js';
 import { t, alCambiarIdioma, traducirDocumento } from './i18n/index.js';
 
@@ -20,7 +18,56 @@ const DEFAULT_LIMITS = {
 
 /* ── Navegación entre vistas ───────────────────────────────────────── */
 
-function initRouter(views) {
+/**
+ * CS-15: cada vista se carga al abrirla por primera vez (antes se descargaban y construían todas
+ * al arrancar, también las que el móvil no usa). Buscar, la principal, va siempre: la guía y
+ * Actividad («Ver») cuentan con ella.
+ */
+const CARGAR_VISTA = {
+  actividad: () => import('./views/actividad.js').then(m => m.createActividadView),
+  explorer: () => import('./views/explorer.js').then(m => m.createExplorerView),
+  video: () => import('./views/video.js').then(m => m.createVideoView),
+  ajustes: () => import('./views/ajustes.js').then(m => m.createAjustesView),
+};
+
+/**
+ * Avisos entre vistas: si la que escucha aún no se cargó, se carga y se le repite el aviso
+ * (p. ej. «Repetir cada…» en Buscar abre la programada en Actividad).
+ */
+const AVISOS_DE_VISTA = { 'clipscout:programar': 'actividad' };
+
+function crearVistas({ limits }) {
+  const vistas = {
+    buscar: createBuscarView(document.getElementById('view-buscar')),
+  };
+  const enCurso = {};
+  const opciones = { explorer: { limits } };
+  function vista(nombre) {
+    if (vistas[nombre]) return Promise.resolve(vistas[nombre]);
+    if (!CARGAR_VISTA[nombre]) return Promise.resolve(null);
+    enCurso[nombre] ||= CARGAR_VISTA[nombre]()
+      .then(crear => {
+        vistas[nombre] = crear(document.getElementById(`view-${nombre}`), opciones[nombre]);
+        return vistas[nombre];
+      })
+      .catch(error => {
+        delete enCurso[nombre];
+        throw error;
+      });
+    return enCurso[nombre];
+  }
+  for (const [aviso, nombre] of Object.entries(AVISOS_DE_VISTA)) {
+    window.addEventListener(aviso, e => {
+      if (vistas[nombre]) return;
+      vista(nombre).then(() => window.dispatchEvent(new CustomEvent(aviso, { detail: e.detail })));
+    });
+  }
+  return { vista, creada: nombre => vistas[nombre] || null, todas: () => Object.values(vistas) };
+}
+
+const toastErrorDeCarga = () => toast(t('app.errorCarga'), 'error', 8000);
+
+function initRouter(vistas) {
   const barra = document.querySelector('cg-barra-inferior');
   const sections = {
     buscar: document.getElementById('view-buscar'),
@@ -79,9 +126,16 @@ function initRouter(views) {
 
     // Cambiar de pantalla empieza arriba (cada una tiene su propia cabecera).
     if (actual !== name) window.scrollTo(0, 0);
-    if (actual && actual !== name) views[actual]?.ocultar?.();
+    if (actual && actual !== name) vistas.creada(actual)?.ocultar?.();
     actual = name;
-    views[name]?.focus?.();
+    const pedida = name;
+    vistas
+      .vista(name)
+      .then(v => {
+        // Si entretanto se cambió de pantalla, el foco es de la otra.
+        if (actual === pedida) v?.focus?.();
+      })
+      .catch(() => toastErrorDeCarga());
   }
 
   window.addEventListener('hashchange', () => {
@@ -149,9 +203,7 @@ async function initHealth() {
 
 async function main() {
   // Instalación nueva (sin usuario ni datos): antes que nada, el asistente de primer arranque.
-  const estado = await fetch('/api/auth/estado')
-    .then(r => r.json())
-    .catch(() => ({}));
+  const estado = await estadoAcceso();
   if (estado.asistente) {
     location.replace('/bienvenida');
     return;
@@ -164,15 +216,8 @@ async function main() {
 
   const limits = { ...DEFAULT_LIMITS, ...(await initHealth()) };
 
-  const views = {
-    buscar: createBuscarView(document.getElementById('view-buscar')),
-    actividad: createActividadView(document.getElementById('view-actividad')),
-    explorer: createExplorerView(document.getElementById('view-explorer'), { limits }),
-    video: createVideoView(document.getElementById('view-video')),
-    ajustes: createAjustesView(document.getElementById('view-ajustes')),
-  };
-
-  initRouter(views);
+  const vistas = crearVistas({ limits });
+  initRouter(vistas);
   // «Apps», el último botón de la barra (igual en las tres apps): las otras apps, la guía y Salir.
   document
     .getElementById('boton-apps')
@@ -189,7 +234,7 @@ async function main() {
   // Abortar los streams en curso al cerrar la pestaña, para que el servidor
   // no siga scrapeando en vano.
   window.addEventListener('beforeunload', () => {
-    for (const view of Object.values(views)) view.teardown?.();
+    for (const view of vistas.todas()) view.teardown?.();
   });
 }
 
@@ -290,12 +335,7 @@ function aceptarAviso() {
  */
 const CLAVE_CIFRADO = 'cs-aviso-cifrado';
 async function avisoSinCifrar() {
-  let estado;
-  try {
-    estado = await (await fetch('/api/auth/estado')).json();
-  } catch {
-    return;
-  }
+  const estado = await estadoAcceso();
   if (!estado?.avisoCifrado) return;
   try {
     const visto = Number(localStorage.getItem(CLAVE_CIFRADO) || 0);

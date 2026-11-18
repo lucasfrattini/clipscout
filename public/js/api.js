@@ -116,6 +116,23 @@ export function getHealth() {
   return request('/health');
 }
 
+/**
+ * Estado del acceso (`/api/auth/estado`: asistente, contraseña, aviso de cifrado). Al arrancar lo
+ * pedían tres sitios por separado (CS-15); se pide una vez y se comparte durante unos segundos.
+ * Si falla devuelve `{}`, como hacían todos.
+ */
+let estadoEnVuelo = null;
+let estadoPedidoEn = 0;
+export function estadoAcceso() {
+  if (!estadoEnVuelo || Date.now() - estadoPedidoEn > 5000) {
+    estadoPedidoEn = Date.now();
+    estadoEnVuelo = fetch('/api/auth/estado')
+      .then(r => r.json())
+      .catch(() => ({}));
+  }
+  return estadoEnVuelo;
+}
+
 export function scrape(params) {
   return request('/scrape', { method: 'POST', body: JSON.stringify(params) });
 }
