@@ -20,6 +20,12 @@ function intFromEnv(name, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/**
+ * CS-16: ¿es la app de escritorio (el lanzador de Windows/Linux, en la bandeja)? Allí la memoria
+ * cuenta más que en un servidor: topes más bajos y se suelta lo que no se usa.
+ */
+const ES_ESCRITORIO = process.env.CLIPGEIST_LANZADOR === '1';
+
 function boolFromEnv(name, fallback) {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return fallback;
@@ -459,8 +465,14 @@ const config = {
     // Tope por imagen: una miniatura legítima no llega ni de lejos
     maxBytes: intFromEnv('THUMBNAILS_MAX_BYTES', 2 * 1024 * 1024),
     // Caché EN MEMORIA: muere con el proceso y no deja rastro en disco
-    cacheMaxEntries: intFromEnv('THUMBNAILS_CACHE_MAX_ENTRIES', 3000),
-    cacheMaxBytes: intFromEnv('THUMBNAILS_CACHE_MAX_BYTES', 256 * 1024 * 1024),
+    // (CS-16: en escritorio 64 MB y se vacía tras 10 minutos sin pedir ninguna; en servidor, 256 MB)
+    cacheMaxEntries: intFromEnv('THUMBNAILS_CACHE_MAX_ENTRIES', ES_ESCRITORIO ? 1000 : 3000),
+    cacheMaxBytes: intFromEnv(
+      'THUMBNAILS_CACHE_MAX_BYTES',
+      (ES_ESCRITORIO ? 64 : 256) * 1024 * 1024
+    ),
+    // Vaciar la caché tras este rato sin usarla; 0 = nunca
+    cacheVaciarTrasMs: intFromEnv('THUMBNAILS_CACHE_VACIAR_TRAS_MS', ES_ESCRITORIO ? 600000 : 0),
     // Cuánto se recuerda que una miniatura falló (no se vuelve a pedir al sitio); 0 = nada
     negativeTtlMs: intFromEnv('THUMBNAILS_NEGATIVE_TTL_MS', 5 * 60 * 1000),
     // Cuánto puede cachear el navegador lo que ya servimos nosotros

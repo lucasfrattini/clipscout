@@ -66,15 +66,31 @@ function limpiarUrlImagen(url) {
 }
 
 class CacheDeMiniaturas {
-  constructor({ maxEntradas, maxBytes } = {}) {
+  constructor({ maxEntradas, maxBytes, vaciarTrasMs } = {}) {
     this.maxEntradas = maxEntradas ?? config.thumbnails.cacheMaxEntries;
     this.maxBytes = maxBytes ?? config.thumbnails.cacheMaxBytes;
+    this.vaciarTrasMs = vaciarTrasMs ?? config.thumbnails.cacheVaciarTrasMs;
+    this.reloj = null;
     /** @type {Map<string, {buffer: Buffer, contentType: string}>} */
     this.entradas = new Map();
     this.bytes = 0;
   }
 
+  /** CS-16: tras un rato sin usarla se suelta entera (en escritorio; ver config). */
+  tocar() {
+    if (!this.vaciarTrasMs) return;
+    clearTimeout(this.reloj);
+    this.reloj = setTimeout(() => this.vaciar(), this.vaciarTrasMs);
+    this.reloj.unref?.();
+  }
+
+  vaciar() {
+    this.entradas.clear();
+    this.bytes = 0;
+  }
+
   get(url) {
+    this.tocar();
     const entrada = this.entradas.get(url);
     if (!entrada) return null;
     // LRU: al usarla vuelve al final, así lo que se desaloja es lo más viejo
@@ -84,6 +100,7 @@ class CacheDeMiniaturas {
   }
 
   set(url, entrada) {
+    this.tocar();
     if (this.entradas.has(url)) {
       this.bytes -= this.entradas.get(url).buffer.length;
       this.entradas.delete(url);

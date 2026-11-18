@@ -204,3 +204,13 @@ test('miniaturas: firma de imagen y restos tras la extensión', () => {
   );
   assert.equal(limpiarUrlImagen('https://ejemplo.com/a.jpg?x=1'), 'https://ejemplo.com/a.jpg?x=1');
 });
+
+test('CS-16: la caché se vacía sola tras un rato sin usarla (escritorio)', async () => {
+  const c = new CacheDeMiniaturas({ maxEntradas: 10, maxBytes: 1e6, vaciarTrasMs: 30 });
+  c.set('a', { buffer: Buffer.alloc(10), contentType: 'image/png' });
+  await new Promise(r => setTimeout(r, 15));
+  assert.ok(c.get('a'), 'usarla alarga el plazo');
+  await new Promise(r => setTimeout(r, 60));
+  assert.equal(c.tamano, 0);
+  assert.equal(c.bytes, 0);
+});
