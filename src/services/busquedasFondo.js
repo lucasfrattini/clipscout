@@ -25,7 +25,8 @@ const { idiomaProbable, bloqueadaPor, relevancia } = require('../lib/filtros');
  * cuanto se libera un hueco, en el orden en que llegó. Las búsquedas programadas pasan por la
  * misma cola, así que una programada nunca se pierde por coincidir con una búsqueda a mano.
  *
- * Y sobreviven a un reinicio (data/busquedas.json, fuera de git como el resto de data/): las que
+ * Y sobreviven a un reinicio (data/busquedas.json + data/busquedas/<id>.jsonl, ver
+ * «Persistencia»; fuera de git como el resto de data/): las que
  * estaban en marcha o en cola se retoman solas al arrancar, solo en los sitios que no habían
  * terminado y con los eventos ya emitidos conservados (mismo `seq`), así que quien vuelve a
  * mirar no nota el corte. Las terminadas siguen visibles hasta su tope de conservación. El
@@ -44,6 +45,8 @@ function purgar() {
   for (const [id, b] of busquedas) {
     if (b.terminadaEn && ahora - b.terminadaEn > config.busqueda.fondoConservarMs) {
       busquedas.delete(id);
+      pendientes.delete(id);
+      porBorrar.add(id);
       marcarCambio();
     }
   }
@@ -52,17 +55,44 @@ setInterval(purgar, 60_000).unref?.();
 
 /* ── Persistencia ──────────────────────────────────────────────────── */
 
+/*
+ * CS-01. Antes (formato 1) se reescribía `busquedas.json` ENTERO cada 3 s mientras había
+ * búsquedas: todas las de la última hora con todos sus resultados (varios MB cada vez, decenas
+ * de MB por minuto y una pausa del servidor que crecía con lo encontrado). Ahora (formato 2):
+ *
+ * - `busquedas.json` es solo el ÍNDICE: qué búsquedas hay, su estado y la cola (unos pocos KB).
+ *   Se reescribe (temporal + rename) solo cuando cambia algo de eso, no con cada resultado.
+ * - Los eventos de cada búsqueda (lo encontrado incluido) van a `busquedas/<id>.jsonl`, una línea
+ *   por evento, y se AÑADEN al final por tandas: cada resultado se escribe una sola vez.
+ * - Al arrancar se leen las líneas; una última línea cortada (apagón a mitad de escritura) se
+ *   descarta y el fichero se reescribe limpio antes de seguir añadiendo.
+ * - El formato 1 se migra solo al arrancar (sin perder la cola ni lo ya encontrado).
+ */
 const fichero = () => path.join(config.datos.dir, 'busquedas.json');
-let sucio = false;
+const carpetaEventos = () => path.join(config.datos.dir, 'busquedas');
+/** Nombre de fichero seguro para un id (los nuevos son UUID; uno raro se resume). */
+const nombreEventos = id =>
+  /^[A-Za-z0-9_-]{1,64}$/.test(id)
+    ? `${id}.jsonl`
+    : `${crypto.createHash('sha256').update(String(id)).digest('hex').slice(0, 32)}.jsonl`;
+const ficheroEventos = id => path.join(carpetaEventos(), nombreEventos(id));
+const MODO = 0o600;
+
+let indiceSucio = false;
+/** id → líneas de eventos aún sin escribir (en orden). */
+const pendientes = new Map();
+/** Búsquedas caducadas cuyo fichero de eventos hay que borrar. */
+const porBorrar = new Set();
 let relojGuardado = null;
 let guardando = Promise.resolve();
-// Al apagar se guarda una foto con lo que estaba en marcha y se deja de escribir: lo que pase
-// después (el navegador se cierra y las búsquedas fallan) no debe quedar como «terminada».
+// Al apagar se guarda lo pendiente y se deja de escribir: lo que pase después (el navegador se
+// cierra y las búsquedas fallan) no debe quedar como «terminada».
 let congelado = false;
 
+/** El índice (formato 2): todo menos los eventos. */
 function foto() {
   return {
-    version: 1,
+    version: 2,
     guardadoEn: new Date().toISOString(),
     ultima,
     cola: [...cola],
@@ -78,16 +108,13 @@ function foto() {
       creadaEn: b.creadaEn,
       empezadaEn: b.empezadaEn,
       terminadaEn: b.terminadaEn,
-      eventos: b.eventos,
+      eventos: b.eventos.length,
     })),
   };
 }
 
-/** Marca cambios; se escriben como mucho cada `persistirMs` (en segundo plano). */
-function marcarCambio() {
-  if (congelado) return;
-  sucio = true;
-  if (relojGuardado) return;
+function programarGuardado() {
+  if (congelado || relojGuardado) return;
   relojGuardado = setTimeout(() => {
     relojGuardado = null;
     guardarAhora().catch(error =>
@@ -97,24 +124,65 @@ function marcarCambio() {
   relojGuardado.unref?.();
 }
 
-/** Escribe ya (temporal + rename: un corte a medias no deja un JSON roto). */
+/** Cambió el índice (estado, cola, alta o baja de una búsqueda). */
+function marcarCambio() {
+  if (congelado) return;
+  indiceSucio = true;
+  programarGuardado();
+}
+
+/** Un evento nuevo: solo se añade su línea (el índice no cambia por cada resultado). */
+function anotarEvento(b, evento) {
+  if (congelado) return;
+  const lineas = pendientes.get(b.id) || [];
+  lineas.push(`${JSON.stringify(evento)}\n`);
+  pendientes.set(b.id, lineas);
+  programarGuardado();
+}
+
+/** Escribe lo pendiente: primero los eventos (añadiendo) y luego el índice si cambió. */
 function guardarAhora() {
   guardando = guardando.then(async () => {
-    if (!sucio || congelado) return;
-    sucio = false;
-    await escribirTexto(fichero(), JSON.stringify(foto()));
+    if (congelado) return;
+    const lote = [...pendientes];
+    pendientes.clear();
+    if (lote.length) {
+      await fs.promises.mkdir(carpetaEventos(), { recursive: true, mode: 0o700 });
+    }
+    for (const [id, lineas] of lote) {
+      if (!busquedas.has(id)) continue; // caducó mientras esperaba
+      await fs.promises.appendFile(ficheroEventos(id), lineas.join(''), {
+        encoding: 'utf8',
+        mode: MODO,
+      });
+    }
+    if (indiceSucio) {
+      indiceSucio = false;
+      await escribirTexto(fichero(), JSON.stringify(foto()));
+    }
+    for (const id of [...porBorrar]) {
+      porBorrar.delete(id);
+      await fs.promises.rm(ficheroEventos(id), { force: true }).catch(() => {});
+    }
   });
   return guardando;
 }
 
 /**
  * Para el apagado (SIGTERM): guarda en el acto, de forma síncrona, y deja de escribir. Las que
- * estaban en marcha quedan como «en curso» en el fichero, que es lo que hace que se retomen.
+ * estaban en marcha quedan como «en curso» en el índice, que es lo que hace que se retomen.
  */
 function guardarAlApagar() {
   if (congelado) return;
   clearTimeout(relojGuardado);
   try {
+    if (pendientes.size) fs.mkdirSync(carpetaEventos(), { recursive: true, mode: 0o700 });
+    for (const [id, lineas] of pendientes) {
+      if (busquedas.has(id)) {
+        fs.appendFileSync(ficheroEventos(id), lineas.join(''), { encoding: 'utf8', mode: MODO });
+      }
+    }
+    pendientes.clear();
     escribirTextoSync(fichero(), JSON.stringify(foto()));
   } catch (error) {
     logger.warn(`No se pudieron guardar las búsquedas al apagar: ${error.message}`);
@@ -135,8 +203,8 @@ function entradaPendiente(entrada, eventos) {
   if (entrada.url) {
     const urls = entrada.urls && entrada.urls.length ? entrada.urls : [entrada.url];
     const indices = faltan.filter(id => id <= -2).map(id => -2 - id);
-    const pendientes = indices.map(i => urls[i]).filter(Boolean);
-    return { ...entrada, url: pendientes[0] || entrada.url, urls: pendientes, indices };
+    const pendientesUrls = indices.map(i => urls[i]).filter(Boolean);
+    return { ...entrada, url: pendientesUrls[0] || entrada.url, urls: pendientesUrls, indices };
   }
   return {
     ...entrada,
@@ -146,20 +214,81 @@ function entradaPendiente(entrada, eventos) {
 }
 
 /**
+ * Los eventos guardados de una búsqueda (formato 2). Una línea que no se entiende (la última,
+ * cortada por un apagón) se descarta, y el fichero se reescribe sin ella para poder seguir
+ * añadiendo detrás.
+ */
+async function leerEventos(id) {
+  let texto;
+  try {
+    texto = await fs.promises.readFile(ficheroEventos(id), 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') logger.warn(`Eventos de la búsqueda ilegibles: ${error.message}`);
+    return [];
+  }
+  const eventos = [];
+  let malas = 0;
+  for (const linea of texto.split('\n')) {
+    if (!linea.trim()) continue;
+    try {
+      eventos.push(JSON.parse(linea));
+    } catch {
+      malas += 1;
+    }
+  }
+  if (malas > 0 || (texto && !texto.endsWith('\n'))) {
+    await escribirTexto(ficheroEventos(id), eventos.map(e => `${JSON.stringify(e)}\n`).join(''));
+  }
+  return eventos;
+}
+
+/**
+ * CS-02: un índice que no se puede leer no se ignora en silencio para pisarlo después: se aparta
+ * como `busquedas.json.corrupto-<fecha>` (se arranca sin búsquedas guardadas).
+ */
+async function apartarIlegible(error) {
+  const destino = `${fichero()}.corrupto-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+  try {
+    await fs.promises.rename(fichero(), destino);
+    logger.warn(
+      `busquedas.json ilegible (${error.message}): apartado como ${path.basename(destino)}`
+    );
+  } catch {
+    logger.warn(`busquedas.json ilegible, se ignora: ${error.message}`);
+  }
+}
+
+/** Borra los ficheros de eventos que ya no son de ninguna búsqueda. */
+async function limpiarHuerfanos() {
+  let nombres;
+  try {
+    nombres = await fs.promises.readdir(carpetaEventos());
+  } catch {
+    return;
+  }
+  const vivos = new Set([...busquedas.keys()].map(nombreEventos));
+  for (const n of nombres) {
+    if (!vivos.has(n)) await fs.promises.rm(path.join(carpetaEventos(), n), { force: true });
+  }
+}
+
+/**
  * Al arrancar: lo guardado vuelve a memoria. Las terminadas, tal cual (si no han caducado); las
  * que estaban en marcha vuelven las PRIMERAS de la cola (con lo que les faltaba), y las que
- * esperaban, detrás y en su orden.
+ * esperaban, detrás y en su orden. Un fichero del formato 1 (hasta 2.21) se pasa al 2.
  */
 async function restaurar() {
   let datos;
   try {
     datos = JSON.parse(await fs.promises.readFile(fichero(), 'utf8'));
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      logger.warn(`busquedas.json ilegible, se ignora: ${error.message}`);
+    if (!datos || typeof datos !== 'object' || Array.isArray(datos)) {
+      throw new Error('no contiene un objeto JSON');
     }
+  } catch (error) {
+    if (error.code !== 'ENOENT') await apartarIlegible(error);
     return { retomadas: 0, terminadas: 0 };
   }
+  const formatoViejo = datos.version !== 2;
   const ahora = Date.now();
   const enMarcha = [];
   const esperando = [];
@@ -167,9 +296,14 @@ async function restaurar() {
   for (const g of datos.busquedas || []) {
     if (!g?.id || !g.entrada || busquedas.has(g.id)) continue;
     if (g.terminadaEn && ahora - g.terminadaEn > config.busqueda.fondoConservarMs) continue;
+    const eventos = formatoViejo
+      ? Array.isArray(g.eventos)
+        ? g.eventos
+        : []
+      : await leerEventos(g.id);
     const b = {
       ...g,
-      eventos: Array.isArray(g.eventos) ? g.eventos : [],
+      eventos,
       oyentes: new Set(),
       controller: new AbortController(),
     };
@@ -188,6 +322,8 @@ async function restaurar() {
   esperando.sort((a, b) => (ordenCola.get(a) ?? 1e9) - (ordenCola.get(b) ?? 1e9));
   cola.unshift(...enMarcha, ...esperando);
   if (datos.ultima && busquedas.has(datos.ultima)) ultima = datos.ultima;
+  if (formatoViejo) await migrarAlFormato2();
+  else await limpiarHuerfanos();
   if (enMarcha.length + esperando.length > 0) {
     logger.info(
       `Búsquedas retomadas tras el reinicio: ${enMarcha.length} en marcha, ${esperando.length} en cola`
@@ -195,6 +331,23 @@ async function restaurar() {
   }
   despachar();
   return { retomadas: enMarcha.length + esperando.length, terminadas };
+}
+
+/**
+ * Del formato 1 (todo en busquedas.json) al 2: primero cada búsqueda a su `.jsonl` y después el
+ * índice nuevo encima del viejo (rename atómico). Si se corta a medias, el viejo sigue entero y
+ * se vuelve a migrar en el siguiente arranque.
+ */
+async function migrarAlFormato2() {
+  await fs.promises.mkdir(carpetaEventos(), { recursive: true, mode: 0o700 });
+  for (const b of busquedas.values()) {
+    await escribirTexto(
+      ficheroEventos(b.id),
+      b.eventos.map(e => `${JSON.stringify(e)}\n`).join('')
+    );
+  }
+  await escribirTexto(fichero(), JSON.stringify(foto()));
+  logger.info(`busquedas.json pasado al formato 2 (${busquedas.size} búsquedas)`);
 }
 
 // Una parada cuyas peticiones aún se están cortando sigue ocupando su hueco.
@@ -228,7 +381,7 @@ function publicar(b, eventoOriginal) {
       : eventoOriginal;
   const conNumero = { ...evento, seq: b.eventos.length };
   b.eventos.push(conNumero);
-  marcarCambio();
+  anotarEvento(b, conNumero);
   for (const oyente of b.oyentes) {
     try {
       oyente(conNumero);

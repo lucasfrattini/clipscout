@@ -96,8 +96,15 @@ test('tras un reinicio se retoma sola, solo en el sitio que faltaba, sin perder 
   fondo.guardarAlApagar();
   fondo.parar(id);
   const guardado = JSON.parse(fs.readFileSync(path.join(dir, 'busquedas.json'), 'utf8'));
+  assert.equal(guardado.version, 2);
   assert.equal(guardado.busquedas[0].estado, 'curso');
-  const antes = guardado.busquedas[0].eventos.length;
+  // CS-01: el índice no lleva los eventos; van, una línea cada uno, a busquedas/<id>.jsonl.
+  const antes = guardado.busquedas[0].eventos;
+  const lineas = fs
+    .readFileSync(path.join(dir, 'busquedas', `${id}.jsonl`), 'utf8')
+    .trim()
+    .split('\n');
+  assert.equal(lineas.length, antes);
 
   // «Arranque nuevo»: otra instancia del módulo lee el fichero y la retoma.
   delete require.cache[RUTA_FONDO];
