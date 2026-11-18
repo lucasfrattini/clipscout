@@ -19,9 +19,9 @@ const paquetes = require('../src/services/paquetesJd');
 const directo = require('../src/services/directo');
 
 /**
- * Cuando JDownloader no puede con una ficha («Server error 404»), se le manda el fichero directo,
- * resuelto fresco, con la ficha como origen, al mismo paquete y carpeta; y el enlace caído se
- * quita. Todo contra un JDownloader FALSO.
+ * Cuando JDownloader no puede con una ficha («Server error 404») en varias revisiones seguidas,
+ * se le manda el fichero directo, resuelto fresco, con la ficha como origen, al mismo paquete y
+ * carpeta; y el enlace caído se desactiva (CS-10). Todo contra un JDownloader FALSO.
  */
 
 // Sitio: la ficha /v/1 tiene su vídeo; /v/2 no tiene ninguno.
@@ -58,14 +58,16 @@ const jdFalso = http.createServer((req, res) => {
     return responder(enlacesDescarga.filter(l => params[0].packageUUIDs.includes(l.packageUUID)));
   }
   if (ruta === '/linkgrabberv2/queryLinks') return responder(enlacesCapturador);
-  if (ruta === '/downloadsV2/removeLinks') {
-    quitados.push(params[0]);
+  if (ruta === '/downloadsV2/setEnabled') {
+    assert.equal(params[0], false);
+    quitados.push(params[1]);
     return responder(null);
   }
-  if (ruta === '/linkgrabberv2/removeLinks') {
-    quitadosCapturador.push(params[0]);
+  if (ruta === '/linkgrabberv2/setEnabled') {
+    quitadosCapturador.push(params[1]);
     return responder(null);
   }
+  if (ruta.endsWith('/removeLinks')) throw new Error('CS-10: los caídos ya no se borran');
   if (ruta === '/linkgrabberv2/clearList') {
     limpiado += 1;
     return responder(null);
@@ -100,6 +102,25 @@ test('estado de un paquete a partir de sus enlaces', () => {
   assert.equal(fallido({ status: 'Server error 404' }), true);
   assert.equal(fallido({ status: 'Server error 404', finished: true }), false);
   assert.equal(fallido({ status: 'Waiting' }), false);
+  assert.equal(fallido({ status: 'Server error 404', enabled: false }), false, 'desactivado');
+});
+
+test('CS-10: se espera a varias revisiones seguidas; más si el fallo puede ser pasajero', () => {
+  const { caidosParaSustituir, caidoClaro } = paquetes;
+  assert.equal(caidoClaro({ status: 'Server error 404' }), true);
+  assert.equal(caidoClaro({ availability: 'OFFLINE' }), true);
+  assert.equal(caidoClaro({ status: 'Temporarily unavailable' }), false);
+  assert.equal(caidoClaro({ status: 'Retrying in 30 s' }), false);
+  const p = {};
+  const claro = { uuid: 1, status: 'Server error 404' };
+  const dudoso = { uuid: 2, status: 'Temporarily unavailable' };
+  assert.deepEqual(caidosParaSustituir(p, [claro, dudoso]), []);
+  assert.deepEqual(caidosParaSustituir(p, [claro, dudoso]), [claro], 'el claro, a la segunda');
+  // El dudoso se recupera un momento: vuelve a contar desde cero.
+  caidosParaSustituir(p, []);
+  for (let i = 0; i < 3; i++) assert.deepEqual(caidosParaSustituir(p, [dudoso]), []);
+  assert.deepEqual(caidosParaSustituir(p, [dudoso]), [dudoso], 'el dudoso, a la cuarta seguida');
+  assert.deepEqual(caidosParaSustituir({}, [dudoso], { forzar: true }), [dudoso], '«Reintentar»');
 });
 
 test('un enlace caído se sustituye por el fichero directo, una vez por ficha', async () => {
@@ -114,6 +135,9 @@ test('un enlace caído se sustituye por el fichero directo, una vez por ficha', 
     // mismo nombre de paquete pero OTRA carpeta: no es nuestro
     { uuid: 200, packageUUID: 11, url: ficha, status: 'Server error 404' },
   ];
+  // Primera revisión con el 404: aún no se toca (puede ser un momento); a la segunda, sí.
+  assert.equal((await paquetes.revisar()).sustituidas, 0);
+  assert.equal(anadidos.length, 1);
   const vuelta = await paquetes.revisar();
   assert.equal(vuelta.sustituidas, 1);
   assert.equal(anadidos.length, 2);
@@ -131,7 +155,7 @@ test('un enlace caído se sustituye por el fichero directo, una vez por ficha', 
       destinationFolder: '/output/Viajes',
     }
   );
-  assert.deepEqual(quitados, [[100]], 'el caído se quita; el del otro paquete, no');
+  assert.deepEqual(quitados, [[100]], 'el caído se desactiva; el del otro paquete, no');
 
   const [p] = await paquetes.listar();
   assert.deepEqual(p.sustituidas, [ficha]);
@@ -153,6 +177,7 @@ test('en el capturador: OFFLINE también se sustituye; sin fichero, se apunta y 
   const antes = anadidos.length;
   enlacesCapturador = [{ uuid: 300, url: sinVideo, availability: 'OFFLINE' }];
   const [p] = await paquetes.listar();
+  await paquetes.revisar({ soloId: p.id });
   await paquetes.revisar({ soloId: p.id });
   assert.equal(anadidos.length, antes, 'sin fichero no se manda nada');
   const [despues] = await paquetes.listar();
@@ -198,6 +223,7 @@ test('panel: lista con estado, reintentar y vaciar el capturador (con el JD fals
   await jd.enviar({ links: [ficha], carpeta: 'Viajes', paquete: 'Playa' });
   enlacesDescarga = [{ uuid: 100, packageUUID: 10, url: ficha, status: 'Server error 404' }];
 
+  await fetch(`${api}/paquetes?revisar=1`); // primera revisión: aún se espera (CS-10)
   const lista = await (await fetch(`${api}/paquetes?revisar=1`)).json();
   const p = lista.paquetes[0];
   assert.equal(p.nombre, 'Playa');

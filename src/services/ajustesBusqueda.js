@@ -89,12 +89,34 @@ async function guardar(cambios = {}) {
     d.busqueda = nuevo;
   });
   aplicar(nuevo);
-  if (cambiaProxy) {
-    // El navegador lee la lista al arrancar: se cierra y el siguiente uso lo abre con la nueva.
+  if (cambiaProxy) cerrarNavegadorCuandoLibre();
+  return nuevo;
+}
+
+/**
+ * El navegador lee la lista «sin proxy» al arrancar: hay que cerrarlo para que el siguiente uso lo
+ * abra con la nueva. CS-11: no en plena búsqueda (la cortaba); se espera a que no quede ninguna en
+ * marcha, mirando cada `ESPERA_MS`.
+ */
+const ESPERA_MS = 10000;
+let esperandoCierre = null;
+function cerrarNavegadorCuandoLibre() {
+  if (esperandoCierre) return;
+  const intentar = async () => {
+    const { curso } = require('./busquedasFondo').contar();
+    if (curso > 0) {
+      esperandoCierre = setTimeout(intentar, ESPERA_MS);
+      esperandoCierre.unref?.();
+      return;
+    }
+    esperandoCierre = null;
     const { pool } = require('../lib/browser');
     await pool.close().catch(() => {});
-  }
-  return nuevo;
+  };
+  esperandoCierre = true;
+  intentar().catch(() => {
+    esperandoCierre = null;
+  });
 }
 
 /** Prueba el SearXNG: ¿responde en JSON y con qué buscadores? Nunca lanza. */

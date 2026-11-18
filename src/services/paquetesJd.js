@@ -16,9 +16,11 @@ const directo = require('./directo');
  * mira su estado cada `JD_VIGILAR_CADA_MS` (solo consultas), con tope de `JD_VIGILAR_MAX_MS`.
  *
  * Si JDownloader marca un enlace como caído (su plugin da «Server error 404», el capturador lo da
- * por OFFLINE…), la ficha se vuelve a resolver FRESCA y se le manda el fichero directo, con la
- * ficha como origen, al mismo paquete y carpeta; el enlace caído se quita. Una vez por ficha
- * (a mano, «Reintentar», se puede repetir).
+ * por OFFLINE…) en varias revisiones SEGUIDAS (CS-10: menos si es claro, más si puede ser pasajero,
+ * como «reintentando»), la ficha se vuelve a resolver FRESCA y se le manda el fichero directo, con
+ * la ficha como origen, al mismo paquete y carpeta; el enlace caído se DESACTIVA (no se borra: si
+ * se recupera, se puede volver a activar en JDownloader). Una vez por ficha (a mano,
+ * «Reintentar», se puede repetir y no espera).
  *
  * JDownloader no devuelve el id del paquete al añadir: se reconoce por nombre y carpeta de
  * destino, que es justo lo que clipscout fija en cada envío.
@@ -33,10 +35,36 @@ const almacen = crearAlmacen(
 const ESTADO_FALLIDO =
   /error|offline|not found|404|403|410|fail|unavailable|temporarily|skipped|plugin|retry|reintent/i;
 
+// De esos, los que dicen claramente que el fichero no está (no se va a arreglar esperando).
+const ESTADO_CLARO = /offline|not found|404|410/i;
+
 /** ¿Este enlace de JDownloader está caído? (sin terminar, sin bajar y con estado de error). */
 function fallido(l) {
-  if (!l || l.finished || l.running) return false;
+  if (!l || l.finished || l.running || l.enabled === false) return false;
   return l.availability === 'OFFLINE' || ESTADO_FALLIDO.test(String(l.status || ''));
+}
+
+/** ¿Caído sin duda (404, OFFLINE…) o puede ser pasajero? Para saber cuánto esperar. */
+function caidoClaro(l) {
+  return l.availability === 'OFFLINE' || ESTADO_CLARO.test(String(l.status || ''));
+}
+
+/**
+ * CS-10: cuenta las revisiones seguidas que lleva caído cada enlace (`p.caidas`, por uuid) y
+ * devuelve los que ya toca sustituir. Un enlace que deja de estar caído vuelve a cero. Pura.
+ */
+function caidosParaSustituir(p, caidos, { forzar = false } = {}) {
+  const antes = p.caidas || {};
+  const ahora = {};
+  const listos = [];
+  for (const l of caidos) {
+    const n = (antes[l.uuid] || 0) + 1;
+    ahora[l.uuid] = n;
+    const espera = caidoClaro(l) ? config.jd.revisionesCaidoClaro : config.jd.revisionesCaidoDudoso;
+    if (forzar || n >= espera) listos.push(l);
+  }
+  p.caidas = ahora;
+  return listos;
 }
 
 /** Estado resumido de un paquete a partir de sus enlaces. Pura, para poder probarla. */
@@ -46,7 +74,7 @@ function resumir(enlacesDescarga, enlacesCapturador) {
   const bajando = enlacesDescarga.filter(l => l.running).length;
   const caidos =
     enlacesDescarga.filter(fallido).length +
-    enlacesCapturador.filter(l => l.availability === 'OFFLINE').length;
+    enlacesCapturador.filter(l => l.availability === 'OFFLINE' && l.enabled !== false).length;
   let estado;
   if (total === 0) estado = 'enviado';
   else if (terminados === total) estado = 'terminado';
@@ -189,12 +217,15 @@ async function sustituir(jdUrl, p, caidos, { forzar = false, autostart = true } 
     if (trabajo?.id) p.jobIds.push(trabajo.id);
     for (const f of ficheros) p.directos[f] = ficha;
     p.sinDirecto = p.sinDirecto.filter(x => x !== ficha);
-    // Fuera los caídos: ya hay un sustituto, y dejarlos daría el paquete por fallido para siempre.
+    // Los caídos se DESACTIVAN (CS-10; antes se borraban): ya hay un sustituto y, activos, darían
+    // el paquete por fallido para siempre; desactivados no se pierden por si se recuperan.
     const enDescarga = enlaces.filter(l => l.lista === 'descarga').map(l => l.uuid);
     const enCapturador = enlaces.filter(l => l.lista === 'capturador').map(l => l.uuid);
-    if (enDescarga.length) await jd.llamar(jdUrl, '/downloadsV2/removeLinks', [enDescarga, []]);
+    if (enDescarga.length) {
+      await jd.llamar(jdUrl, '/downloadsV2/setEnabled', [false, enDescarga, []]);
+    }
     if (enCapturador.length) {
-      await jd.llamar(jdUrl, '/linkgrabberv2/removeLinks', [enCapturador, []]);
+      await jd.llamar(jdUrl, '/linkgrabberv2/setEnabled', [false, enCapturador, []]);
     }
     if (autostart && trabajo?.id) {
       jd.descargarCuandoEste(jdUrl, trabajo.id).catch(error =>
@@ -232,6 +263,13 @@ async function revisar({ soloId = null, forzar = false } = {}) {
     const coinciden = (Array.isArray(paquetesJd) ? paquetesJd : []).filter(
       k => k.name === p.nombre && (!p.destino || k.saveTo === p.destino)
     );
+    // CS-11: otro envío con el mismo nombre y carpeta acaba en el mismo paquete de JDownloader.
+    // Entonces cada uno cuenta solo SUS enlaces (sus fichas y sus ficheros directos); sin otro
+    // envío así, todo el paquete es suyo (JDownloader puede cambiar la dirección de un enlace).
+    const gemelo = (datos.paquetes || []).some(
+      o => o.id !== p.id && o.nombre === p.nombre && (o.destino || null) === (p.destino || null)
+    );
+    const esNuestro = l => !gemelo || p.fichas.includes(l.url) || Boolean(p.directos[l.url]);
     const enlacesDescarga = coinciden.length
       ? await jd.llamar(jdUrl, '/downloadsV2/queryLinks', [
           {
@@ -241,25 +279,27 @@ async function revisar({ soloId = null, forzar = false } = {}) {
             finished: true,
             running: true,
             availability: true,
+            enabled: true,
           },
         ])
       : [];
     const enlacesCapturador = p.jobIds.length
       ? await jd.llamar(jdUrl, '/linkgrabberv2/queryLinks', [
-          { jobUUIDs: p.jobIds, url: true, availability: true },
+          { jobUUIDs: p.jobIds, url: true, availability: true, enabled: true },
         ])
       : [];
-    const descarga = Array.isArray(enlacesDescarga) ? enlacesDescarga : [];
+    const descarga = (Array.isArray(enlacesDescarga) ? enlacesDescarga : []).filter(esNuestro);
     const capturador = Array.isArray(enlacesCapturador) ? enlacesCapturador : [];
     const caidos = [
       ...descarga.filter(fallido).map(l => ({ ...l, lista: 'descarga' })),
       ...capturador
-        .filter(l => l.availability === 'OFFLINE')
+        .filter(l => l.availability === 'OFFLINE' && l.enabled !== false)
         .map(l => ({ ...l, lista: 'capturador' })),
     ].map(l => ({ ...l, ficha: fichaDe(p, l) }));
-    if (caidos.length > 0) {
+    const listos = caidosParaSustituir(p, caidos, { forzar });
+    if (listos.length > 0) {
       try {
-        sustituidas += await sustituir(jdUrl, p, caidos, { forzar, autostart });
+        sustituidas += await sustituir(jdUrl, p, listos, { forzar, autostart });
       } catch (error) {
         logger.warn(`JDownloader: no se pudo mandar el fichero directo: ${error.message}`);
       }
@@ -352,6 +392,8 @@ module.exports = {
   parar,
   resumir,
   fallido,
+  caidoClaro,
+  caidosParaSustituir,
   faltaAviso,
   almacen,
 };

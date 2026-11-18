@@ -299,7 +299,15 @@ async function descargarCuandoEste(url, jobId, { maxMs = 180000, cadaMs = 3000 }
     .filter(l => l.availability !== 'OFFLINE')
     .map(l => l.uuid);
   if (ids.length > 0) await llamar(url, '/linkgrabberv2/moveToDownloadlist', [ids, []]);
-  await llamar(url, '/downloadcontroller/start');
+  // CS-11: si el gestor está EN PAUSA es porque lo pausó la persona: se respeta (lo enviado queda
+  // en la lista de descargas y baja al reanudar). Parado o sin saberlo, se arranca como siempre.
+  let estado = null;
+  try {
+    estado = await llamar(url, '/downloadcontroller/getCurrentState');
+  } catch {
+    estado = null; // versión que no lo dice: como antes
+  }
+  if (String(estado).toUpperCase() !== 'PAUSE') await llamar(url, '/downloadcontroller/start');
   return ids.length;
 }
 

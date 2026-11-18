@@ -19,6 +19,7 @@ let llamadasJobs = 0;
 const consultasLinks = [];
 const movidos = [];
 let arrancado = 0;
+let estadoGestor = null; // null = el falso no sabe responder a getCurrentState (como uno viejo)
 const jdFalso = http.createServer((req, res) => {
   const [ruta, query = ''] = req.url.split('?');
   const params = query ? query.split('&').map(p => JSON.parse(decodeURIComponent(p))) : [];
@@ -44,6 +45,9 @@ const jdFalso = http.createServer((req, res) => {
   if (ruta === '/linkgrabberv2/moveToDownloadlist') {
     movidos.push(params[0]);
     return responder(null);
+  }
+  if (ruta === '/downloadcontroller/getCurrentState' && estadoGestor) {
+    return responder(estadoGestor);
   }
   if (ruta === '/downloadcontroller/start') {
     arrancado += 1;
@@ -147,4 +151,16 @@ test('tras enviar: espera al análisis, pasa a descargas lo de ESE envío y arra
   assert.deepEqual(consultasLinks.at(-1).jobUUIDs, [99]);
   assert.deepEqual(movidos.at(-1), [1, 3]); // el caído no
   assert.ok(arrancado >= 1);
+});
+
+test('CS-11: con el gestor en pausa, lo enviado pasa a descargas pero no se arranca', async () => {
+  const antes = arrancado;
+  estadoGestor = 'PAUSE';
+  llamadasJobs = 5;
+  await descargarCuandoEste(jdUrl, 99, { cadaMs: 5 });
+  assert.equal(arrancado, antes, 'respeta la pausa');
+  estadoGestor = 'STOPPED_STATE';
+  await descargarCuandoEste(jdUrl, 99, { cadaMs: 5 });
+  assert.equal(arrancado, antes + 1, 'parado: se arranca como siempre');
+  estadoGestor = null;
 });

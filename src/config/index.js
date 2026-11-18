@@ -249,6 +249,11 @@ const config = {
     directoFrescoMs: intFromEnv('JD_DIRECTO_FRESCO_MS', 10 * 60 * 1000),
     // Intentos de avisar a clipkeeper de un paquete terminado (si no responde)
     avisosClipkeeper: intFromEnv('JD_AVISOS_CLIPKEEPER', 10),
+    // CS-10: revisiones SEGUIDAS con el enlace caído antes de mandar el fichero directo. Un caído
+    // claro (404, OFFLINE) espera menos que uno que puede ser pasajero («reintentando»,
+    // «temporalmente no disponible»…), que muchas veces se arregla solo.
+    revisionesCaidoClaro: intFromEnv('JD_REVISIONES_CAIDO_CLARO', 2),
+    revisionesCaidoDudoso: intFromEnv('JD_REVISIONES_CAIDO_DUDOSO', 4),
   },
 
   // Alta de un sitio con solo su dirección (services/autoSitio.js)
