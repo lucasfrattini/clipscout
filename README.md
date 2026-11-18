@@ -58,7 +58,11 @@ progress, real cancellation and export.
   or closing the tab does not stop them. Come back and the page picks up
   where it left off. Extra searches wait in a **queue** (paste several, one per
   line, optionally `term → folder`), and running or queued searches **resume
-  after a restart**.
+  after a restart** from where each site was (no page is fetched twice).
+- **One-handed on the phone**: swipe a result left to drop it or right to
+  download it, pick **the first N**, choose the depth as **Quick / Normal /
+  Deep**, and the download folder is proposed on its own when the search term
+  matches a clipkeeper folder or person.
 - **Result filters and relevance**: must contain / hide if it contains, likely
   language, exact phrase, sort by relevance, and global **always-blocked
   words** that also apply to scheduled searches and to JDownloader. Hidden
@@ -87,7 +91,10 @@ progress, real cancellation and export.
   destinations and tells you which videos you already have.
 - **Per-site numbers** (_Settings → Search → Sites_, in each site's **⋯**): searches, results, how many with
   length, blocks, sent, already owned and failed downloads.
-- **Outbound proxy** (`OUTBOUND_PROXY`) for networks that block some sites.
+- **Outbound proxy** (`OUTBOUND_PROXY`) for networks that block some sites. If it stops answering,
+  clipscout says so (Buscar and _Settings → System_, with **Test**) instead of every site timing out.
+- **Broken-site warning**: a site that returns nothing twice in a row is flagged in _Activity_ and
+  _Settings → Sites_, with **Set up again** in its **⋯**.
 - **Safe to run**: SSRF protection, per-host throttling, rate limiting, memory
   and time caps. English and Spanish interface.
 
@@ -303,8 +310,10 @@ Every data file is written atomically and keeps its previous version as `<file>.
 `crew.json.corrupto-<date>`. With no good copy it stays **locked** (HTTP 503) instead of opening
 without a password, and never overwrites the file: fix it or copy one from `data/respaldos/`.
 
-Searches that were running or queued when the server stops are saved in `data/busquedas.json` and
-resume on their own after a restart (only the sites that hadn't finished). Explorer results are
+Searches that were running or queued when the server stops are saved (`data/busquedas.json` plus
+one `data/busquedas/<id>.jsonl` per search, appended to rather than rewritten) and resume on their
+own after a restart, each site from the page it had reached. Version history:
+[CHANGELOG.md](CHANGELOG.md). Explorer results are
 never written to disk — they live in the browser tab that ran the exploration, so export them if
 you want to keep them. Paused explorations are kept in memory and are lost on restart.
 

@@ -1,6 +1,6 @@
 # Agent guide: clipscout
 
-Read [docs/SPEC.md](docs/SPEC.md) first, then the matching section of [docs/FEATURES.md](docs/FEATURES.md).
+Read [docs/SPEC.md](docs/SPEC.md) first, then [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Change flow (spec-driven)
 

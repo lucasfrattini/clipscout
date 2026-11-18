@@ -15,7 +15,8 @@ Browser  ──  public/  (no bundler, no framework, hash-routed views)
 │                                                                      │
 │ middleware/    rateLimit → (route) → errorHandler                    │
 │                                                                      │
-│ routes/        scrape · video · thumbnail · profiles · index         │
+│ routes/        scrape · video · thumbnail · media · profiles ·       │
+│                buscar · sitios · crew · index                        │
 │   HTTP shape only: parse, validate, stream, map AppError → status    │
 │                          │                                           │
 │ services/      the actual work                                       │
@@ -23,7 +24,12 @@ Browser  ──  public/  (no bundler, no framework, hash-routed views)
 │     crawl/        descarga · fase1 · fase2 · orquestacion            │
 │   pagination.js   ONE STRATEGY PER MODE  ← the extension seam        │
 │   detector.js     proposes a configuration from a URL                │
-│   jobs.js         paused runs — the ONLY server-side state           │
+│   jobs.js         paused explorer runs (memory, TTL)                 │
+│   busqueda.js     Buscar: one search across every saved site         │
+│   busquedasFondo  searches run server-side: queue, resume, events    │
+│   programadas.js  scheduled searches                                 │
+│   paquetesJd.js   packages sent to JDownloader and their state       │
+│   proxySalida.js  outbound proxy health                              │
 │   profiles.js     reads/writes data/profiles.json                    │
 │   thumbnails.js   downloads and caches thumbnails IN MEMORY          │
 │   video.js        single-URL analysis                                │
@@ -32,7 +38,7 @@ Browser  ──  public/  (no bundler, no framework, hash-routed views)
 │ lib/           reusable, dependency-light pieces                     │
 │   http · browser · throttle · ssrf · dedupe · pattern · relevance    │
 │   license · media · blocking · concurrency · document · format       │
-│   errors · logger · url                                              │
+│   errors · logger · url · firmaProxy · almacen · ficheroJson         │
 │                          │                                           │
 │ config/index.js  EVERY constant, every env var, one source of truth  │
 └──────────────────────────────────────────────────────────────────────┘
@@ -95,26 +101,36 @@ approximate sizes are marked with `~`, a scroll cut short by a cap says so, and
 a result with unknown duration is never removed by the duration slider.
 Filtering on data you do not have can only throw away good results.
 
-## State: there is almost none, and that is the design
+## State: what lives on disk and why
 
-| What                 | Where it lives                                       | Survives a restart?              |
-| -------------------- | ---------------------------------------------------- | -------------------------------- |
-| Saved configurations | `data/profiles.json`                                 | **Yes** — the only thing on disk |
-| Paused explorations  | Memory (`services/jobs.js`), with a TTL and a cap    | No                               |
-| Thumbnail cache      | Memory (`services/thumbnails.js`)                    | No                               |
-| Results              | Nowhere — they live in the browser tab that ran them | No                               |
+Everything goes in the data folder (`DATA_DIR`; `crew.json` and `profiles.json` too since 2.21).
 
-Paused runs are the **only** server-side state, and they exist for one concrete
-reason: resuming requires remembering which links were still pending, and there
-can be thousands of them — they do not fit in the query string of an SSE `GET`.
-So the registry keeps the minimum, with an expiry, an entry cap that evicts the
-oldest, and a periodic sweep.
+| What                       | Where it lives                                             | Survives a restart? |
+| -------------------------- | ---------------------------------------------------------- | ------------------- |
+| Saved sites                | `profiles.json`                                            | Yes                 |
+| Settings, users, links     | `crew.json` (cached in memory, re-read only if it changed) | Yes                 |
+| Buscar searches            | `busquedas.json` (index) + `busquedas/<id>.jsonl` (events) | Yes, for an hour    |
+| Per-site stats and health  | `estadisticas.json`                                        | Yes                 |
+| Proxy signing key          | `firma-intermediario.key`                                  | Yes                 |
+| Paused explorer runs       | Memory (`services/jobs.js`), with a TTL and a cap          | No                  |
+| Thumbnail and detail cache | Memory (`thumbnails.js`, `cacheFichas.js`)                 | No                  |
+| Explorer results           | Nowhere — they live in the browser tab that ran them       | No                  |
 
-Keeping it in memory is a deliberate trade: a restart between pausing and
-resuming loses the pending work. The alternative — persisting it — would mean
-writing the names of the sites you explored to disk, and then having to decide
-how long to keep them and how to clean them up. The same reasoning keeps
-thumbnails and results off the disk.
+**Buscar searches are persisted on purpose** (they run on the server, so a restart must not lose
+the queue or what was already found). Since 2.22 the index is tiny and rewritten only when a
+search changes state; each search's events are **appended** to its own `.jsonl`, so every result
+is written once (a 3,000-result search went from 53 MB written to 1.1 MB). A cut-off last line is
+dropped on startup; an unreadable index is set aside as `busquedas.json.corrupto-<date>`, never
+overwritten. The 2.21 format is migrated on startup without losing the queue.
+
+**Resuming is per page, not per site.** Besides what the screen needs, each site logs the list of
+detail pages its listing produced (`sitio_enlaces`) and, in batches, the ones already inspected
+(`sitio_hechas`). Those two event types are stored but never sent to clients (so `seq` may have
+gaps). After a restart a site that was half done skips its listing and its finished detail
+pages; sites are identified by a stable key (host + search path), not by their position.
+
+Paused explorer runs stay in memory: resuming them requires the pending links, and writing the
+names of the sites you explored to disk for a pause nobody may resume is not worth it.
 
 ## Security architecture
 
@@ -173,24 +189,28 @@ normal path — and reports them as _suspicion_, never as diagnosis.
 - **Infinite scroll has no automated test** — it needs a real browser. It was
   verified by hand against a fixture that grows as you scroll, all three caps
   included. If you touch `renderPageWithInfiniteScroll`, repeat that check.
-- **There is no CI.** `npm run check` exists; nothing runs it automatically.
+- **CI runs lint and the tests** on Linux and Windows for every push (`.github/workflows/ci.yml`),
+  plus the browser smoke test (`npm run e2e`, Chromium and WebKit). Run `npm run check` before
+  committing anyway: CI does not check formatting.
 
 ## API
 
-| Method | Route                | Purpose                                                                |
-| ------ | -------------------- | ---------------------------------------------------------------------- |
-| GET    | `/api/health`        | Status and active limits                                               |
-| POST   | `/api/scrape`        | Full exploration, single response                                      |
-| GET    | `/api/scrape/stream` | The same, with SSE progress (`?resume=<jobId>` continues a paused run) |
-| POST   | `/api/scrape/pause`  | Pause a running exploration                                            |
-| POST   | `/api/scrape/detect` | Propose a configuration for a URL                                      |
-| POST   | `/api/video/extract` | Analyze a single URL                                                   |
-| GET    | `/api/thumbnail`     | Proxied, cached thumbnail for a result                                 |
-| GET    | `/api/profiles`      | Saved configurations                                                   |
-| PUT    | `/api/profiles`      | Replace the list                                                       |
+The full list of routes, with the requirement each one serves, is in [SPEC.md](SPEC.md) and the
+cross-app protocol in [CREW.md](CREW.md). By area:
 
-Any `GET` that does not start with `/api/` serves the frontend shell. Views are
-routed by hash: `#/explorer`, `#/video`.
+| Area           | Routes (prefix `/api`)                                                               |
+| -------------- | ------------------------------------------------------------------------------------ |
+| Explorer       | `/scrape`, `/scrape/stream` (SSE), `/scrape/pause`, `/scrape/detect`                 |
+| Buscar         | `/buscar/iniciar`, `/buscar/trabajos/:id/stream` (SSE, `?resumen=1`), `/buscar/cola` |
+| Single URL     | `/video/extract`                                                                     |
+| Proxied media  | `/thumbnail`, `/media` (signed URLs or configured-site domains only)                 |
+| Sites          | `/profiles`, `/sitios/*` (add, reconfigure), `/ajustes/sitios`                       |
+| Settings, apps | `/ajustes/*` (JDownloader, proxy, connections, backups), `/auth/*`, `/health`        |
+
+Every error answers `{ error, detail }`. Any `GET` that does not start with `/api/` serves the
+frontend shell; views are routed by hash (`#/buscar`, `#/actividad`, `#/ajustes`, `#/explorer`,
+`#/video`) and **each view's module is loaded the first time it is opened** — only Buscar loads
+at startup (17 modules instead of 28, no repeated API calls).
 
 ## Project layout
 
@@ -198,7 +218,7 @@ routed by hash: `#/explorer`, `#/video`.
 server.js              Entry point — Express wiring only
 src/
   config/index.js      Every env var, with its default. Single source of truth.
-  routes/              HTTP layer: scrape, video, thumbnail, profiles
+  routes/              HTTP layer: scrape, buscar, video, thumbnail, media, sitios…
   services/            The actual work — scraper, pagination, detector,
                        jobs (pause/resume), profiles, thumbnails, video
   lib/                 Reusable pieces: http, browser, throttle, ssrf,
@@ -206,15 +226,18 @@ src/
   middleware/          rateLimit, errorHandler
   extensions/          Drop-in point for custom extractors (see its README)
 public/                Frontend — no build step, plain JS
-  js/views/            explorer, video, and their options panels
-  js/components/       dialog, progress, resultList, rangeSlider, profiles
+  js/app.js            router: loads each view when first opened
+  js/views/            buscar, actividad, ajustes, explorer, video
+  js/buscarModelo.js   what Buscar shows (filters, order, duplicates): pure, tested
+  js/components/       dialog, progress, resultList, jdEnvio, altaSitios…
+  cg/                  shared Clipgeist UI package (byte-identical copy)
   js/i18n/             engine + es / en dictionaries
-tests/                 31 files, 500 tests, node:test
+tests/                 71 files, ~670 tests (node:test) + e2e/ (Playwright)
 data/                  Runtime state (gitignored)
 ```
 
 ```bash
-npm test           # 500 tests, ~30 s
+npm test           # ~670 tests, ~45 s
 npm run check      # lint + format check + tests — run this before committing
 npm run lint:fix   # autofix
 ```

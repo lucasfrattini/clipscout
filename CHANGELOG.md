@@ -1,5 +1,41 @@
 # Cambios
 
+## 2.22.0 — rápida y robusta (fase 4)
+
+- **Proxy de salida caído, a la vista**: se prueba al arrancar, cada minuto y antes de buscar; si no
+  responde, Buscar lo avisa, sus sitios fallan al momento (no a los 30 s) y Ajustes → Sistema tiene
+  el estado y «Probar».
+- **Sitio roto**: dos búsquedas seguidas sin nada lo marcan en Actividad y en Ajustes → Sitios, con
+  «Volver a configurar» (alta automática que cambia su configuración sin moverlo de la lista).
+- **Buscar con una mano**: deslizar una fila (izquierda la quita, con «Deshacer»; derecha la
+  descarga), «Primeros» (los 5/10/20/50 primeros), profundidad **Rápida / Normal / A fondo**,
+  «Descargar en» entero (antes «Pregun…») y la carpeta propuesta sola si lo buscado es una carpeta,
+  persona o etiqueta de clipkeeper.
+- **Búsquedas guardadas sin desgastar el disco**: `busquedas.json` es solo el índice y cada búsqueda
+  añade sus eventos a `busquedas/<id>.jsonl` (3.000 resultados: de 53 MB escritos a 1,1 MB). Tras un
+  reinicio se sigue **por la página y la ficha** donde iba cada sitio, identificado por su
+  dirección (no por su posición); una programada en marcha se recoge en vez de repetirse.
+- **Más rápida**: repetidos agrupados por cubos y en vivo (10.000 resultados de 1 s a 48 ms); «Ver»
+  una búsqueda recibe lo ocurrido resumido; cada pantalla se carga al abrirla (al arrancar 36
+  peticiones en vez de 54 y la mitad de JavaScript, sin llamadas repetidas); en escritorio, caché de
+  miniaturas de 64 MB que se vacía sola.
+- **JDownloader**: un enlace caído se sustituye tras varias revisiones (más si el estado puede ser
+  pasajero) y se desactiva en vez de borrarse; con el gestor en pausa ya no se arranca al enviar.
+- **Seguridad**: cada redirección se valida también con proxy de salida; las miniaturas y el vídeo
+  pasan por clipscout solo con firma o desde los sitios configurados, con tope de tamaño y tiempo.
+- Sesión caducada → pantalla de acceso y de vuelta a donde estabas. Errores de la API con un solo
+  formato (`error` y `detail`). Restaurar una copia ya no recupera la contraseña antigua.
+- Mantenimiento: lo que decide qué se ve en Buscar sale a un módulo propio con pruebas; la hoja
+  «Apps» sale de Ajustes; arquitectura y especificación al día.
+
+**Al actualizar**: no hay que hacer nada. `busquedas.json` se pasa solo al formato nuevo al
+arrancar, sin perder la cola ni lo encontrado; si fuera ilegible se aparta como
+`busquedas.json.corrupto-<fecha>`. Ninguna ruta cambia; hay rutas y campos nuevos
+(`/api/ajustes/proxy`, `/api/sitios/reconfigurar`, `?resumen=1` en el stream de una búsqueda,
+`thumbnailFirma`/`urlFirma` en los resultados). Quien pida `/api/thumbnail` o `/api/media` desde
+fuera de la interfaz con direcciones de otros dominios necesita la clave de administración. El
+stream de una búsqueda puede saltarse números de `seq` (eventos internos que no se mandan).
+
 ## 2.21.0 — ajustes de la fase 3 tras usarla en el iPhone
 
 - **La página ya no se va sola hacia arriba** (iPhone). Las filas de resultados llevaban
