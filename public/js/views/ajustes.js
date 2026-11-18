@@ -5,7 +5,7 @@
  * Todo se construye con `el()`: nada de innerHTML (regla del proyecto).
  */
 
-import { ajustes, getProfiles, saveProfiles } from '../api.js';
+import { ajustes, getProfiles, saveProfiles, sistema } from '../api.js';
 import { altaSitiosDialog } from '../components/altaSitios.js';
 import { confirmDialog } from '../components/dialog.js';
 import { el, toast } from '../dom.js';
@@ -15,6 +15,13 @@ import { crearCabecera } from '../cabecera.js';
 import { menuAcciones } from '../hojas.js';
 import { seccionAjustes, SECCIONES_AJUSTES } from '../unaMano.js';
 import { avisarCambio } from '../appsCrew.js';
+import {
+  avisoCompatibilidad,
+  tarjetaAcercaDe,
+  tarjetaCopiaSuite,
+  tarjetaDiagnostico,
+  tarjetaRespaldos,
+} from './ajustes/sistema.js';
 
 const APPS = ['clipkeeper', 'clonbuster', 'clipscout'];
 const PUERTOS = { clipkeeper: 8096, clonbuster: 8095, clipscout: 3001 };
@@ -59,8 +66,14 @@ export function createAjustesView(raiz) {
       tarjetaAcceso(),
       tarjetaSesiones(),
       tarjetaGeneral(),
-      tarjetaRespaldos(),
-      tarjetaAcercaDe(),
+      tarjetaDiagnostico(),
+      tarjetaRespaldos({ recargar: cargar }),
+      tarjetaCopiaSuite({ recargar: cargar }),
+      tarjetaAcercaDe({
+        general,
+        alCambiarVersiones: e =>
+          window.dispatchEvent(new CustomEvent('clipscout:versiones', { detail: e })),
+      }),
     ],
   };
 
@@ -611,124 +624,6 @@ export function createAjustesView(raiz) {
     });
   }
 
-  /* ── Copias de seguridad ───────────────────────────────────────────── */
-
-  function tarjetaRespaldos() {
-    const lista = el('ul', { className: 'ajustes-paquetes' });
-    const kb = n => `${Math.max(1, Math.round(n / 1024))} KB`;
-    async function cargarRespaldos() {
-      let datos;
-      try {
-        datos = await ajustes.respaldos();
-      } catch (error) {
-        lista.replaceChildren(el('li', { className: 'ajustes-error', text: error.message }));
-        return;
-      }
-      if (!datos.copias.length) {
-        lista.replaceChildren(el('li', { className: 'field__hint', text: t('aj.resp.vacio') }));
-        return;
-      }
-      lista.replaceChildren(
-        ...datos.copias.map(c =>
-          el('li', {
-            className: 'ajustes-paquetes__fila',
-            children: [
-              el('div', {
-                className: 'programadas__texto',
-                children: [
-                  el('strong', { text: c.previa ? t('aj.resp.previa') : c.id }),
-                  el('span', {
-                    className: 'field__hint',
-                    text: c.ficheros.map(f => `${f.nombre} (${kb(f.bytes)})`).join(' · '),
-                  }),
-                ],
-              }),
-              el('div', {
-                className: 'ajustes-acciones',
-                children: [
-                  el('a', {
-                    className: 'button button--small button--secondary',
-                    attrs: {
-                      href: `/api/ajustes/respaldos/${encodeURIComponent(c.id)}/descargar`,
-                      download: `clipscout-respaldo-${c.id}.json`,
-                    },
-                    text: t('aj.resp.descargar'),
-                  }),
-                  el('button', {
-                    className: 'button button--small button--secondary ajustes-peligro',
-                    attrs: { type: 'button' },
-                    text: t('aj.resp.restaurar'),
-                    on: {
-                      click: async () => {
-                        if (
-                          !(await confirmDialog({
-                            titleKey: 'aj.resp.restaurar',
-                            bodyKey: 'aj.resp.restaurarConfirmar',
-                            variant: 'danger',
-                          }))
-                        ) {
-                          return;
-                        }
-                        try {
-                          await ajustes.restaurarRespaldo(c.id);
-                          toast(t('aj.resp.restaurado'));
-                          cargar();
-                        } catch (error) {
-                          toast(error.message, 'error', 6000);
-                        }
-                      },
-                    },
-                  }),
-                ],
-              }),
-            ],
-          })
-        )
-      );
-    }
-    cargarRespaldos();
-    return el('section', {
-      className: 'card',
-      attrs: { id: 'ajustes-respaldos' },
-      children: [
-        el('div', {
-          className: 'card__header',
-          children: [
-            el('h3', { className: 'card__title', text: t('aj.resp.titulo') }),
-            el('p', { className: 'card__hint', text: t('aj.resp.hint') }),
-          ],
-        }),
-        el('div', {
-          className: 'card__body',
-          children: [
-            el('div', {
-              className: 'ajustes-acciones',
-              children: [
-                el('button', {
-                  className: 'button button--small button--secondary',
-                  attrs: { type: 'button' },
-                  text: t('aj.resp.ahora'),
-                  on: {
-                    click: async () => {
-                      try {
-                        await ajustes.respaldarAhora();
-                        toast(t('aj.resp.hecha'));
-                        cargarRespaldos();
-                      } catch (error) {
-                        toast(error.message, 'error', 6000);
-                      }
-                    },
-                  },
-                }),
-              ],
-            }),
-            lista,
-          ],
-        }),
-      ],
-    });
-  }
-
   /* ── Apariencia: idioma y tema ─────────────────────────────────────── */
 
   function tarjetaApariencia() {
@@ -758,44 +653,6 @@ export function createAjustesView(raiz) {
           children: [
             campo(t('aj.apar.idioma'), idioma),
             campo(t('aj.apar.tema'), tema, t('aj.apar.hint')),
-          ],
-        }),
-      ],
-    });
-  }
-
-  /* ── Acerca de: versión, licencia y componentes de terceros (SU-09) ───── */
-
-  function tarjetaAcercaDe() {
-    const enlace = (href, clave) =>
-      el('a', {
-        attrs: { href, target: '_blank', rel: 'noopener' },
-        text: t(clave),
-      });
-    return el('section', {
-      className: 'card',
-      children: [
-        el('div', {
-          className: 'card__header',
-          children: [
-            el('h3', { className: 'card__title', text: t('aj.acerca.titulo') }),
-            el('p', {
-              className: 'card__hint',
-              text: t('aj.esta.hint', { app: general.app, version: general.version }),
-            }),
-          ],
-        }),
-        el('div', {
-          className: 'card__body',
-          children: [
-            el('p', { text: t('aj.acerca.licencia') }),
-            el('ul', {
-              children: [
-                el('li', { children: [enlace('/api/licencia', 'aj.acerca.verLicencia')] }),
-                el('li', { children: [enlace('/api/terceros', 'aj.acerca.terceros')] }),
-                el('li', { children: [enlace('https://clipgeist.com/', 'aj.acerca.web')] }),
-              ],
-            }),
           ],
         }),
       ],
@@ -1342,9 +1199,18 @@ export function createAjustesView(raiz) {
     lista.replaceChildren(...conexiones.map(filaConexion));
   }
 
+  /** Versiones mínimas de las otras apps que pide esta (SU-13): se piden una vez. */
+  let minimas = null;
+  const leerMinimas = () =>
+    (minimas ||= sistema
+      .actualizaciones()
+      .then(e => e.minimas || {})
+      .catch(() => ({})));
+
   function filaConexion(c) {
     const pill = el('span', { className: 'ajustes-pill', text: t('aj.con.comprobando') });
     const error = el('span', { className: 'ajustes-error' });
+    const vieja = el('span', { className: 'ajustes-aviso', attrs: { hidden: '' } });
     const comprobar = async () => {
       pill.className = 'ajustes-pill';
       pill.textContent = t('aj.con.comprobando');
@@ -1359,6 +1225,9 @@ export function createAjustesView(raiz) {
         ? t('aj.con.conectada', { version: r.version })
         : t('aj.con.sinConexion');
       error.textContent = r.ok ? '' : r.error;
+      const aviso = r.ok ? avisoCompatibilidad(c.app, r.version, await leerMinimas()) : '';
+      vieja.textContent = aviso;
+      vieja.hidden = !aviso;
     };
     comprobar();
     return el('li', {
@@ -1387,6 +1256,7 @@ export function createAjustesView(raiz) {
               ].join(''),
             }),
             error,
+            vieja,
           ],
         }),
         pill,

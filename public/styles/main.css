@@ -3637,3 +3637,25 @@ a {
 .ajustes-sesiones li {
   grid-template-columns: 1fr auto;
 }
+
+/* Versión nueva (SU-13): un punto en «Apps», el último botón de la barra (siempre visible). */
+#boton-apps.cs-con-aviso {
+  position: relative;
+}
+
+#boton-apps.cs-con-aviso::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: calc(50% - 16px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c-danger);
+  box-shadow: 0 0 0 2px var(--c-surface);
+}
+
+.cs-version-nueva {
+  width: 100%;
+  margin-bottom: var(--space-2);
+}

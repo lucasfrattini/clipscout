@@ -1,6 +1,6 @@
 /** Cliente de la API de clipscout. */
 
-import { t } from './i18n/index.js';
+import { t, idiomaActual, existeClave } from './i18n/index.js';
 
 const BASE = '/api';
 
@@ -30,6 +30,8 @@ if (typeof window !== 'undefined' && window.fetch && !window.fetch.clipgeist) {
       opciones.headers || (entrada instanceof Request ? entrada.headers : {})
     );
     if (!cabeceras.has('X-Clipgeist')) cabeceras.set('X-Clipgeist', '1');
+    // Los errores del servidor llegan en el idioma de la interfaz (SU-10).
+    if (!cabeceras.has('Accept-Language')) cabeceras.set('Accept-Language', idiomaActual());
     const respuesta = await original(entrada, { ...opciones, headers: cabeceras });
     if (respuesta.status === 401) revisarSesion(entrada);
     return respuesta;
@@ -67,12 +69,26 @@ function revisarSesion(entrada) {
 }
 
 class ApiError extends Error {
-  constructor(message, code, status) {
+  constructor(message, code, status, { codigo = '', params = {} } = {}) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.status = status;
+    this.codigo = codigo;
+    this.params = params;
   }
+}
+
+/**
+ * El texto de un error del servidor (SU-10): por su `codigo`, con el diccionario de la interfaz
+ * (`err.<codigo>`); si el código no está en el diccionario, el `detail` (que el servidor ya manda
+ * en el idioma de la interfaz). Así una frase concreta («No existe esa conexión.») no se pierde
+ * tras un mensaje genérico: solo se traducen los códigos que dicen todo por sí mismos.
+ */
+export function mensajeError(cuerpo, status) {
+  const codigo = cuerpo?.codigo;
+  if (codigo && existeClave(`err.${codigo}`)) return t(`err.${codigo}`, cuerpo.params || {});
+  return cuerpo?.detail || cuerpo?.error || t('api.errorHttp', { status });
 }
 
 async function request(path, options = {}) {
@@ -83,7 +99,12 @@ async function request(path, options = {}) {
     // llegar como JSON.
     response = await fetch(`${BASE}${path}`, {
       ...options,
-      headers: { 'Content-Type': 'application/json', ...CABECERA, ...(options.headers || {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept-Language': idiomaActual(),
+        ...CABECERA,
+        ...(options.headers || {}),
+      },
     });
   } catch (error) {
     // Un abort deliberado (AbortController, ver `extractVideos`) no es un
@@ -103,9 +124,10 @@ async function request(path, options = {}) {
 
   if (!response.ok) {
     throw new ApiError(
-      payload?.error || payload?.detail || t('api.errorHttp', { status: response.status }),
+      mensajeError(payload, response.status),
       payload?.code || 'HTTP_ERROR',
-      response.status
+      response.status,
+      { codigo: payload?.codigo || '', params: payload?.params || {} }
     );
   }
 
@@ -378,6 +400,24 @@ export const ajustes = {
     request(`/ajustes/programadas/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   lanzarProgramada: id =>
     request(`/ajustes/programadas/${encodeURIComponent(id)}/ahora`, { method: 'POST', body: '{}' }),
+};
+
+/** Fase 5: diagnóstico, copia de la suite y versiones (Ajustes → Sistema). */
+export const sistema = {
+  diagnostico: () => request('/diagnostico'),
+  registro: (lineas = 200) => request(`/diagnostico/registro?lineas=${lineas}`),
+  actualizaciones: () => request('/actualizaciones'),
+  privacidad: () => request('/privacidad'),
+  buscarActualizaciones: activo =>
+    request('/actualizaciones', { method: 'PUT', body: JSON.stringify({ activo }) }),
+  comprobarActualizaciones: () =>
+    request('/actualizaciones/comprobar', { method: 'POST', body: '{}' }),
+  restaurarCopia: fichero =>
+    request('/crew/v1/copia/restaurar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/zip' },
+      body: fichero,
+    }),
 };
 
 export { ApiError };

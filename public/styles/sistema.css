@@ -1,0 +1,105 @@
+/*
+ * Ajustes → Sistema (fase 5): diagnóstico, copia de la suite, versiones y «Qué sale de este
+ * equipo»; y el punto de «versión nueva» en el botón «Apps». Se carga con la vista de Ajustes
+ * (CS-15), salvo el punto, que vive en main.css porque la barra está siempre.
+ */
+
+.cs-diagnostico,
+.cs-diagnostico__errores,
+.cs-salientes {
+  list-style: none;
+  margin: var(--space-3) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.cs-diagnostico__fila {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.cs-diagnostico__fila > div,
+.cs-salientes li {
+  display: grid;
+  gap: 2px;
+}
+
+.cs-diagnostico__marca {
+  font-weight: 700;
+  color: var(--c-success);
+  text-align: center;
+}
+
+.cs-diagnostico__fila--mal .cs-diagnostico__marca,
+.cs-diagnostico__fila--mal strong {
+  color: var(--c-danger);
+}
+
+.cs-diagnostico__errores li {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--c-text-muted);
+}
+
+.cs-registro {
+  max-height: 320px;
+  overflow: auto;
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cs-version {
+  margin-bottom: var(--space-3);
+}
+
+.cs-version__notas {
+  white-space: pre-line;
+}
+
+.cs-version__comando {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 8px;
+  background: var(--c-bg);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.cs-subtitulo {
+  margin: var(--space-5) 0 var(--space-1);
+  font-size: 15px;
+}
+
+.cs-salientes li {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+}
+
+.cs-salientes__ahora {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.cs-salientes--no {
+  opacity: 0.7;
+}
+
+.ajustes-aviso {
+  font-size: 13px;
+  color: var(--c-warning);
+}

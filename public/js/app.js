@@ -1,6 +1,6 @@
-import { estadoAcceso, getHealth } from './api.js';
+import { estadoAcceso, getHealth, sistema } from './api.js';
 import { createBuscarView } from './views/buscar.js';
-import { initCrewCabecera } from './appsCrew.js';
+import { initCrewCabecera, marcarVersionNueva } from './appsCrew.js';
 import { toast } from './dom.js';
 import { aplicarTema, temaGuardado } from './tema.js';
 import { t, alCambiarIdioma, traducirDocumento } from './i18n/index.js';
@@ -27,8 +27,33 @@ const CARGAR_VISTA = {
   actividad: () => import('./views/actividad.js').then(m => m.createActividadView),
   explorer: () => import('./views/explorer.js').then(m => m.createExplorerView),
   video: () => import('./views/video.js').then(m => m.createVideoView),
-  ajustes: () => import('./views/ajustes.js').then(m => m.createAjustesView),
+  ajustes: () =>
+    Promise.all([
+      import('./views/ajustes.js').then(m => m.createAjustesView),
+      cargarEstilos(ESTILOS_DE_VISTA.ajustes),
+    ]).then(([crear]) => crear),
 };
+
+/** Hojas de estilo que solo usa una vista: se piden con ella (CS-15), no al arrancar. */
+const ESTILOS_DE_VISTA = { ajustes: ['/styles/sistema.css'] };
+
+function cargarEstilos(rutas = []) {
+  return Promise.all(
+    rutas.map(href => {
+      if (document.querySelector(`link[rel="stylesheet"][href="${href}"]`)) return null;
+      return new Promise(resolver => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        // Si no llega, la vista se pinta igual (sin esos estilos) en vez de quedarse esperando.
+        link.addEventListener('load', resolver, { once: true });
+        link.addEventListener('error', resolver, { once: true });
+        setTimeout(resolver, 3000);
+        document.head.append(link);
+      });
+    })
+  );
+}
 
 /**
  * Avisos entre vistas: si la que escucha aún no se cargó, se carga y se le repite el aviso
@@ -230,6 +255,12 @@ async function main() {
   await aceptarAviso();
   if (!window.guiaVista('clipscout')) mostrarGuia();
   avisoSinCifrar();
+  // ¿Versión nueva? Lo que ya sabe el servidor (él consulta la web una vez al día, no esto).
+  sistema
+    .actualizaciones()
+    .then(marcarVersionNueva)
+    .catch(() => {});
+  window.addEventListener('clipscout:versiones', e => marcarVersionNueva(e.detail));
 
   // Abortar los streams en curso al cerrar la pestaña, para que el servidor
   // no siga scrapeando en vano.

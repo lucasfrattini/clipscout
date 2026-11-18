@@ -17,6 +17,7 @@ const actualizaciones = require('../services/actualizaciones');
  * - `GET /api/crew/v1/copia` y `POST /api/crew/v1/copia/restaurar` (sesión o clave de
  *   administración; nunca con una clave de conexión).
  * - `GET|PUT /api/actualizaciones` y `POST /api/actualizaciones/comprobar`.
+ * - `GET /api/privacidad`: las conexiones salientes de la app (SU-22).
  *
  * Se monta ANTES que las rutas del protocolo: allí todo exige clave y la copia vale con sesión.
  */
@@ -107,6 +108,12 @@ router.get(
 router.put(
   '/actualizaciones',
   manejar(req => actualizaciones.cambiarActivo(req.body?.activo !== false))
+);
+
+/** Ajustes → Sistema → Acerca de → «Qué sale de este equipo» (SU-22). */
+router.get(
+  '/privacidad',
+  manejar(() => actualizaciones.salientes())
 );
 
 router.post(

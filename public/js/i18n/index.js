@@ -128,6 +128,12 @@ export function t(clave, params) {
   );
 }
 
+/** ¿Hay traducción para esta clave? (para elegir entre el diccionario y el texto del servidor). */
+export function existeClave(clave) {
+  const diccionario = DICCIONARIOS[idioma] || DICCIONARIOS[IDIOMA_POR_DEFECTO];
+  return Boolean(diccionario && clave in diccionario);
+}
+
 /**
  * Traduce eligiendo singular o plural según `n`.
  *

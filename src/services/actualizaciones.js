@@ -172,4 +172,61 @@ function parar() {
   reloj = null;
 }
 
-module.exports = { comprobar, estado, cambiarActivo, activo, limpiar, arrancar, parar, enDocker };
+/** Sin usuario ni contraseña (para enseñar una dirección). */
+const sinCredenciales = url => String(url || '').replace(/\/\/[^@/]*@/, '//***@');
+
+/**
+ * «Qué sale de este equipo» (SU-22): lista honesta de las conexiones salientes de clipscout,
+ * con lo que hay configurado AHORA. Cada entrada: {tipo, activo, ...}.
+ */
+async function salientes() {
+  const crew = require('./crew');
+  const { readProfiles } = require('./profiles');
+  const d = await crew.leer().catch(() => ({}));
+  const perfiles = await readProfiles().catch(() => []);
+  const conexiones = (d.conexiones || []).filter(c => c.activa !== false);
+  return {
+    salientes: [
+      // Las búsquedas, las fichas, las miniaturas y el vídeo que se reproduce: solo a los sitios
+      // configurados (por el proxy de salida si lo hay).
+      { tipo: 'sitios', activo: perfiles.length > 0, n: perfiles.length },
+      {
+        tipo: 'web',
+        activo: Boolean(config.busqueda.searxngUrl),
+        url: sinCredenciales(config.busqueda.searxngUrl),
+      },
+      {
+        tipo: 'gestor',
+        activo: Boolean(d.jdownloader?.url),
+        url: sinCredenciales(d.jdownloader?.url),
+      },
+      {
+        tipo: 'proxy',
+        activo: Boolean(config.outboundProxy),
+        url: sinCredenciales(config.outboundProxy),
+      },
+      {
+        tipo: 'apps',
+        activo: conexiones.length > 0,
+        apps: conexiones.map(c => ({ app: c.app, url: sinCredenciales(c.url) })),
+      },
+      {
+        tipo: 'versiones',
+        activo: d.buscar_actualizaciones !== false,
+        url: config.actualizaciones.url,
+      },
+    ],
+  };
+}
+
+module.exports = {
+  salientes,
+  comprobar,
+  estado,
+  cambiarActivo,
+  activo,
+  limpiar,
+  arrancar,
+  parar,
+  enDocker,
+};

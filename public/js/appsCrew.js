@@ -91,3 +91,33 @@ async function botonSalir(destino) {
     })
   );
 }
+
+/**
+ * Versión nueva (SU-13): un punto en el botón «Apps» y, dentro de la hoja, un enlace a Ajustes →
+ * Sistema → Acerca de con las novedades. `estado` es lo de /api/actualizaciones.
+ */
+export function marcarVersionNueva(estado) {
+  const boton = document.getElementById('boton-apps');
+  const hay = Boolean(estado?.hay_nueva);
+  boton?.classList.toggle('cs-con-aviso', hay);
+  if (boton) {
+    if (hay) boton.setAttribute('title', t('apps.versionNueva', { version: estado.ultima }));
+    else boton.removeAttribute('title');
+  }
+  const acciones = document.querySelector('#hoja-apps .cs-apps-acciones');
+  let enlace = document.getElementById('apps-version-nueva');
+  if (!hay) {
+    enlace?.remove();
+    return;
+  }
+  if (!acciones) return;
+  if (!enlace) {
+    enlace = document.createElement('a');
+    enlace.id = 'apps-version-nueva';
+    enlace.className = 'cg-boton cs-version-nueva';
+    enlace.href = '#/ajustes/sistema';
+    enlace.addEventListener('click', () => document.getElementById('hoja-apps')?.cerrar?.());
+    acciones.prepend(enlace);
+  }
+  enlace.textContent = t('apps.versionNueva', { version: estado.ultima });
+}

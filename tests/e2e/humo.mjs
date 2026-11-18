@@ -175,6 +175,8 @@ try {
     BROWSER_ENABLED: 'false',
     SECURITY_BLOCK_PRIVATE_ADDRESSES: 'false',
     CLIPGEIST_DETECTAR: 'no',
+    // Nunca a clipgeist.com desde las pruebas (SU-13).
+    CLIPGEIST_VERSIONES_URL: 'http://127.0.0.1:9/versiones.json',
     SEARXNG_URL: '',
     OUTBOUND_PROXY: '',
     CRAWL_PAGE_DELAY_MS: '0',
@@ -484,6 +486,32 @@ try {
   await pagina.locator('.cs-ajustes-indice a[href="#/ajustes/busqueda"]').click();
   await pagina.locator('.cs-sitio').first().waitFor();
   await medir(pagina, 'ajustes-sitios', '.cs-sitio');
+
+  // Fase 5: Sistema → Diagnóstico (con sus comprobaciones), copia de la suite, versiones y «Qué
+  // sale de este equipo». Las versiones apuntan a un puerto cerrado: ni red ni aviso.
+  await pagina.goto(`${base}/#/ajustes/sistema`);
+  await pagina.locator('#ajustes-diagnostico .cs-diagnostico li').first().waitFor();
+  const comprobaciones = await pagina.locator('#ajustes-diagnostico .cs-diagnostico li').count();
+  if (comprobaciones < 5) throw new Error(`Diagnóstico: ${comprobaciones} comprobaciones`);
+  await pagina.locator('#ajustes-acerca .cs-salientes li').first().waitFor();
+  if ((await pagina.locator('#ajustes-acerca .cs-salientes li').count()) !== 6) {
+    throw new Error('«Qué sale de este equipo» no lista las 6 conexiones');
+  }
+  await pagina.locator('#ajustes-copia a[href="/api/crew/v1/copia"]').waitFor();
+  if (await pagina.locator('#boton-apps.cs-con-aviso').count()) {
+    throw new Error('punto de versión nueva sin versión nueva');
+  }
+  await pagina.evaluate(() => window.scrollTo(0, 0));
+  await medir(pagina, 'ajustes-sistema', '.cc-ajustes-panel .card');
+  // Lo nuevo, ya en pantalla: también con controles de 44 px y sin desbordar.
+  await pagina.locator('#ajustes-diagnostico').evaluate(e => e.scrollIntoView());
+  await medir(pagina, 'ajustes-diagnostico', null);
+  await pagina.locator('#ajustes-acerca').evaluate(e => e.scrollIntoView());
+  await medir(pagina, 'ajustes-acerca', null);
+  await capturar(pagina, 'ajustes-sistema');
+  await pagina.goto(`${base}/#/ajustes/busqueda`);
+  await pagina.locator('.cs-sitio').first().waitFor();
+
   await pagina.locator('.cs-sitio').first().locator('button[aria-haspopup]').click();
   await pagina.getByRole('button', { name: /^Editar/ }).click();
   await pagina.waitForURL(/#\/explorer\/0/);
