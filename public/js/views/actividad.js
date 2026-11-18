@@ -31,7 +31,45 @@ export function createActividadView(raiz) {
   );
   chips.append(...Object.values(botones));
   const panel = el('div', { className: 'actividad__panel' });
-  raiz.append(cabecera.nodo, el('div', { className: 'actividad', children: [chips, panel] }));
+  // Lo que no va bien y explica fallos de las búsquedas o programadas: proxy de salida caído y
+  // sitios que dejaron de dar resultados (CS-17). Arriba, para que se vea al entrar.
+  const avisos = el('div', { className: 'actividad__avisos' });
+  raiz.append(
+    cabecera.nodo,
+    el('div', { className: 'actividad', children: [avisos, chips, panel] })
+  );
+  async function cargarAvisos() {
+    const hijos = [];
+    try {
+      const [proxy, { sitios = [] }] = await Promise.all([ajustes.proxy(), ajustes.sitios()]);
+      if (proxy.configurado && proxy.ok === false) {
+        hijos.push(aviso(t('proxy.caido'), t('proxy.revisar'), '#/ajustes/sistema'));
+      }
+      const rotos = sitios.filter(s => s.salud?.aviso).map(s => s.nombre);
+      if (rotos.length) {
+        hijos.push(
+          aviso(
+            t('act.rotos', { nombres: rotos.join(', ') }),
+            t('act.rotos.ver'),
+            '#/ajustes/busqueda'
+          )
+        );
+      }
+    } catch {
+      // sin avisos que enseñar si el servidor no contesta
+    }
+    avisos.replaceChildren(...hijos);
+  }
+  function aviso(textoAviso, textoEnlace, href) {
+    return el('div', {
+      className: 'cs-aviso-proxy',
+      attrs: { role: 'note' },
+      children: [
+        el('span', { className: 'cs-aviso-proxy__texto', text: textoAviso }),
+        el('a', { className: 'cg-boton', attrs: { href }, text: textoEnlace }),
+      ],
+    });
+  }
 
   const cuentas = { busquedas: 0, descargas: 0, programadas: 0 };
   const pintarPestanas = () => {
@@ -566,6 +604,7 @@ export function createActividadView(raiz) {
 
   return {
     focus() {
+      cargarAvisos();
       const pedida = pestanaDeHash();
       mostrar(pedida);
     },

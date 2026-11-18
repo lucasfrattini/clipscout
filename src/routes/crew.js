@@ -344,6 +344,7 @@ router.get(
     const opciones = await directo.opcionesSitios();
     const sitios = await listarSitios();
     const cifras = await estadisticas.leer();
+    const salud = await estadisticas.leerSalud();
     return {
       sitios: sitios.map(s => {
         const dominio = hostDe(s.perfil.config.searchUrl || '');
@@ -354,6 +355,7 @@ router.get(
           jdDirecto: directo.esDirecto(`https://${dominio}/`, opciones),
           fueraPorDefecto: directo.fueraPorDefecto(dominio, opciones),
           estadisticas: cifras[dominio] || null,
+          salud: salud[dominio] || null,
         };
       }),
     };

@@ -942,3 +942,75 @@ cg-chips.actividad__pestanas {
     padding: var(--space-3) var(--space-4) var(--space-4);
   }
 }
+/* CS-17: sitio que dejó de dar resultados (Ajustes → Sitios). */
+.cs-sitio__aviso {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-left: 4px solid var(--cg-aviso);
+  border-radius: var(--cg-radio-chico);
+  background: var(--cg-aviso-suave);
+  font-size: 0.9rem;
+}
+.cs-sitio__aviso span {
+  flex: 1 1 200px;
+}
+/* Deslizar una fila: izquierda = quitar, derecha = descargar (§5.5). */
+.buscar__tarjeta {
+  touch-action: pan-y pinch-zoom;
+}
+.buscar__tarjeta--deslizando {
+  position: relative;
+  transition: none;
+  z-index: 2;
+  box-shadow: var(--cg-sombra-media);
+}
+.buscar__tarjeta[data-deslizar] {
+  outline: 3px solid var(--c-success);
+  outline-offset: -3px;
+}
+.buscar__tarjeta[data-deslizar='quitar'] {
+  outline-color: var(--c-danger);
+  opacity: 0.75;
+}
+.buscar__tarjeta[data-deslizar]::after {
+  content: attr(data-texto-deslizar);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 8px;
+  border-radius: var(--cg-radio-chico);
+  background: var(--c-success);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.buscar__tarjeta[data-deslizar='quitar']::after {
+  background: var(--c-danger);
+}
+/* «Descargar en»: la carpeta entera, en dos líneas («Pregun…» antes). */
+.buscar__destino-texto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+  text-align: left;
+  white-space: normal;
+}
+.buscar__destino-texto small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--c-text-muted);
+}
+.buscar__destino-texto span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}

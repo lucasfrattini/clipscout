@@ -47,3 +47,32 @@ test('categoría y etiqueta salen de su propio grupo', async () => {
   assert.deepEqual(nombresCarpeta({ tipo: 'categoria', raiz: 'Categories', catalogo }), ['Playa']);
   assert.deepEqual(nombresCarpeta({ tipo: 'etiqueta', raiz: 'Unsorted', catalogo }), ['Chile']);
 });
+
+test('carpeta propuesta: la carpeta que ya existe, sin mayúsculas ni acentos', async () => {
+  const { carpetaPropuesta } = await cargar();
+  const r = carpetaPropuesta('  ana perez ', {
+    existentes: ['People/Ana Pérez', 'People/Otra'],
+    catalogo,
+  });
+  assert.deepEqual(r, { carpeta: 'People/Ana Pérez', regla: null });
+});
+
+test('carpeta propuesta: persona o etiqueta del catálogo sin carpeta → nueva con su regla', async () => {
+  const { carpetaPropuesta } = await cargar();
+  assert.deepEqual(carpetaPropuesta('canal viajes', { existentes: [], catalogo }), {
+    carpeta: 'People/Canal Viajes',
+    regla: { personas: [{ nombre: 'Canal Viajes', rol: 'artista' }] },
+  });
+  assert.deepEqual(carpetaPropuesta('PLAYA', { catalogo }), {
+    carpeta: 'Categories/Playa',
+    regla: { etiquetas: [{ nombre: 'Playa', grupo: 'Tipo' }] },
+  });
+  assert.equal(carpetaPropuesta('chile', { catalogo }).carpeta, 'Unsorted/Chile');
+});
+
+test('carpeta propuesta: nada parecido a medias ni términos de una letra', async () => {
+  const { carpetaPropuesta } = await cargar();
+  assert.equal(carpetaPropuesta('ana', { existentes: ['People/Ana Pérez'], catalogo }), null);
+  assert.equal(carpetaPropuesta('a', { existentes: ['People/A'], catalogo }), null);
+  assert.equal(carpetaPropuesta('montaña', {}), null);
+});

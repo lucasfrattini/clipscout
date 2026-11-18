@@ -32,6 +32,7 @@ const almacen = crearAlmacen(
 );
 
 let pendiente = new Map(); // dominio → { campo: n }
+let saludPendiente = []; // [dominio, { total, error, cuando }] en orden de llegada
 let reloj = null;
 
 function dominioDe(enlace) {
@@ -51,6 +52,10 @@ function sumar(dominio, cuentas) {
     actual[campo] = (actual[campo] || 0) + n;
   }
   pendiente.set(dominio, actual);
+  programarVolcado();
+}
+
+function programarVolcado() {
   if (!reloj) {
     reloj = setTimeout(() => {
       reloj = null;
@@ -62,6 +67,23 @@ function sumar(dominio, cuentas) {
   }
 }
 
+/**
+ * Salud por sitio (CS-17): cada búsqueda terminada en un sitio anota si dio algo. Un sitio que
+ * cambia su página no da error, da «0 resultados»: si eso pasa `config.salud.cerosAviso` veces
+ * seguidas, Ajustes y Actividad lo marcan con «Volver a configurar». Una búsqueda con resultados
+ * lo pone a cero. Las paradas a mano y las de proxy caído no cuentan (no dicen nada del sitio).
+ */
+function anotarSalud(dominio, { total = 0, error = '' } = {}) {
+  if (!dominio) return;
+  saludPendiente.push([dominio, { total, error: String(error || '').slice(0, 300) }, Date.now()]);
+  programarVolcado();
+}
+
+/** El estado de salud de un dominio tal como se guarda, con `aviso` calculado. */
+function conAviso(s) {
+  return s ? { ...s, aviso: (s.cerosSeguidos || 0) >= config.salud.cerosAviso } : null;
+}
+
 /** Lo mismo, a partir de un enlace (se cuenta en su dominio). */
 function sumarEnlace(enlace, cuentas) {
   sumar(dominioDe(enlace), cuentas);
@@ -69,10 +91,27 @@ function sumarEnlace(enlace, cuentas) {
 
 /** Escribe lo acumulado. */
 async function volcar() {
-  if (pendiente.size === 0) return;
+  if (pendiente.size === 0 && saludPendiente.length === 0) return;
   const lote = pendiente;
+  const salud = saludPendiente;
   pendiente = new Map();
+  saludPendiente = [];
   await almacen.cambiar(d => {
+    d.salud = d.salud || {};
+    for (const [dominio, { total, error }, cuando] of salud) {
+      const s = d.salud[dominio] || { cerosSeguidos: 0 };
+      const fecha = new Date(cuando).toISOString();
+      s.ultimaBusqueda = fecha;
+      if (total > 0) {
+        s.cerosSeguidos = 0;
+        s.ultimaConResultados = fecha;
+        s.ultimoError = '';
+      } else {
+        s.cerosSeguidos = (s.cerosSeguidos || 0) + 1;
+        s.ultimoError = error;
+      }
+      d.salud[dominio] = s;
+    }
     d.sitios = d.sitios || {};
     for (const [dominio, cuentas] of lote) {
       const s = d.sitios[dominio] || {};
@@ -88,12 +127,31 @@ async function leer() {
   return (await almacen.leer()).sitios || {};
 }
 
+/** dominio → { cerosSeguidos, ultimaBusqueda, ultimaConResultados, ultimoError, aviso }. */
+async function leerSalud() {
+  await volcar();
+  const salud = (await almacen.leer()).salud || {};
+  return Object.fromEntries(Object.entries(salud).map(([d, s]) => [d, conAviso(s)]));
+}
+
 async function ponerACero() {
   pendiente = new Map();
+  saludPendiente = [];
   await almacen.cambiar(d => {
     d.sitios = {};
+    d.salud = {};
     d.desde = new Date().toISOString();
   });
 }
 
-module.exports = { sumar, sumarEnlace, volcar, leer, ponerACero, dominioDe, CAMPOS };
+module.exports = {
+  sumar,
+  sumarEnlace,
+  anotarSalud,
+  leerSalud,
+  volcar,
+  leer,
+  ponerACero,
+  dominioDe,
+  CAMPOS,
+};

@@ -78,4 +78,36 @@ router.post('/sitios', async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/sitios/reconfigurar { sitios: [{ config }] } — «Reconfigurar» (Ajustes → Sitios → ⋯):
+ * cambia la configuración del sitio guardado de ese mismo dominio por la nueva (la que acaba de
+ * dar el alta automática, ya probada). Conserva el nombre y la POSICIÓN en la lista: las búsquedas
+ * guardadas y la cola apuntan a los sitios por su posición. Un dominio sin sitio guardado se cuenta
+ * en `sinSitio` y no se añade (para eso está el alta).
+ */
+router.post('/sitios/reconfigurar', async (req, res, next) => {
+  try {
+    const nuevos = Array.isArray(req.body?.sitios) ? req.body.sitios : [];
+    if (nuevos.length === 0) throw new AppError('No hay sitios para guardar.', 400, 'SIN_SITIOS');
+    const perfiles = await readProfiles();
+    let cambiados = 0;
+    let sinSitio = 0;
+    for (const s of nuevos) {
+      const host = hostDe(s?.config?.searchUrl || '');
+      const i = host ? perfiles.findIndex(p => hostDe(p.config.searchUrl || '') === host) : -1;
+      if (i < 0 || !s.config || typeof s.config !== 'object') {
+        sinSitio += 1;
+        continue;
+      }
+      perfiles[i] = { ...perfiles[i], config: s.config };
+      cambiados += 1;
+    }
+    if (cambiados > 0) await writeProfiles(perfiles);
+    logger.info('Sitios reconfigurados', { cambiados, sinSitio });
+    res.json({ success: true, cambiados, sinSitio });
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

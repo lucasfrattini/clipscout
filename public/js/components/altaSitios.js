@@ -1,6 +1,6 @@
 import { el, clear } from '../dom.js';
 import { t, tp, texto } from '../i18n/index.js';
-import { autoSitio, guardarSitios } from '../api.js';
+import { autoSitio, guardarSitios, reconfigurarSitios } from '../api.js';
 import { abrirDialogo } from './dialog.js';
 
 /**
@@ -9,6 +9,10 @@ import { abrirDialogo } from './dialog.js';
  * pueden guardar los que dieron vídeos en la prueba; los demás dicen en qué paso fallaron.
  *
  * `Promise<number>`: cuántos sitios se guardaron (0 si se cerró sin guardar).
+ *
+ * `reconfigurar: true` («Reconfigurar» en Ajustes → Sitios, o el aviso de un sitio que dejó de dar
+ * resultados): lo mismo con sitios que YA están guardados; al guardar se cambia su configuración
+ * sin moverlos de la lista.
  */
 
 const MOTIVOS = new Set(['buscador', 'listado', 'patron', 'sin_fichas', 'sin_ficheros', 'tiempo']);
@@ -24,10 +28,10 @@ function lineas(textoLibre) {
   ];
 }
 
-export function altaSitiosDialog({ dominios = [], termino = '' } = {}) {
+export function altaSitiosDialog({ dominios = [], termino = '', reconfigurar = false } = {}) {
   return abrirDialogo({
     role: 'dialog',
-    titleKey: 'alta.titulo',
+    titleKey: reconfigurar ? 'alta.titulo.reconfigurar' : 'alta.titulo',
     valorCancelar: 0,
     render({ cuerpo, acciones, cerrar }) {
       const controlador = new AbortController();
@@ -140,7 +144,8 @@ export function altaSitiosDialog({ dominios = [], termino = '' } = {}) {
             if (error.name === 'AbortError') return;
             r = { ok: false, error: error.message };
           }
-          filas.set(dominio, { fase: r.yaGuardado ? 'ya' : r.ok ? 'ok' : 'mal', r });
+          const fase = r.yaGuardado && !reconfigurar ? 'ya' : r.ok ? 'ok' : 'mal';
+          filas.set(dominio, { fase, r });
           pintar();
         }
         probando = false;
@@ -152,8 +157,13 @@ export function altaSitiosDialog({ dominios = [], termino = '' } = {}) {
         if (elegidos.length === 0) return;
         botonGuardar.disabled = true;
         try {
-          const r = await guardarSitios(elegidos);
-          salir(r.guardados);
+          if (reconfigurar) {
+            const r = await reconfigurarSitios(elegidos);
+            salir(r.cambiados);
+          } else {
+            const r = await guardarSitios(elegidos);
+            salir(r.guardados);
+          }
         } catch (error) {
           ayuda.textContent = error.message;
           botonGuardar.disabled = false;

@@ -117,6 +117,11 @@ export function autoSitio(url, termino, { signal } = {}) {
   });
 }
 
+/** Cambia la configuración de sitios ya guardados (mismo dominio), sin moverlos de la lista. */
+export function reconfigurarSitios(sitios) {
+  return request('/sitios/reconfigurar', { method: 'POST', body: JSON.stringify({ sitios }) });
+}
+
 /** Suma configuraciones a las guardadas (las de un dominio que ya estaba se saltan). */
 export function guardarSitios(sitios) {
   return request('/sitios', { method: 'POST', body: JSON.stringify({ sitios }) });

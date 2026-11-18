@@ -297,6 +297,10 @@ const config = {
         .replace(/^\*?\./, '')
     )
     .filter(Boolean),
+  // Salud por sitio (CS-17): búsquedas seguidas sin nada (o con error) antes de avisar.
+  salud: {
+    cerosAviso: intFromEnv('SALUD_CEROS_AVISO', 2),
+  },
   // ¿Responde el proxy de salida? (services/proxySalida.js). Se le pide un túnel hacia
   // `destinoPrueba` (host:puerto); si no lo abre en `timeoutMs`, las búsquedas no esperan a cada
   // sitio: fallan al momento con «el proxy de salida no responde».

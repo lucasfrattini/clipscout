@@ -7,6 +7,7 @@ import { palabras, contieneAlguna, textoDe } from '../filtros.js';
 import { plegarAlbumes, claveAlbum } from '../albumes.js';
 import { abrirHoja, menuAcciones } from '../hojas.js';
 import { paraDescargarTodo, fechaCorta } from '../unaMano.js';
+import { carpetaPropuesta } from '../carpetas.js';
 
 /** El «sitio» de lo encontrado en toda la web (no es una configuración guardada). */
 const ID_WEB = -1;
@@ -162,8 +163,43 @@ export function createBuscarView(root) {
     paginas.append(el('option', { attrs: { value: n }, text: n }));
   }
   paginas.value = leer(CLAVE_PAGINAS, '2');
+  /*
+   * «Rápida / Normal / A fondo» en vez de un número a secas (§5.5: 1–50 no dice lo que cuesta).
+   * El desplegable sigue debajo para afinar (hasta 50); si el número no es uno de los tres, no se
+   * marca ninguno.
+   */
+  const MODOS_PAGINAS = [
+    { id: 'rapida', n: 1 },
+    { id: 'normal', n: 2 },
+    { id: 'fondo', n: 5 },
+  ];
+  const chipsPaginas = document.createElement('cg-chips');
+  chipsPaginas.setAttribute('unico', '');
+  chipsPaginas.className = 'buscar__modos';
+  for (const m of MODOS_PAGINAS) {
+    chipsPaginas.append(
+      el('button', {
+        attrs: { type: 'button', value: String(m.n), 'data-modo': m.id },
+        children: [el('span')],
+      })
+    );
+  }
+  function pintarModos() {
+    for (const b of chipsPaginas.querySelectorAll('button[data-modo]')) {
+      b.setAttribute('aria-pressed', String(b.value === paginas.value));
+      b.lastElementChild.textContent = t(`buscar.modo.${b.dataset.modo}`);
+      b.title = tp('buscar.modo.paginas', Number(b.value));
+    }
+  }
+  chipsPaginas.addEventListener('cg-cambiado', e => {
+    const v = e.detail?.chip?.value;
+    if (!v || v === paginas.value) return;
+    paginas.value = v;
+    paginas.dispatchEvent(new Event('change'));
+  });
   paginas.addEventListener('change', () => {
     guardar(CLAVE_PAGINAS, paginas.value);
+    pintarModos();
     pintarInicio();
   });
 
@@ -216,8 +252,10 @@ export function createBuscarView(root) {
       el('p', { className: 'field__label', text: t('buscar.sitios.titulo') }),
       chipsSitios,
       el('p', { className: 'cs-nota', text: textoAyudaSitios() }),
+      el('p', { className: 'field__label', text: t('buscar.modo.titulo') }),
+      (pintarModos(), chipsPaginas),
       el('label', {
-        className: 'field',
+        className: 'field buscar__paginas-fino',
         children: [el('span', { className: 'field__label', text: t('buscar.paginas') }), paginas],
       }),
       hayWeb ? casilla(conWeb, 'buscar.web.siempre', 'buscar.webSi.detalle') : null,
@@ -471,7 +509,8 @@ export function createBuscarView(root) {
   const selDescargar = accionSel('descargar', 'buscar.sel.descargar', () => descargarSeleccion());
   const selTodos = accionSel('check', 'buscar.sel.todos', () => seleccionarTodos());
   const selQuitar = accionSel('cerrar', 'buscar.sel.quitar', () => quitarSeleccion());
-  barraSeleccion.append(selDescargar, selTodos, selQuitar);
+  const selPrimeros = accionSel('lista', 'buscar.sel.primeros', () => elegirPrimeros());
+  barraSeleccion.append(selDescargar, selTodos, selPrimeros, selQuitar);
 
   root.append(
     cabecera,
@@ -538,6 +577,9 @@ export function createBuscarView(root) {
 
   let destinoFijo = null; // null = preguntar al descargar; string = carpeta (''= la de por defecto)
   let reglaFija = null; // si la carpeta fija es nueva: qué persona/categoría/etiqueta lleva
+  // La carpeta la puso la app sola (§5.5) porque lo buscado coincide con una carpeta o persona:
+  // la siguiente búsqueda la puede cambiar por otra; una elegida a mano, no.
+  let destinoPropuesto = false;
 
   const esCopia = r => {
     const c = copias.get(r.url);
@@ -916,6 +958,7 @@ export function createBuscarView(root) {
           destinoFijo = r.carpeta;
           reglaFija = r.regla;
         }
+        destinoPropuesto = false;
         pintarDestinos();
       },
     },
@@ -925,8 +968,40 @@ export function createBuscarView(root) {
       destinoFijo === null
         ? t('buscar.destino.preguntar')
         : destinoFijo || t('video.jd.porDefecto');
-    destino.replaceChildren(icono('carpeta'), el('span', { text: nombre }));
+    // Dos líneas: «Descargar en» pequeño y la carpeta entera debajo (antes salía «Pregun…»).
+    destino.replaceChildren(
+      icono('carpeta'),
+      el('span', {
+        className: 'buscar__destino-texto',
+        children: [
+          el('small', {
+            text: t(destinoPropuesto ? 'buscar.destino.propuesta' : 'buscar.destino'),
+          }),
+          el('span', { text: nombre }),
+        ],
+      })
+    );
     destino.title = `${t('buscar.destino')}: ${nombre}`;
+    destino.setAttribute('aria-label', destino.title);
+  }
+
+  /** Al buscar un nombre: si coincide con una carpeta o persona del catálogo, se propone sola. */
+  function proponerCarpeta(q) {
+    if (destinoFijo !== null && !destinoPropuesto) return; // elegida a mano: manda
+    const p = carpetaPropuesta(q, {
+      existentes: (jd.destinos() || []).map(d => d.carpeta),
+      catalogo: jd.catalogo(),
+    });
+    if (p) {
+      destinoFijo = p.carpeta;
+      reglaFija = p.regla;
+      destinoPropuesto = true;
+    } else if (destinoPropuesto) {
+      destinoFijo = null;
+      reglaFija = null;
+      destinoPropuesto = false;
+    }
+    pintarDestinos();
   }
   const descargarTodo = el('button', {
     className: 'cg-boton cg-boton--principal buscar__descargar-todo',
@@ -975,6 +1050,19 @@ export function createBuscarView(root) {
     // Todos los de la lista filtrada, no solo los que se ven en pantalla.
     seleccion?.poner(visibles().map(enlaceDe));
   }
+  /** «Los N primeros» de la lista tal como se ve (filtros y orden incluidos). */
+  function elegirPrimeros() {
+    const lista = visibles().map(enlaceDe);
+    const tamanos = [5, 10, 20, 50].filter(n => n < lista.length);
+    menuAcciones({
+      titulo: t('buscar.sel.primeros.titulo'),
+      subtitulo: tp('buscar.resultados', lista.length),
+      acciones: tamanos.map(n => ({
+        texto: t('buscar.sel.primeros.n', { n }),
+        fn: () => seleccion?.poner(lista.slice(0, n)),
+      })),
+    });
+  }
   function quitarSeleccion() {
     const quitar = seleccion?.claves || [];
     quitarDeLaLista(quitar);
@@ -995,6 +1083,81 @@ export function createBuscarView(root) {
       : null;
     return aviso;
   }
+
+  /*
+   * Deslizar una fila (§5.5): hacia la izquierda la quita de la lista (con «Deshacer»), hacia la
+   * derecha la manda a descargar (si hay JDownloader). Solo con el dedo y fuera del modo selección;
+   * `touch-action: pan-y` en las filas deja el desplazamiento vertical al navegador, así que aquí
+   * no se bloquea nada (escuchas pasivas) y no cambia cómo se desplaza la lista.
+   */
+  const UMBRAL_DESLIZAR = 96;
+  let gesto = null;
+  let anularClic = false;
+  const soltarFila = fila => {
+    fila.classList.remove('buscar__tarjeta--deslizando');
+    fila.removeAttribute('data-deslizar');
+    fila.style.transform = '';
+  };
+  rejilla.addEventListener(
+    'touchstart',
+    e => {
+      gesto = null;
+      if (e.touches.length !== 1 || seleccion?.modo) return;
+      const fila = e.target.closest('.buscar__tarjeta');
+      if (!fila || e.target.closest('.buscar__casilla, .buscar__mas, video')) return;
+      gesto = { fila, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, eje: null };
+    },
+    { passive: true }
+  );
+  rejilla.addEventListener(
+    'touchmove',
+    e => {
+      if (!gesto || seleccion?.modo) return;
+      const dx = e.touches[0].clientX - gesto.x;
+      const dy = e.touches[0].clientY - gesto.y;
+      if (!gesto.eje) {
+        if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;
+        gesto.eje = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'x' : 'y';
+        if (gesto.eje === 'x') gesto.fila.classList.add('buscar__tarjeta--deslizando');
+      }
+      if (gesto.eje !== 'x') return;
+      // Sin JDownloader no hay «descargar»: a la derecha no pasa del umbral.
+      gesto.dx = dx > 0 && !jd.configurado() ? Math.min(dx, UMBRAL_DESLIZAR / 2) : dx;
+      gesto.fila.style.transform = `translateX(${gesto.dx}px)`;
+      const accion =
+        gesto.dx <= -UMBRAL_DESLIZAR ? 'quitar' : gesto.dx >= UMBRAL_DESLIZAR ? 'descargar' : '';
+      if (accion) {
+        gesto.fila.dataset.deslizar = accion;
+        gesto.fila.dataset.textoDeslizar = t(`buscar.deslizar.${accion}`);
+      } else gesto.fila.removeAttribute('data-deslizar');
+    },
+    { passive: true }
+  );
+  const acabarGesto = cancelado => {
+    const g = gesto;
+    gesto = null;
+    if (!g || g.eje !== 'x') return;
+    anularClic = true;
+    setTimeout(() => (anularClic = false), 400);
+    const accion = cancelado ? '' : g.fila.dataset.deslizar || '';
+    soltarFila(g.fila);
+    const enlace = g.fila.dataset.id;
+    if (accion === 'quitar') quitarDeLaLista([enlace]);
+    else if (accion === 'descargar') descargar([enlace]);
+  };
+  rejilla.addEventListener('touchend', () => acabarGesto(false), { passive: true });
+  rejilla.addEventListener('touchcancel', () => acabarGesto(true), { passive: true });
+  // Tras deslizar, el «clic» que manda el navegador al soltar no abre la ficha.
+  rejilla.addEventListener(
+    'click',
+    e => {
+      if (!anularClic) return;
+      anularClic = false;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    true
+  );
 
   /* ── Sitios ─────────────────────────────────────────────────────── */
   function textoAyudaSitios() {
@@ -1185,6 +1348,7 @@ export function createBuscarView(root) {
     if (conAbierta) estado.set(ID_WEB, { fase: 'espera', total: 0 });
     if (!opciones.listado) listados = new Map();
     ultimaBusqueda = q;
+    if (!esEnlace) proponerCarpeta(q);
     mostrarResultados();
 
     const query = new URLSearchParams(
@@ -1193,6 +1357,7 @@ export function createBuscarView(root) {
     if (opciones.listado) query.set('listado', '1');
     if (web) query.set('web', '1');
     if (conAbierta) query.set('abierta', '1');
+    if (destinoPropuesto && destinoFijo) query.set('carpeta', destinoFijo);
     // Siempre la lista: sin ella el servidor se salta los «no buscar por defecto», y aquí lo que
     // manda es lo que está encendido.
     if (!esEnlace && elegidos.length > 0) {
@@ -1317,6 +1482,7 @@ export function createBuscarView(root) {
     if (b.carpeta) {
       destinoFijo = b.carpeta;
       reglaFija = null;
+      destinoPropuesto = false;
       pintarDestinos();
     }
     conectar(b.id, 0);

@@ -275,10 +275,16 @@ async function buscarEnTodos(
       }
       emit({ type: 'sitio_fin', sitio: sitio.id, total, bloqueo, recortado });
       apuntar({ resultados: total, conDuracion, bloqueos: bloqueo ? 1 : 0 });
+      if (contar && !signal?.aborted) {
+        estadisticas.anotarSalud(dominio, { total, error: bloqueo ? 'bloqueo' : '' });
+      }
       return { id: sitio.id, total };
     } catch (error) {
       emit({ type: 'sitio_fin', sitio: sitio.id, total, error: error.message });
       apuntar({ resultados: total, conDuracion });
+      if (contar && !signal?.aborted) {
+        estadisticas.anotarSalud(dominio, { total, error: error.message });
+      }
       return { id: sitio.id, total, error: error.message };
     }
   });

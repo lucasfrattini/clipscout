@@ -115,6 +115,8 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
     configurado: () => configurado,
     /** Carpetas de clipkeeper (o null) y la última usada, para un «Descargar en» fijo. */
     destinos: () => destinos,
+    /** Personas y etiquetas de clipkeeper (para proponer la carpeta sola al buscar). */
+    catalogo: () => catalogo,
     nuevaCarpeta,
     ultima: () => ultima,
     /** Avisa cuando se sabe si hay JDownloader (para repintar botones por fila). */

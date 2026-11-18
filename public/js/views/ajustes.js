@@ -983,6 +983,17 @@ export function createAjustesView(raiz) {
 
   /* ── Sitios: opciones por sitio ────────────────────────────────────── */
 
+  /** «Sin resultados en las 2 últimas búsquedas (la última con resultados: 12/11)». */
+  function textoSalud(salud) {
+    const desde = salud.ultimaConResultados
+      ? t('aj.sitios.roto.desde', {
+          fecha: new Date(salud.ultimaConResultados).toLocaleDateString(),
+        })
+      : '';
+    const error = salud.ultimoError ? ` (${salud.ultimoError})` : '';
+    return `${t('aj.sitios.roto', { n: salud.cerosSeguidos })}${error}${desde}`;
+  }
+
   function tarjetaSitios() {
     const lista = el('ul', { className: 'cs-sitios' });
     async function cargarSitios() {
@@ -1068,6 +1079,11 @@ export function createAjustesView(raiz) {
                   },
                 },
                 {
+                  texto: t('aj.sitios.reconfigurar'),
+                  detalle: t('aj.sitios.reconfigurar.detalle'),
+                  fn: () => reconfigurar(s),
+                },
+                {
                   texto: t(s.jdDirecto ? 'aj.sitios.directo.quitar' : 'aj.sitios.directo.poner'),
                   detalle: t('aj.sitios.directo.hint'),
                   fn: async () => {
@@ -1085,20 +1101,46 @@ export function createAjustesView(raiz) {
             }),
         },
       });
+      // CS-17: dejó de dar resultados (dos búsquedas seguidas sin nada): aviso y «Volver a configurar».
+      const aviso = s.salud?.aviso
+        ? el('div', {
+            className: 'cs-sitio__aviso',
+            attrs: { role: 'note' },
+            children: [
+              el('span', { text: textoSalud(s.salud) }),
+              el('button', {
+                className: 'cg-boton',
+                attrs: { type: 'button' },
+                text: t('aj.sitios.reconfigurar'),
+                on: { click: () => reconfigurar(s) },
+              }),
+            ],
+          })
+        : null;
       return el('li', {
-        className: `cs-sitio${s.fueraPorDefecto ? ' cs-sitio--apagado' : ''}`,
+        className: `cs-sitio${s.fueraPorDefecto ? ' cs-sitio--apagado' : ''}${aviso ? ' cs-sitio--roto' : ''}`,
         children: [
           el('div', {
             className: 'cs-sitio__texto',
             children: [
-              el('strong', { text: s.nombre }),
+              el('strong', { text: aviso ? `⚠ ${s.nombre}` : s.nombre }),
               el('span', { text: [s.dominio, ...cifras.slice(0, 2)].join(' · ') }),
             ],
           }),
           el('label', { className: 'cs-interruptor', children: [interruptor, el('span')] }),
           mas,
+          aviso,
         ],
       });
+    }
+
+    /** Vuelve a hacer el alta automática del sitio y, si da vídeos, cambia su configuración. */
+    async function reconfigurar(s) {
+      const n = await altaSitiosDialog({ dominios: [s.dominio], reconfigurar: true });
+      if (n > 0) {
+        toast(t('aj.sitios.reconfigurado', { nombre: s.nombre }), 'success', 4000);
+        cargarSitios();
+      }
     }
 
     /** Borrar un sitio no se deshace (su configuración se pierde): mantener pulsado. */
