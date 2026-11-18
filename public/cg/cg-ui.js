@@ -14,7 +14,7 @@
   'use strict';
   if (window.cg && window.cg.version) return; // cargado dos veces: nada
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.2.0';
   const raiz = document.documentElement;
 
   // ── Textos ────────────────────────────────────────────────────────────
@@ -103,6 +103,9 @@
     ok: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/>',
     error: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>',
     info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.5v.01"/>',
+    deshacer: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    lista: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>',
+    anadir: '<path d="M12 5v14M5 12h14"/>',
   };
   const plantilla = document.createElement('template');
   /** Un icono: <svg class="cg-icono"> si el nombre existe; si no, el texto tal cual (p. ej. un emoji). */
@@ -676,7 +679,10 @@
       }
     }
     _destinos() {
-      return [...this.children].filter(n => (n.tagName === 'A' || n.tagName === 'BUTTON') && !esPropio(n));
+      // El logo ([data-marca]) no es un destino: ni se marca activo ni lleva icono.
+      return [...this.children].filter(
+        n => (n.tagName === 'A' || n.tagName === 'BUTTON') && !esPropio(n) && !n.hasAttribute('data-marca'),
+      );
     }
     _textos() {
       this.setAttribute('aria-label', this.getAttribute('etiqueta') || t('navegacion'));
@@ -883,11 +889,9 @@
       }
       if (this.hasAttribute('filtros')) {
         const n = parseInt(this.getAttribute('filtros'), 10) || 0;
-        this._filtros.replaceChildren(
-          icono('filtros'),
-          el('span', {}, t('filtros')),
-          n ? el('span', { class: 'cg-chips-cuenta', 'aria-hidden': 'true' }, String(n)) : null,
-        );
+        const piezas = [icono('filtros'), el('span', {}, t('filtros'))];
+        if (n) piezas.push(el('span', { class: 'cg-chips-cuenta', 'aria-hidden': 'true' }, String(n)));
+        this._filtros.replaceChildren(...piezas); // sin null: replaceChildren lo pintaría como texto
         this._filtros.setAttribute('aria-label', t('filtrosActivos', n));
         this.append(this._filtros);
       } else {
@@ -995,6 +999,8 @@
     const alCambiar = o.alCambiar || (() => {});
     const espera = o.espera != null ? o.espera : 500;
     const scroller = o.desplaza ? (typeof o.desplaza === 'string' ? document.querySelector(o.desplaza) : o.desplaza) : null;
+    // {lista: true}: filas en vez de tarjetas: ni encoge ni pinta el círculo (la app pone su casilla).
+    if (o.lista) caja.classList.add('cg-sel-lista');
     const claves = new Set();
     let modo = false;
     let ancla = null; // clave del último elemento tocado (inicio de un rango con mayúsculas)

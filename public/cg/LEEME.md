@@ -4,6 +4,7 @@ Componentes de interfaz compartidos por clipkeeper, clipscout y clonbuster (SU-1
 
 ## Regla de copia idéntica
 
+- Se copian `cg-ui.css` y `cg-ui.js` (y, si se quiere la muestra, `cg-ui.html`, `cg-ui-muestra.css` y `cg-ui-muestra.js`).
 - La copia **canónica** es esta: `clonbuster/src/clonbuster/web/cg/`. Los cambios se hacen aquí.
 - Las otras son copias **byte a byte**: clipscout `public/cg/` y clipkeeper `frontend/public/cg/`.
 - Cada repo tiene un test que compara el md5 de `cg-ui.css` y `cg-ui.js` con una constante. Al copiar, se actualiza esa constante en los tres.
@@ -39,9 +40,15 @@ Tema: `<html data-theme="light|dark">` fuerza uno; sin él, el del sistema. Text
 | `<cg-dialogo>` | El diálogo de `cgConfirmar`, también usable a mano: `abrir()`, `cerrar(valor)`; un botón con `data-valor` lo cierra y pasa `{valor}` en `cg-cerrar`. |
 | `<cg-chips filtros="N" [unico]>` | Fila deslizable de `<button>`; estado en `aria-pressed` (inicial con `data-activo`). Eventos `cg-cambio` (cancelable, antes) y `cg-cambiado` (`{chip, activo, activos}`). Con `filtros`, botón final «Filtros» con la cuenta, que emite `cg-filtros`. |
 | `<cg-barra-accion cuenta="N">` | Barra de selección: «✕ · N seleccionados · acciones». Se abre con `cuenta > 0` y entonces oculta `<cg-barra-inferior>` (clase `cg-seleccionando` en `<html>`). Hijos `<button data-icono="papelera" [data-peligro]>`. «✕» emite `cg-cancelar` (cancelable; si no, pone la cuenta a 0). |
-| `cgSeleccion(contenedor, {item, clave, alCambiar, espera, desplaza})` | Pulsación larga (500 ms) entra en modo selección; en modo, un toque alterna; mantener y arrastrar marca el rango (con autodesplazamiento); mayúsculas+clic rango, Ctrl/Cmd+clic alterna; Escape sale. Devuelve `{claves, cuenta, modo, elementos, seleccionar(lista, si), poner(lista), alternar(x), todos(), limpiar(), destruir()}`. La selección va por `clave` (por defecto `data-id`), así sobrevive a repintados y puede incluir lo no cargado (`poner(ids)`). |
+| `cgSeleccion(contenedor, {item, clave, alCambiar, espera, desplaza, lista})` | Pulsación larga (500 ms) entra en modo selección; en modo, un toque alterna; mantener y arrastrar marca el rango (con autodesplazamiento); mayúsculas+clic rango, Ctrl/Cmd+clic alterna; Escape sale. Con `lista: true` (filas), la selección es solo fondo y borde: ni encoge ni pinta el círculo. Devuelve `{claves, cuenta, modo, elementos, seleccionar(lista, si), poner(lista), alternar(x), todos(), limpiar(), destruir()}`. La selección va por `clave` (por defecto `data-id`), así sobrevive a repintados y puede incluir lo no cargado (`poner(ids)`). |
 
-También: `window.cg = {version, aviso, confirmar, seleccion, icono, iconos, textos, t}` y `cgIcono(nombre)`, con iconos para los destinos de las tres apps (`biblioteca`, `limpiar`, `reels`, `personas`, `buscar`, `actividad`, `ajustes`, `papelera`, `revisar`, `apartar`, `etiqueta`, `carpeta`, `mover`…). Un nombre desconocido se pinta como texto (p. ej. un emoji).
+También: `window.cg = {version, aviso, confirmar, seleccion, icono, iconos, textos, t}` y `cgIcono(nombre)`, con iconos para los destinos de las tres apps (`biblioteca`, `limpiar`, `reels`, `personas`, `buscar`, `actividad`, `ajustes`, `papelera`, `revisar`, `apartar`, `etiqueta`, `carpeta`, `mover`, `deshacer`, `lista`, `anadir`…). Un nombre desconocido se pinta como texto (p. ej. un emoji).
+
+## Versiones
+
+- **1.2.0** (clonbuster 0.20.0): `<cg-chips filtros="0">` ya no pinta «Filtros null»; el logo `[data-marca]` no cuenta como destino de `<cg-barra-inferior>` (ni `activar()` lo marca ni lleva icono); `cgSeleccion(…, {lista: true})` para filas (sin encoger ni círculo: fondo y borde, la casilla la pone la app); la muestra lleva su estilo y su script en `cg-ui-muestra.css` / `cg-ui-muestra.js` (vale con CSP estricta).
+- **1.1.0**: iconos `deshacer`, `lista` y `anadir`. Sin cambios de API ni de estilos.
+- **1.0.0**: primera versión (SU-17).
 
 ## Notas
 

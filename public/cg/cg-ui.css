@@ -933,3 +933,13 @@ cg-barra-accion :focus-visible { outline-color: var(--cg-acento-claro) !importan
   border-color: var(--cg-acento);
   background: var(--cg-acento) var(--cg-marca-check) center / 16px no-repeat;
 }
+/* cgSeleccion(…, {lista: true}): filas; solo fondo y borde, sin encoger ni círculo. */
+.cg-sel-lista .cg-sel-item,
+.cg-sel-lista.cg-modo-seleccion .cg-sel-item:not(.cg-seleccionado),
+.cg-sel-lista .cg-sel-item.cg-seleccionado { transform: none; }
+.cg-sel-lista.cg-modo-seleccion .cg-sel-item::after { content: none; }
+.cg-sel-lista .cg-sel-item.cg-seleccionado {
+  outline: none;
+  background: var(--cg-acento-suave);
+  box-shadow: inset 3px 0 0 var(--cg-acento);
+}
