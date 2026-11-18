@@ -25,8 +25,16 @@ const DEFAULT_LIMITS = {
  */
 const CARGAR_VISTA = {
   actividad: () => import('./views/actividad.js').then(m => m.createActividadView),
-  explorer: () => import('./views/explorer.js').then(m => m.createExplorerView),
-  video: () => import('./views/video.js').then(m => m.createVideoView),
+  explorer: () =>
+    Promise.all([
+      import('./views/explorer.js').then(m => m.createExplorerView),
+      cargarEstilos(ESTILOS_DE_VISTA.explorer),
+    ]).then(([crear]) => crear),
+  video: () =>
+    Promise.all([
+      import('./views/video.js').then(m => m.createVideoView),
+      cargarEstilos(ESTILOS_DE_VISTA.video),
+    ]).then(([crear]) => crear),
   ajustes: () =>
     Promise.all([
       import('./views/ajustes.js').then(m => m.createAjustesView),
@@ -35,7 +43,11 @@ const CARGAR_VISTA = {
 };
 
 /** Hojas de estilo que solo usa una vista: se piden con ella (CS-15), no al arrancar. */
-const ESTILOS_DE_VISTA = { ajustes: ['/styles/sistema.css'] };
+const ESTILOS_DE_VISTA = {
+  ajustes: ['/styles/sistema.css'],
+  explorer: ['/styles/avanzada.css'],
+  video: ['/styles/avanzada.css'],
+};
 
 function cargarEstilos(rutas = []) {
   return Promise.all(
