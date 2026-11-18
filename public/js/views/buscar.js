@@ -2269,7 +2269,15 @@ export function createBuscarView(root) {
       return '';
     }
   };
-  const inicial = parametro('q') || parametro('searchTerm');
+  // CS-N8: lo que llegó por «Compartir» del móvil (ver js/compartir.js), una sola vez.
+  let compartido = '';
+  try {
+    compartido = sessionStorage.getItem('clipscout:compartido') || '';
+    sessionStorage.removeItem('clipscout:compartido');
+  } catch {
+    compartido = '';
+  }
+  const inicial = compartido || parametro('q') || parametro('searchTerm');
   // ?prellenar=: deja el texto escrito, pero la búsqueda la lanza la persona.
   const prellenado = parametro('prellenar');
   if (inicial || prellenado) entrada.value = inicial || prellenado;

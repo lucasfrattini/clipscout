@@ -45,6 +45,11 @@ const LIBRES = new Set([
   '/styles/bienvenida.css',
   // El navegador pide el manifiesto sin cookies (SU-14): sin datos, solo nombre e iconos.
   '/manifest.webmanifest',
+  // «Compartir» del móvil (CS-N8): solo guarda lo compartido en la pestaña y abre Buscar (que ya
+  // pide la sesión); sin datos.
+  '/compartir',
+  '/compartir.html',
+  '/js/compartir.js',
 ]);
 const EXENTAS_HOST = new Set(['/api/health', '/api/salud']);
 const CAMBIAN = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

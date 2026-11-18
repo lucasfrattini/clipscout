@@ -506,6 +506,18 @@ try {
   if (recogidos.some(l => enlaces.includes(l))) throw new Error('Recoger reenvió lo ya enviado');
   registro('recoger: 10 enviados', propuestos.join(' | '));
 
+  // «Compartir» del móvil (CS-N8): /compartir con el enlace dentro del texto abre Buscar y lo busca.
+  // (uno que no se ha enviado aún: lo enviado sale oculto)
+  const compartido = `${urlSitio}/v/16/clip-de-prueba-16`;
+  await pagina.goto(`${base}/compartir?text=${encodeURIComponent(`Mira esto: ${compartido}`)}`);
+  await pagina.waitForURL(/#\/buscar/);
+  await pagina.waitForFunction(
+    v => document.querySelector('.buscar__entrada')?.value === v,
+    compartido
+  );
+  await pagina.locator('.buscar__tarjeta').first().waitFor({ timeout: 60000 });
+  registro('compartir: el enlace se busca solo');
+
   // Actividad: la búsqueda, el paquete enviado y las programadas, en un sitio.
   await pagina.locator('cg-barra-inferior a[href="#/actividad"]').click();
   await pagina.locator('.cs-fila').first().waitFor();
