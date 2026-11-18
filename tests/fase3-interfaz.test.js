@@ -49,7 +49,7 @@ test('Ajustes: 4 secciones y cada dirección vieja lleva a la suya', async () =>
 
 test('Actividad: tres pestañas; lo desconocido abre la primera', async () => {
   const { PESTANAS_ACTIVIDAD, pestanaActividad } = await cargar();
-  assert.deepEqual(PESTANAS_ACTIVIDAD, ['busquedas', 'descargas', 'programadas']);
+  assert.deepEqual(PESTANAS_ACTIVIDAD, ['busquedas', 'descargas', 'programadas', 'avisos']);
   assert.equal(pestanaActividad('descargas'), 'descargas');
   assert.equal(pestanaActividad('otra'), 'busquedas');
   assert.equal(pestanaActividad(undefined), 'busquedas');

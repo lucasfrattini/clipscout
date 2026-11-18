@@ -109,6 +109,10 @@ async function volcar() {
       } else {
         s.cerosSeguidos = (s.cerosSeguidos || 0) + 1;
         s.ultimoError = error;
+        // CS-N5: el aviso, justo al cruzar el umbral (no en cada búsqueda vacía de después).
+        if (s.cerosSeguidos === config.salud.cerosAviso) {
+          require('./avisos').anotar('sitio_roto', { dominio });
+        }
       }
       d.salud[dominio] = s;
     }

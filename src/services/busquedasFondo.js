@@ -497,10 +497,25 @@ function arrancar(b) {
       publicar(b, { type: 'error', message: error.message });
     })
     .finally(() => {
+      const yaCerrada = Boolean(b.terminadaEn);
       if (!b.terminadaEn) cerrar(b);
       b.cortando = false;
+      avisarSiFueLarga(b, yaCerrada);
       despachar();
     });
+}
+
+/**
+ * CS-N5: una búsqueda a mano larga (se suele dejar de mirar) avisa al terminar, con cuántos
+ * resultados. Las programadas avisan por su cuenta; una parada a mano, no.
+ */
+function avisarSiFueLarga(b, parada) {
+  if (parada || b.parada || b.origen === 'programada' || !b.empezadaEn) return;
+  if (Date.now() - b.empezadaEn < config.avisos.busquedaLargaMs) return;
+  const total = b.eventos
+    .filter(e => e.type === 'resultados')
+    .reduce((n, e) => n + (e.items?.length || 0), 0);
+  require('./avisos').anotar('busqueda_terminada', { q: b.q || '', total, id: b.id });
 }
 
 /** Arranca las que quepan, por orden de llegada. */

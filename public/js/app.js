@@ -267,6 +267,8 @@ async function main() {
   await aceptarAviso();
   if (!window.guiaVista('clipscout')) mostrarGuia();
   avisoSinCifrar();
+  // CS-N5: el punto de «Actividad» y las notificaciones del sistema (si se pidieron).
+  import('./avisos.js').then(m => m.iniciarAvisos());
   // ¿Versión nueva? Lo que ya sabe el servidor (él consulta la web una vez al día, no esto).
   sistema
     .actualizaciones()

@@ -1100,3 +1100,8 @@ cg-chips.actividad__pestanas {
 .recoger__mas[open] summary::before {
   transform: rotate(90deg);
 }
+
+/* Avisos (CS-N5): el texto entero, en dos líneas si hace falta. */
+.actividad__aviso .cs-fila__texto strong {
+  white-space: normal;
+}

@@ -26,7 +26,7 @@ export function seccionAjustes(pedida) {
 }
 
 /** Actividad: tres pestañas. Lo viejo de Ajustes (paquetes, programadas) también lleva aquí. */
-export const PESTANAS_ACTIVIDAD = ['busquedas', 'descargas', 'programadas'];
+export const PESTANAS_ACTIVIDAD = ['busquedas', 'descargas', 'programadas', 'avisos'];
 export function pestanaActividad(pedida) {
   return PESTANAS_ACTIVIDAD.includes(pedida) ? pedida : PESTANAS_ACTIVIDAD[0];
 }

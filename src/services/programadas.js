@@ -329,6 +329,12 @@ async function terminar(id, prog, busqueda) {
       }
     }
     ultimo = { fecha, encontrados: items.length, enviados: mandados, descartes, error: fallo };
+    // CS-N5: aviso si mandó algo o si falló (una vuelta sin nada nuevo no molesta).
+    if (fallo) {
+      require('./avisos').anotar('programada_error', { termino: prog.termino, error: fallo });
+    } else if (mandados > 0) {
+      require('./avisos').anotar('programada', { termino: prog.termino, n: mandados });
+    }
     await crew.cambiar(datos => {
       const p = (datos.programadas || []).find(x => x.id === id);
       if (p) {

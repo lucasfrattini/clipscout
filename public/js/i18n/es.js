@@ -1348,4 +1348,28 @@ export const es = {
   'aj.prog.orden.busqueda': 'Como salen en la búsqueda',
   'aj.prog.maximo': 'Como mucho (por vuelta)',
   'aj.prog.maximo.hint': '0 = todo lo nuevo. Con un número, se eligen los primeros según el orden.',
+  'act.avisos': 'Avisos',
+  'act.vacio.avisos':
+    'Sin avisos. Aquí aparecen las programadas que mandan algo o fallan, los paquetes terminados o fallidos, los sitios que dejan de dar resultados y las búsquedas largas al terminar.',
+  'avisos.sinLeer': '{n} avisos sin leer',
+  'avisos.varios': '{n} avisos nuevos',
+  'avisos.nuevo': 'nuevo',
+  'avisos.ver': 'Ver',
+  'aviso.programada': '«{termino}»: {n} nuevos enviados al gestor de descargas',
+  'aviso.programada_error': '«{termino}» falló: {error}',
+  'aviso.paquete_terminado': 'Descarga terminada: {nombre}',
+  'aviso.paquete_fallido': 'Descarga con fallos: {nombre}',
+  'aviso.sitio_roto': '{dominio} ya no da resultados: revisa su configuración',
+  'aviso.busqueda_terminada': 'Búsqueda terminada: «{q}», {total} resultados',
+  'aj.notif.titulo': 'Avisos',
+  'aj.notif.hint':
+    'Siempre hay un punto en Actividad cuando pasa algo. Además, puede salir una notificación del sistema mientras clipscout está abierto en alguna pestaña.',
+  'aj.notif.activar': 'Notificaciones del sistema en este navegador',
+  'aj.notif.nota':
+    'Solo en este navegador. Llegan con clipscout abierto (aunque esté en otra pestaña).',
+  'aj.notif.no_soportado': 'Este navegador no tiene notificaciones.',
+  'aj.notif.inseguro':
+    'El navegador solo las permite con https o abriendo clipscout en este mismo equipo.',
+  'aj.notif.denegado':
+    'Las notificaciones están bloqueadas para esta página: actívalas en los ajustes del navegador.',
 };

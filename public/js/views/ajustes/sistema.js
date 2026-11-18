@@ -41,6 +41,43 @@ const enlaceDescarga = (href, texto, nombre) =>
     text: texto,
   });
 
+/* ── Avisos del sistema (CS-N5) ──────────────────────────────────────── */
+
+/**
+ * Notificaciones del navegador para los avisos (programadas, paquetes, sitios rotos, búsquedas
+ * largas). En la app siempre hay el punto en Actividad; esto es lo que sale fuera de la página.
+ */
+export function tarjetaNotificaciones() {
+  const nota = el('p', { className: 'card__hint', attrs: { role: 'status' } });
+  const interruptor = el('input', { attrs: { type: 'checkbox', role: 'switch' } });
+  async function pintar() {
+    const m = await import('../../avisos.js');
+    const posible = m.notificacionesPosibles();
+    interruptor.checked = m.notificacionesActivas();
+    interruptor.disabled = posible !== 'si';
+    nota.textContent = posible === 'si' ? t('aj.notif.nota') : t(`aj.notif.${posible}`);
+  }
+  interruptor.addEventListener('change', async () => {
+    const m = await import('../../avisos.js');
+    const activas = await m.cambiarNotificaciones(interruptor.checked);
+    if (interruptor.checked && !activas) toast(t('aj.notif.denegado'), 'error', 6000);
+    pintar();
+  });
+  pintar();
+  return tarjeta({
+    id: 'tarjeta-notificaciones',
+    titulo: t('aj.notif.titulo'),
+    hint: t('aj.notif.hint'),
+    cuerpo: [
+      el('label', {
+        className: 'cs-casilla',
+        children: [interruptor, el('span', { text: t('aj.notif.activar') })],
+      }),
+      nota,
+    ],
+  });
+}
+
 /* ── Copias de seguridad (diarias) y copia de la suite ───────────────── */
 
 export function tarjetaRespaldos({ recargar }) {

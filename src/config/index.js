@@ -314,6 +314,13 @@ const config = {
   salud: {
     cerosAviso: intFromEnv('SALUD_CEROS_AVISO', 2),
   },
+  // Avisos (CS-N5): programada con resultados o errores, paquete terminado o fallido, sitio roto
+  // y búsqueda larga terminada. Se guardan los últimos `max` en data/avisos.json.
+  avisos: {
+    max: intFromEnv('AVISOS_MAX', 100),
+    // Una búsqueda a mano que dura más que esto avisa al terminar (se suele dejar de mirar).
+    busquedaLargaMs: intFromEnv('AVISOS_BUSQUEDA_LARGA_MS', 60000),
+  },
   // ¿Responde el proxy de salida? (services/proxySalida.js). Se le pide un túnel hacia
   // `destinoPrueba` (host:puerto); si no lo abre en `timeoutMs`, las búsquedas no esperan a cada
   // sitio: fallan al momento con «el proxy de salida no responde».

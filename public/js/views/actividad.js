@@ -10,6 +10,7 @@ import { t, tp, alCambiarIdioma } from '../i18n/index.js';
 import { crearCabecera } from '../cabecera.js';
 import { abrirHoja, menuAcciones } from '../hojas.js';
 import { pestanaActividad, PESTANAS_ACTIVIDAD } from '../unaMano.js';
+import { comprobarAvisos, marcarLeidos, textoAviso } from '../avisos.js';
 
 const confirmarIrreversible = opciones =>
   window.cgConfirmar({ peligro: true, mantener: true, ...opciones });
@@ -71,7 +72,7 @@ export function createActividadView(raiz) {
     });
   }
 
-  const cuentas = { busquedas: 0, descargas: 0, programadas: 0 };
+  const cuentas = { busquedas: 0, descargas: 0, programadas: 0, avisos: 0 };
   const pintarPestanas = () => {
     for (const id of PESTANAS_ACTIVIDAD) {
       botones[id].lastElementChild.textContent = cuentas[id]
@@ -579,12 +580,71 @@ export function createActividadView(raiz) {
     });
   }
 
+  /* ── Avisos (CS-N5): lo que pasó mientras no mirabas ──────────────── */
+  const listaAvisos = el('ul', { className: 'cs-lista' });
+  let datosAvisos = { avisos: [], sinLeer: 0, leidoHasta: 0 };
+  const destinoAviso = a =>
+    ({
+      programada: '#/actividad/programadas',
+      programada_error: '#/actividad/programadas',
+      paquete_terminado: '#/actividad/descargas',
+      paquete_fallido: '#/actividad/descargas',
+      sitio_roto: '#/ajustes/busqueda',
+      busqueda_terminada: '#/actividad/busquedas',
+    })[a.tipo];
+  function pintarAvisos() {
+    if (!datosAvisos.avisos.length) {
+      listaAvisos.replaceChildren(vacio(t('act.vacio.avisos')));
+      return;
+    }
+    const error = /_error$|_fallido$|_roto$/;
+    listaAvisos.replaceChildren(
+      ...datosAvisos.avisos.slice(0, 50).map(a => {
+        const li = fila({
+          estado: error.test(a.tipo) ? 'error' : 'hecho',
+          titulo: textoAviso(a),
+          detalle:
+            new Date(a.fecha).toLocaleString() +
+            (a.id > datosAvisos.leidoHasta ? ` · ${t('avisos.nuevo')}` : ''),
+          acciones: destinoAviso(a)
+            ? [
+                el('a', {
+                  className: 'cg-boton cg-boton--fantasma',
+                  attrs: { href: destinoAviso(a) },
+                  text: t('avisos.ver'),
+                }),
+              ]
+            : [],
+        });
+        li.classList.add('actividad__aviso');
+        return li;
+      })
+    );
+  }
+  window.addEventListener('clipscout:avisos', e => {
+    datosAvisos = e.detail || datosAvisos;
+    cuentas.avisos = datosAvisos.sinLeer || 0;
+    pintarPestanas();
+    if (pestana === 'avisos' && !raiz.hidden) pintarAvisos();
+  });
+  async function verAvisos() {
+    pintarAvisos();
+    await comprobarAvisos();
+    pintarAvisos();
+    // Mirarlos es leerlos: se quita el punto (la marca «nuevo» se ve esta vez).
+    await marcarLeidos();
+    cuentas.avisos = 0;
+    pintarPestanas();
+  }
+
   /* ── Pestañas ──────────────────────────────────────────────────────── */
   function mostrar(id) {
     pestana = id;
     for (const [clave, b] of Object.entries(botones)) {
       b.setAttribute('aria-pressed', String(clave === id));
     }
+    // Con cuatro pestañas, la última no cabe a 390 px: la elegida se trae a la vista.
+    botones[id]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     if (id === 'busquedas') {
       panel.replaceChildren(listaBusquedas);
       pintarCola();
@@ -594,6 +654,9 @@ export function createActividadView(raiz) {
       panel.replaceChildren(listaPaquetes, avisoDescargas, barraDescargas);
       pintarPaquetes();
       cargarPaquetes(true);
+    } else if (id === 'avisos') {
+      panel.replaceChildren(listaAvisos);
+      verAvisos();
     } else {
       panel.replaceChildren(
         el('div', { className: 'cs-fila-botones', children: [nuevaProgramada] }),
@@ -609,7 +672,7 @@ export function createActividadView(raiz) {
     if (!visible()) return;
     if (pestana === 'busquedas') cargarCola();
     else if (pestana === 'descargas') cargarPaquetes();
-    else cargarProgramadas();
+    else if (pestana === 'programadas') cargarProgramadas();
   }, 5000);
 
   alCambiarIdioma(() => {

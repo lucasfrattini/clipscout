@@ -521,6 +521,19 @@ router.post(
   manejar(req => respaldos.restaurar(req.params.id))
 );
 
+/* ── Avisos (CS-N5) ─────────────────────────────────────────────────── */
+
+/** GET /api/avisos?desde=N — los avisos después del N (más nuevos primero) y los sin leer. */
+router.get(
+  '/avisos',
+  manejar(req => require('../services/avisos').listar({ desde: Number(req.query.desde) || 0 }))
+);
+/** POST /api/avisos/leidos {hasta?} — marca como leído (todo, o hasta ese número). */
+router.post(
+  '/avisos/leidos',
+  manejar(req => require('../services/avisos').marcarLeidos(req.body?.hasta))
+);
+
 /* ── Búsquedas programadas ─────────────────────────────────────────── */
 
 router.get(

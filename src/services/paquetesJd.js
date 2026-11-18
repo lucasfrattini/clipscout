@@ -305,6 +305,16 @@ async function revisar({ soloId = null, forzar = false } = {}) {
       }
     }
     const r = resumir(descarga, capturador);
+    // CS-N5: aviso al pasar a terminado o fallido (una vez: solo cuando cambia).
+    if (r.estado !== p.estado && (r.estado === 'terminado' || r.estado === 'error')) {
+      require('./avisos').anotar(
+        r.estado === 'terminado' ? 'paquete_terminado' : 'paquete_fallido',
+        {
+          nombre: p.nombre,
+          carpeta: p.carpeta || '',
+        }
+      );
+    }
     p.estado = r.estado;
     p.contadores = r;
     p.revisado = ahora;

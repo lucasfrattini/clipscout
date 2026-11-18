@@ -1342,4 +1342,28 @@ export const en = {
   'aj.prog.maximo': 'At most (per run)',
   'aj.prog.maximo.hint':
     '0 = everything new. With a number, the first ones by the order are picked.',
+  'act.avisos': 'Alerts',
+  'act.vacio.avisos':
+    'No alerts. Scheduled searches that send something or fail, finished or failed packages, sites that stop giving results and long searches when they end show up here.',
+  'avisos.sinLeer': '{n} unread alerts',
+  'avisos.varios': '{n} new alerts',
+  'avisos.nuevo': 'new',
+  'avisos.ver': 'View',
+  'aviso.programada': '“{termino}”: {n} new sent to the download manager',
+  'aviso.programada_error': '“{termino}” failed: {error}',
+  'aviso.paquete_terminado': 'Download finished: {nombre}',
+  'aviso.paquete_fallido': 'Download with errors: {nombre}',
+  'aviso.sitio_roto': '{dominio} no longer gives results: check its setup',
+  'aviso.busqueda_terminada': 'Search finished: “{q}”, {total} results',
+  'aj.notif.titulo': 'Alerts',
+  'aj.notif.hint':
+    'There is always a dot on Activity when something happens. A system notification can also appear while clipscout is open in some tab.',
+  'aj.notif.activar': 'System notifications in this browser',
+  'aj.notif.nota':
+    'Only in this browser. They arrive while clipscout is open (even in another tab).',
+  'aj.notif.no_soportado': 'This browser has no notifications.',
+  'aj.notif.inseguro':
+    'The browser only allows them over https or when clipscout is opened on this same computer.',
+  'aj.notif.denegado':
+    'Notifications are blocked for this page: allow them in the browser settings.',
 };

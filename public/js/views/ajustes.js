@@ -16,6 +16,7 @@ import {
   tarjetaAcercaDe,
   tarjetaCopiaSuite,
   tarjetaDiagnostico,
+  tarjetaNotificaciones,
   tarjetaRespaldos,
 } from './ajustes/sistema.js';
 import { tarjetaSitios } from './ajustes/sitios.js';
@@ -57,6 +58,7 @@ export function createAjustesView(raiz) {
     sistema: () => [
       tarjetaProxy(),
       tarjetaApariencia(),
+      tarjetaNotificaciones(),
       tarjetaAcceso(),
       tarjetaSesiones(),
       tarjetaGeneral(),
