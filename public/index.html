@@ -22,6 +22,17 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png" />
     <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+
+    <!--
+      Instalable en el móvil (SU-14), igual que clipkeeper y clonbuster: manifiesto con iconos
+      192/512 y «maskable», y el color de la barra del sistema según el tema (tema.js lo cambia si
+      se elige uno a mano en Ajustes → Apariencia).
+    -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#f4f6f9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="clipscout" />
   </head>
   <body>
     <a class="skip-link" href="#main" data-i18n="app.saltar">Saltar al contenido</a>

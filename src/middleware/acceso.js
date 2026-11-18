@@ -43,6 +43,8 @@ const LIBRES = new Set([
   '/bienvenida.html',
   '/js/bienvenida.js',
   '/styles/bienvenida.css',
+  // El navegador pide el manifiesto sin cookies (SU-14): sin datos, solo nombre e iconos.
+  '/manifest.webmanifest',
 ]);
 const EXENTAS_HOST = new Set(['/api/health', '/api/salud']);
 const CAMBIAN = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);

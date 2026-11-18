@@ -506,3 +506,60 @@ test('E: sin red no molesta', async t => {
   assert.equal(r.error, 'sin_red');
   assert.equal(r.hay_nueva, true, 'se queda lo último que se supo');
 });
+
+/* ── F. Qué sale de este equipo ────────────────────────────────────── */
+
+test('F: la lista de lo que sale del equipo dice lo configurado, sin credenciales', async t => {
+  const antes = config.outboundProxy;
+  config.outboundProxy = 'http://usuario:secreto@10.0.0.2:8118';
+  t.after(() => {
+    config.outboundProxy = antes;
+  });
+  const { salientes } = await (await conClave('/api/privacidad')).json();
+  const por = Object.fromEntries(salientes.map(s => [s.tipo, s]));
+  assert.deepEqual(Object.keys(por).sort(), [
+    'apps',
+    'gestor',
+    'proxy',
+    'sitios',
+    'versiones',
+    'web',
+  ]);
+  assert.equal(por.sitios.n, 1);
+  assert.equal(por.gestor.activo, true);
+  assert.equal(por.proxy.url, 'http://***@10.0.0.2:8118');
+  assert.ok(!JSON.stringify(salientes).includes('secreto'));
+  assert.deepEqual(
+    por.apps.apps.map(a => a.app),
+    ['clipkeeper']
+  );
+  assert.equal(por.versiones.activo, true);
+  assert.equal(por.web.activo, false);
+});
+
+/* ── G. Instalable en el móvil ─────────────────────────────────────── */
+
+test('G: manifiesto sin sesión, con iconos 192/512/maskable que existen y miden lo que dicen', async () => {
+  const r = await fetch(`${base}/manifest.webmanifest`);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /manifest\+json/);
+  const m = await r.json();
+  assert.equal(m.name, 'clipscout');
+  assert.equal(m.display, 'standalone');
+  assert.ok(m.theme_color && m.background_color);
+  const tamano = buf => [buf.readUInt32BE(16), buf.readUInt32BE(20)];
+  const propositos = new Set();
+  for (const icono of m.icons) {
+    const img = await fetch(`${base}${icono.src}`);
+    assert.equal(img.status, 200, icono.src);
+    const [ancho, alto] = tamano(Buffer.from(await img.arrayBuffer()));
+    assert.equal(`${ancho}x${alto}`, icono.sizes, icono.src);
+    propositos.add(icono.purpose);
+  }
+  assert.ok(m.icons.some(i => i.sizes === '192x192'));
+  assert.ok(propositos.has('maskable'));
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(html, /<link rel="manifest" href="\/manifest.webmanifest"/);
+  assert.match(html, /<link rel="apple-touch-icon"/);
+  assert.equal((html.match(/<meta name="theme-color"/g) || []).length, 2, 'claro y oscuro');
+});
