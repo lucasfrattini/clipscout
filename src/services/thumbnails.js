@@ -1,12 +1,10 @@
 'use strict';
 
-const axios = require('axios');
-
 const config = require('../config');
 const logger = require('../lib/logger');
 const { AppError } = require('../lib/errors');
 const { assertUrlIsSafe } = require('../lib/ssrf');
-const { buildHeaders, agentesPara } = require('../lib/http');
+const { buildHeaders, peticionSegura } = require('../lib/http');
 
 /**
  * Miniaturas servidas por el BACKEND, nunca por el navegador del usuario.
@@ -167,15 +165,15 @@ async function obtenerMiniatura(urlPedida, { signal } = {}) {
 
   let respuesta;
   try {
-    respuesta = await axios.get(url, {
+    // Cada redirección se valida (CS-S7), también saliendo por el proxy.
+    respuesta = await peticionSegura(url, {
+      method: 'get',
       headers: buildHeaders({ Accept: 'image/avif,image/webp,image/png,image/*;q=0.8' }),
       timeout: config.thumbnails.timeoutMs,
-      maxRedirects: config.http.maxRedirects,
       maxContentLength: config.thumbnails.maxBytes,
       maxBodyLength: config.thumbnails.maxBytes,
       responseType: 'arraybuffer',
       signal,
-      ...agentesPara(url),
     });
   } catch (error) {
     // El sitio no la da (404, conexión cortada…): es un fallo del origen, no nuestro.

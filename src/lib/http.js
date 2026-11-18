@@ -7,7 +7,9 @@ const https = require('node:https');
 const config = require('../config');
 const logger = require('./logger');
 const { AppError } = require('./errors');
-const { assertUrlIsSafe, validateUrlShape, secureLookup } = require('./ssrf');
+const ssrf = require('./ssrf');
+
+const { validateUrlShape, secureLookup } = ssrf;
 const { HostThrottle, sleep } = require('./throttle');
 
 /**
@@ -111,6 +113,48 @@ function guardRedirect(options) {
   validateUrlShape(target);
 }
 
+/**
+ * CS-S7: petición saliente que sigue las redirecciones A MANO, validando cada salto con
+ * `assertUrlIsSafe` (resuelve el nombre y corta las direcciones privadas) y eligiendo los agentes
+ * de cada destino. Hacía falta por el proxy de salida: con él, el proxy resuelve los nombres y
+ * `secureLookup` ya no ve la IP final, y axios seguía las redirecciones validando solo la FORMA
+ * (`guardRedirect`). Una sola función para páginas, tamaños, miniaturas y vídeo.
+ *
+ * `opciones` son las de axios (sin `url` ni agentes). `validateStatus` decide qué respuestas
+ * finales valen; las 3xx con `Location` se siguen siempre, hasta `maxRedirects`.
+ */
+async function peticionSegura(url, opciones = {}) {
+  const { maxRedirects = config.http.maxRedirects, validateStatus, ...resto } = opciones;
+  const vale = validateStatus || (s => s >= 200 && s < 300);
+  const esRedireccion = s => s >= 300 && s < 400;
+  let actual = url;
+  for (let saltos = 0; ; saltos += 1) {
+    await ssrf.assertUrlIsSafe(actual);
+    const respuesta = await axios.request({
+      ...resto,
+      url: actual,
+      maxRedirects: 0,
+      ...agentesPara(actual),
+      validateStatus: s => vale(s) || esRedireccion(s),
+    });
+    const destino = esRedireccion(respuesta.status) ? respuesta.headers.location : null;
+    if (!destino) {
+      if (vale(respuesta.status)) return respuesta;
+      // Como lo lanzaría axios (con `response`): quien mira el estado (429, páginas de bloqueo)
+      // sigue viéndolo igual.
+      const error = new Error(`Request failed with status code ${respuesta.status}`);
+      error.response = respuesta;
+      error.isAxiosError = true;
+      throw error;
+    }
+    respuesta.data?.destroy?.(); // el cuerpo de la redirección no interesa (y si es un stream, se cierra)
+    if (saltos >= maxRedirects) {
+      throw new AppError('Demasiadas redirecciones', 502, 'TOO_MANY_REDIRECTS');
+    }
+    actual = new URL(destino, actual).href;
+  }
+}
+
 /** ¿Este error es el sitio frenándonos a propósito? */
 function esRateLimit(error) {
   return error?.response?.status === 429;
@@ -159,20 +203,18 @@ function retryDelayMs(error, attempt) {
 
 /** GET de HTML con throttle, validación SSRF y tope de tamaño. */
 async function fetchHtml(url, { timeout, signal } = {}) {
-  await assertUrlIsSafe(url);
+  await ssrf.assertUrlIsSafe(url);
 
   return throttle.run(url, async () => {
     try {
-      const response = await axios.get(url, {
+      const response = await peticionSegura(url, {
+        method: 'get',
         headers: buildHeaders(),
         timeout: timeout ?? config.http.pageTimeoutMs,
-        maxRedirects: config.http.maxRedirects,
         maxContentLength: config.http.maxResponseBytes,
         maxBodyLength: config.http.maxResponseBytes,
         responseType: 'text',
         signal,
-        ...agentesPara(url),
-        beforeRedirect: guardRedirect,
         validateStatus: status => status >= 200 && status < 400,
       });
 
@@ -241,14 +283,15 @@ async function fetchHtmlWithRetry(url, { retries, signal, timeout } = {}) {
  */
 async function fetchContentLength(url, { signal, referer } = {}) {
   try {
-    await assertUrlIsSafe(url);
+    await ssrf.assertUrlIsSafe(url);
   } catch {
     return null;
   }
 
   try {
     return await throttle.run(url, async () => {
-      const response = await axios.head(url, {
+      const response = await peticionSegura(url, {
+        method: 'head',
         headers: buildHeaders(
           referer
             ? {
@@ -262,10 +305,7 @@ async function fetchContentLength(url, { signal, referer } = {}) {
             : {}
         ),
         timeout: config.http.headTimeoutMs,
-        maxRedirects: config.http.maxRedirects,
         signal,
-        ...agentesPara(url),
-        beforeRedirect: guardRedirect,
       });
       const contentLength = response.headers['content-length'];
       if (contentLength === undefined) return null;
@@ -283,6 +323,7 @@ function agentesSeguros() {
 }
 
 module.exports = {
+  peticionSegura,
   guardRedirect,
   sinProxy,
   agentesPara,

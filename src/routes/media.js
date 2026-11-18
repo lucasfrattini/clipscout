@@ -5,7 +5,7 @@ const express = require('express');
 
 const config = require('../config');
 const { AppError } = require('../lib/errors');
-const { agentesPara, buildHeaders, guardRedirect } = require('../lib/http');
+const { buildHeaders, peticionSegura } = require('../lib/http');
 const { assertUrlIsSafe } = require('../lib/ssrf');
 
 const router = express.Router();
@@ -42,7 +42,9 @@ router.get('/media', async (req, res, next) => {
     const controller = new AbortController();
     res.on('close', () => controller.abort());
 
-    const respuesta = await axios.get(destino, {
+    // Cada redirección se valida (CS-S7), también saliendo por el proxy.
+    const respuesta = await peticionSegura(destino, {
+      method: 'get',
       responseType: 'stream',
       headers: buildHeaders({
         Accept: '*/*',
@@ -54,12 +56,9 @@ router.get('/media', async (req, res, next) => {
         'Sec-Fetch-Site': 'cross-site',
       }),
       timeout: config.media.timeoutMs,
-      maxRedirects: config.http.maxRedirects,
       signal: controller.signal,
       validateStatus: s => s === 200 || s === 206,
       decompress: false,
-      ...agentesPara(destino),
-      beforeRedirect: guardRedirect,
     });
 
     const tipo = String(respuesta.headers['content-type'] || '');
