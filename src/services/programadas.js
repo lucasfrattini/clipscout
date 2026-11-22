@@ -32,6 +32,7 @@ const { elegir } = require('../lib/recoger');
 const CADA_MS = 5 * 60 * 1000; // cada cuánto se mira si toca alguna
 const MAX_ENVIADOS = 5000; // enlaces recordados por búsqueda
 const MAX_PROGRAMADAS = 100;
+const MAX_MANDADOS = 20; // lo mandado en la última vuelta que se recuerda (títulos y enlaces)
 
 let enCurso = null; // id de la programada que se está ejecutando (una a la vez)
 
@@ -70,6 +71,32 @@ async function enviadosDe(id) {
   return new Set(porBusqueda[id] || []);
 }
 
+const MAX_ALIAS = 5;
+
+/** Alias distintos del término (sin repetir por mayúsculas o tildes), como mucho `MAX_ALIAS`. */
+function limpiarAlias(lista, termino = '') {
+  const clave = s =>
+    String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  const vistos = new Set([clave(termino)]);
+  const fuera = [];
+  for (const a of Array.isArray(lista) ? lista : []) {
+    const texto = String(a || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 200);
+    const k = clave(texto);
+    if (!k || vistos.has(k)) continue;
+    vistos.add(k);
+    fuera.push(texto);
+  }
+  return fuera.slice(0, MAX_ALIAS);
+}
+
 function limpiar(entrada = {}, anterior = {}) {
   const texto = (v, max = 200) =>
     String(v ?? '')
@@ -102,6 +129,13 @@ function limpiar(entrada = {}, anterior = {}) {
       : null,
     // «También en toda la web»: desactivada salvo que se marque (las guardadas antes, igual).
     abierta: Boolean(entrada.abierta ?? anterior.abierta ?? false),
+    // Fase 7: alias de la persona (NU-4: se buscan también y valen para «lleva el nombre»), la
+    // biblioteca de clipkeeper de la carpeta (para lo esperado, C2) y si la creó «Seguir» (C4).
+    alias: limpiarAlias(entrada.alias ?? anterior.alias, termino),
+    bibliotecaId: Number.isInteger(Number(entrada.bibliotecaId ?? anterior.bibliotecaId))
+      ? Number(entrada.bibliotecaId ?? anterior.bibliotecaId)
+      : null,
+    seguida: Boolean(entrada.seguida ?? anterior.seguida ?? false),
     activa: Boolean(entrada.activa ?? anterior.activa ?? true),
     ultimaVez: anterior.ultimaVez || null,
     ultimo: anterior.ultimo || null,
@@ -164,6 +198,7 @@ function filtrar(
 ) {
   return elegir(items, {
     nombre: prog.persona || prog.termino,
+    alias: prog.alias || [],
     soloConNombre: Boolean(prog.soloConNombre),
     // Sin `orden` (las de antes), el de la búsqueda.
     orden: prog.orden || null,
@@ -178,9 +213,14 @@ function filtrar(
 }
 
 /** Pone la búsqueda en la cola de fondo (la misma que las búsquedas a mano). Devuelve su id. */
-function iniciarBusqueda(termino, carpeta = '', abierta = false) {
+function iniciarBusqueda(termino, carpeta = '', abierta = false, alias = []) {
   return fondo.iniciar(
-    { q: termino, web: true, abierta: abierta === true },
+    {
+      q: termino,
+      web: true,
+      abierta: abierta === true,
+      ...(alias.length ? { alias } : {}),
+    },
     { carpeta, origen: 'programada' }
   );
 }
@@ -238,7 +278,7 @@ async function lanzar(id) {
   let idBusqueda;
   try {
     // Pasa por la misma cola que las búsquedas a mano: si hay otras en marcha, espera su turno.
-    idBusqueda = iniciarBusqueda(prog.termino, prog.carpeta, prog.abierta);
+    idBusqueda = iniciarBusqueda(prog.termino, prog.carpeta, prog.abierta, prog.alias || []);
   } catch (error) {
     throw new crew.ErrorCrew(error.message, error.status || 500);
   }
@@ -302,6 +342,7 @@ async function terminar(id, prog, busqueda) {
     descartes.tengo = tengo;
     if (papelera) descartes.papelera = papelera;
     let mandados = 0;
+    const lista = []; // lo mandado en esta vuelta (para el aviso y «Seguidas»)
     let fallo = error || null;
     if (quedan.length) {
       try {
@@ -316,11 +357,18 @@ async function terminar(id, prog, busqueda) {
           const tanda = quedan.slice(i, i + 500);
           await jd.enviar({
             links: tanda.map(e => e.link),
+            titulos: tanda.map(e => e.item.title || ''),
+            duraciones: tanda.map(e => e.item.durationSeconds ?? null),
+            // NU-1: lo esperado lleva la persona de la programada (y la que nombre cada título).
+            items: tanda.map(() => (prog.persona ? { personas: [prog.persona] } : {})),
+            termino: prog.termino,
             carpeta: prog.carpeta,
             paquete: prog.termino,
             regla,
+            bibliotecaId: prog.bibliotecaId ?? null,
           });
           mandados += tanda.length;
+          for (const e of tanda) lista.push({ titulo: e.item.title || '', url: e.link });
           // Todo el grupo cuenta como enviado: en la próxima vuelta no sale por otro sitio.
           tanda.forEach(e => e.claves.forEach(k => enviados.add(k)));
         }
@@ -328,12 +376,28 @@ async function terminar(id, prog, busqueda) {
         fallo = e.message;
       }
     }
-    ultimo = { fecha, encontrados: items.length, enviados: mandados, descartes, error: fallo };
-    // CS-N5: aviso si mandó algo o si falló (una vuelta sin nada nuevo no molesta).
+    ultimo = {
+      fecha,
+      encontrados: items.length,
+      enviados: mandados,
+      descartes,
+      error: fallo,
+      mandados: lista.slice(0, MAX_MANDADOS),
+    };
+    // CS-N5: aviso si mandó algo o si falló (una vuelta sin nada nuevo no molesta). Con lo que se
+    // mandó (los primeros títulos), para «Seguir a una persona» (C4).
     if (fallo) {
       require('./avisos').anotar('programada_error', { termino: prog.termino, error: fallo });
     } else if (mandados > 0) {
-      require('./avisos').anotar('programada', { termino: prog.termino, n: mandados });
+      require('./avisos').anotar('programada', {
+        termino: prog.termino,
+        n: mandados,
+        titulos: lista
+          .slice(0, 5)
+          .map(x => x.titulo)
+          .filter(Boolean),
+        ...(prog.seguida ? { seguida: true } : {}),
+      });
     }
     await crew.cambiar(datos => {
       const p = (datos.programadas || []).find(x => x.id === id);
@@ -407,6 +471,7 @@ function detener() {
 }
 
 module.exports = {
+  limpiarAlias,
   detener,
   enMarcha: () => enCurso !== null,
   listar,

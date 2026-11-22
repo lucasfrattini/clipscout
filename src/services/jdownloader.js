@@ -110,23 +110,33 @@ function limpiarSubcarpeta(texto) {
 async function enviar({
   links,
   titulos = [],
+  duraciones = [],
+  items = [],
+  termino = '',
   carpeta = '',
   paquete = '',
   origen = '',
   regla = null,
+  esperados = null,
+  bibliotecaId = null,
+  carpetaEsperados = null,
 } = {}) {
   const { url, autostart = true, biblioteca = null } = await ajustes();
   if (!url) throw new ErrorJd('JDownloader no está configurado (pestaña Ajustes).', 409);
   const validos = (Array.isArray(links) ? links : [])
-    .map((l, i) => ({ link: String(l).trim(), title: Array.isArray(titulos) ? titulos[i] : '' }))
+    .map((l, i) => ({
+      link: String(l).trim(),
+      title: Array.isArray(titulos) ? titulos[i] : '',
+      duracion: Array.isArray(duraciones) ? duraciones[i] : null,
+      meta: Array.isArray(items) && items[i] && typeof items[i] === 'object' ? items[i] : {},
+    }))
     .filter(e => /^https?:\/\//i.test(e.link))
     .slice(0, 500);
   // Palabras siempre bloqueadas (Ajustes): no salen hacia JDownloader por ningún camino, ni
   // siquiera si la pantalla las enseñaba. Se dice cuántas se quitaron: nada en silencio.
   const prohibidas = filtrosGlobales.bloqueadas();
-  const lista = validos
-    .filter(e => !bloqueadaPor({ title: e.title, url: e.link }, prohibidas))
-    .map(e => e.link);
+  const pasan = validos.filter(e => !bloqueadaPor({ title: e.title, url: e.link }, prohibidas));
+  const lista = pasan.map(e => e.link);
   const bloqueados = validos.length - lista.length;
   if (lista.length === 0) {
     throw new ErrorJd(
@@ -183,8 +193,25 @@ async function enviar({
       etiquetas: Array.isArray(regla.etiquetas) ? regla.etiquetas.slice(0, 5) : [],
     });
   }
+  // NU-1 (C2): clipkeeper sabe ya qué va a llegar a esa carpeta (título, personas, etiquetas,
+  // duración, origen). `esperados: false` no avisa; un array son los items ya hechos (álbumes).
+  let aviso = null;
+  if (esperados !== false) {
+    aviso = await avisarEsperados({
+      pasan,
+      termino,
+      regla,
+      esperados,
+      bibliotecaId: bibliotecaId ?? biblioteca,
+      carpeta: carpetaEsperados ?? sub,
+    }).catch(error => {
+      logger.warn(`Esperados: ${error.message}`);
+      return null;
+    });
+  }
   return {
     ok: true,
+    esperados: aviso,
     regla: reglaGuardada,
     enviados: lista.length,
     bloqueados,
@@ -193,6 +220,48 @@ async function enviar({
     paquete: nombre,
     trabajo,
   };
+}
+
+const nombresDe = lista =>
+  (Array.isArray(lista) ? lista : [])
+    .map(x => (typeof x === 'string' ? x : x?.nombre))
+    .filter(Boolean);
+
+/**
+ * Los items de C2 de un envío: uno por enlace mandado (o los que da quien llama, p. ej. un álbum),
+ * con las personas que nombran el término buscado, el título o la dirección (con sus alias, C1)
+ * más las de la regla de la carpeta.
+ */
+async function avisarEsperados({ pasan, termino, regla, esperados, bibliotecaId, carpeta }) {
+  if (bibliotecaId === null || bibliotecaId === undefined) return null;
+  const { personas } = await require('./personas').listar();
+  const { detectar } = require('./personas');
+  const deRegla = nombresDe(regla?.personas);
+  const etiquetasRegla = nombresDe(regla?.etiquetas);
+  const unir = (...listas) => [...new Set(listas.flat().filter(Boolean))];
+  const items = Array.isArray(esperados)
+    ? esperados.map(it => ({
+        ...it,
+        personas: unir(
+          nombresDe(it.personas),
+          deRegla,
+          detectar([termino, it.titulo, it.album, it.origen_url], personas)
+        ),
+      }))
+    : pasan.map(e => ({
+        tipo: 'video',
+        origen_url: e.link,
+        titulo: e.meta.titulo ?? e.title ?? '',
+        duracion: e.meta.duracion ?? e.duracion ?? null,
+        sustituye_video_id: e.meta.sustituye_video_id ?? null,
+        personas: unir(
+          nombresDe(e.meta.personas),
+          deRegla,
+          detectar([termino, e.meta.titulo ?? e.title, e.link], personas)
+        ),
+        etiquetas: unir(nombresDe(e.meta.etiquetas), etiquetasRegla),
+      }));
+  return require('./esperados').avisar({ bibliotecaId, carpeta, items });
 }
 
 /** La carpeta de descargas de JDownloader (sin barra final). */

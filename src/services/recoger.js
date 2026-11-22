@@ -143,8 +143,13 @@ async function proponer(entrada = {}) {
   if (!o.nombre) throw new crew.ErrorCrew('Falta de quién o de qué recoger.');
   const enlaces = foto.items.map(it => it.sourceUrl || it.url).filter(Boolean);
   const enviados = Object.keys(paquetesJd.enviadosDe(await paquetesJd.listar(), enlaces));
+  // NU-4: si es una persona de clipkeeper, «lleva el nombre» vale también con sus alias.
+  const { alias } = await require('./personas')
+    .aliasDe(o.nombre)
+    .catch(() => ({ alias: [] }));
   const { elegidos, descartes } = elegir(foto.items, {
     ...o,
+    alias,
     yaEnviados: enviados,
     bloqueadas: filtrosGlobales.bloqueadas(),
     grupos: foto.grupos,
@@ -152,6 +157,7 @@ async function proponer(entrada = {}) {
   const { quedan, tengo, papelera, clipkeeper } = await quitarLoQueTengo(elegidos, o.nombre, o.n);
   return {
     ...o,
+    alias,
     busqueda: id,
     terminada: foto.terminada,
     encontrados: foto.items.length,

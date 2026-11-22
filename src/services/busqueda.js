@@ -138,6 +138,9 @@ function crearAgrupador(items, emit) {
   };
 }
 
+/** Alias que se buscan como mucho además del nombre (cada uno es una vuelta más por sitio). */
+const MAX_ALIAS = 5;
+
 /** Id del «sitio» que agrupa lo encontrado en toda la web (no es una configuración guardada). */
 const ID_WEB_ABIERTA = -1;
 
@@ -226,6 +229,7 @@ async function buscarEnTodos(
     enlaces = null,
     abierta = false,
     retomar = null,
+    alias = [],
   },
   { signal, emit = () => {}, itemsPrevios = [], contar = true } = {}
 ) {
@@ -348,6 +352,31 @@ async function buscarEnTodos(
         }
       );
       apuntarHechas();
+      // NU-4: los alias de la persona se buscan también en el mismo sitio (una página cada uno: es
+      // un extra). Lo repetido entre nombres lo agrupa la búsqueda como cualquier repetido, y la
+      // caché de fichas evita abrir dos veces la misma.
+      for (const otro of (Array.isArray(alias) ? alias : []).slice(0, MAX_ALIAS)) {
+        if (signal?.aborted) break;
+        try {
+          const p = normalizeCrawlParams({
+            ...c,
+            searchTerm: otro,
+            endPage: Number.parseInt(c.startPage, 10) || 1,
+            withThumbnails: true,
+          });
+          await crawl(
+            {
+              ...p,
+              extensions: parseExtensionList(c.fileExtensions || '.mp4'),
+              maxLinks: topeEnlaces,
+              usarCache: true,
+            },
+            { signal, emit: reenviar(), linksPrevios: null }
+          );
+        } catch {
+          // un alias que falla no corta la búsqueda del sitio
+        }
+      }
       const bloqueo = resultado.diagnostico?.bloqueo?.sospechoso === true;
       const recortado = resultado.truncated === true;
 

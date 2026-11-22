@@ -262,6 +262,46 @@ const config = {
     revisionesCaidoDudoso: intFromEnv('JD_REVISIONES_CAIDO_DUDOSO', 4),
   },
 
+  /**
+   * Fase 7: fotos por persona (FO-1…FO-5), personas de clipkeeper (C1) y lo que se pide desde
+   * clipkeeper para completar por persona (seguir, mejorar calidad, recuento).
+   */
+  fotos: {
+    // Carpeta de fotos dentro de la de la persona si clipkeeper no dice otra (C1 `carpeta_fotos`)
+    carpetaFotos: (process.env.FOTOS_CARPETA || 'Fotos').trim() || 'Fotos',
+    // La lista de personas de clipkeeper se recuerda este rato (se mira en cada envío)
+    personasCacheMs: intFromEnv('FOTOS_PERSONAS_CACHE_MS', 60000),
+    // Álbumes que se sacan como mucho de cada sitio en una búsqueda, y tiempo máximo por sitio
+    albumesPorSitio: intFromEnv('FOTOS_ALBUMES_POR_SITIO', 24),
+    porSitioMs: intFromEnv('FOTOS_POR_SITIO_MS', 60000),
+    // Páginas de un álbum que se recorren como mucho, y fotos por álbum
+    paginasAlbum: intFromEnv('FOTOS_PAGINAS_ALBUM', 10),
+    maxFotosAlbum: intFromEnv('FOTOS_MAX_POR_ALBUM', 500),
+    // Lado mínimo (px, si la página lo dice) para no tomar una miniatura por una foto
+    ladoMinimo: intFromEnv('FOTOS_LADO_MINIMO', 300),
+    // Fuente «Web» (FO-4, SearXNG de imágenes): resultados como mucho
+    webMax: intFromEnv('FOTOS_WEB_MAX', 60),
+    // Álbumes que se mandan como mucho de una vez
+    maxMandar: intFromEnv('FOTOS_MAX_MANDAR', 30),
+    // Palabra que se añade a la búsqueda de fotos en la web (FO-4). Ajuste: de fábrica, ninguna.
+    palabraWeb: (process.env.FOTOS_PALABRA_WEB || '').trim(),
+  },
+
+  /** NU-6 «Mejorar calidad» (C5): una búsqueda por persona (o título), con tope de tiempo. */
+  mejorar: {
+    busquedaMs: intFromEnv('MEJORAR_BUSQUEDA_MS', 3 * 60 * 1000),
+    paginas: intFromEnv('MEJORAR_PAGINAS', 2),
+    candidatos: intFromEnv('MEJORAR_CANDIDATOS', 3),
+    // Trabajos que se recuerdan (en memoria; los más viejos se olvidan)
+    maxTrabajos: intFromEnv('MEJORAR_MAX_TRABAJOS', 20),
+  },
+
+  /** NU-8 «Huecos» (C7): cuántos resultados dice cada sitio que tiene. Mejor esfuerzo. */
+  recuento: {
+    cacheMs: intFromEnv('RECUENTO_CACHE_MS', 24 * 60 * 60 * 1000),
+    timeoutMs: intFromEnv('RECUENTO_TIMEOUT_MS', 15000),
+  },
+
   // Alta de un sitio con solo su dirección (services/autoSitio.js)
   autoSitio: {
     // Enlaces internos mínimos para dar una página por «listado de resultados»

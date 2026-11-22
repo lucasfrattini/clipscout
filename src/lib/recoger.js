@@ -59,6 +59,7 @@ function comparador(orden) {
  * @param {object[]} items      resultados de la búsqueda (url, sourceUrl, title, durationSeconds)
  * @param {object} o
  * @param {string} [o.nombre]           persona o término (para `soloConNombre`)
+ * @param {string[]} [o.alias]          otros nombres de la persona (NU-4): vale cualquiera
  * @param {boolean} [o.soloConNombre]
  * @param {'largos'|'calidad'|null} [o.orden]
  * @param {number} [o.minutosMinimo]
@@ -77,6 +78,10 @@ function elegir(items, o = {}) {
   const enviados = new Set([...(o.yaEnviados || [])].map(claveEnlace));
   const bloqueadas = o.bloqueadas || [];
   const nombre = String(o.nombre || '').trim();
+  // NU-4: con alias, vale cualquiera de los nombres de la persona.
+  const nombres = [nombre, ...(Array.isArray(o.alias) ? o.alias : [])]
+    .map(n => String(n || '').trim())
+    .filter(Boolean);
   const enlaceDe = it => it?.sourceUrl || it?.url;
 
   // Grupo de cada enlace, y todas las claves de cada grupo (también las de las fichas, que es lo
@@ -162,7 +167,7 @@ function elegir(items, o = {}) {
       descartes.contener += 1;
       continue;
     }
-    if (o.soloConNombre && nombre && !llevaNombre(it, nombre)) {
+    if (o.soloConNombre && nombres.length && !nombres.some(n => llevaNombre(it, n))) {
       descartes.sinNombre += 1;
       continue;
     }

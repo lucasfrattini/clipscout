@@ -139,13 +139,32 @@ function entradaDe(fuente) {
     : typeof fuente.sitios === 'string' && fuente.sitios.trim() !== ''
       ? fuente.sitios.split(',')
       : null;
+  const alias = (Array.isArray(fuente.alias) ? fuente.alias : [])
+    .map(a =>
+      String(a || '')
+        .trim()
+        .slice(0, 200)
+    )
+    .filter(Boolean)
+    .slice(0, 5);
   return {
     q,
     sitios: lista ? lista.map(x => Number.parseInt(x, 10)).filter(Number.isInteger) : null,
     paginas: fuente.paginas,
     web: fuente.web === true || fuente.web === '1',
     abierta: fuente.abierta === true || fuente.abierta === '1',
+    ...(alias.length ? { alias } : {}),
   };
+}
+
+/**
+ * NU-4: si lo buscado es una persona de clipkeeper con alias (C1), se busca también por ellos,
+ * salvo que se pida `alias: false` o se den otros. Sin clipkeeper, como siempre.
+ */
+async function conAlias(entrada, fuente) {
+  if (!entrada.q || fuente.alias === false || Array.isArray(fuente.alias)) return entrada;
+  const { alias } = await require('../services/personas').aliasDe(entrada.q);
+  return alias.length ? { ...entrada, alias: alias.slice(0, 5) } : entrada;
 }
 
 /** Carpeta propuesta para lo que encuentre una búsqueda (texto corto; la valida JD al enviar). */
@@ -158,10 +177,11 @@ const carpetaDe = v =>
  * POST /api/buscar/iniciar — lanza la búsqueda en segundo plano (o la encola si ya hay el máximo
  * en marcha); devuelve `{ id }`.
  */
-router.post('/buscar/iniciar', (req, res) => {
+router.post('/buscar/iniciar', async (req, res) => {
   try {
     const cuerpo = req.body || {};
-    const id = fondo.iniciar(entradaDe(cuerpo), { carpeta: carpetaDe(cuerpo.carpeta) });
+    const entrada = await conAlias(entradaDe(cuerpo), cuerpo);
+    const id = fondo.iniciar(entrada, { carpeta: carpetaDe(cuerpo.carpeta) });
     // CS-N9: lo buscado a mano entra en el historial (un nombre o un enlace pegado).
     require('../services/historial').apuntar(cuerpo.q || cuerpo.url);
     res.json({ id });
@@ -289,3 +309,5 @@ router.get('/buscar/trabajos/:id/stream', (req, res) => {
 });
 
 module.exports = router;
+module.exports.entradaDe = entradaDe;
+module.exports.conAlias = conAlias;
