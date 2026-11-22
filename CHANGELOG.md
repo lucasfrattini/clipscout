@@ -1,5 +1,10 @@
 # Cambios
 
+## 2.25.3
+
+- cg-ui común: deslizar ya no dispara «mantener para seleccionar», sin nada marcado se sale del modo
+  selección y el desplazamiento no espera al JS en el iPhone.
+
 ## 2.25.2
 
 - **Aviso a clipkeeper al terminar un paquete, también con JDownloader que borra lo terminado de la

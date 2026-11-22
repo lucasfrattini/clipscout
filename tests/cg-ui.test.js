@@ -14,7 +14,7 @@ const path = require('node:path');
  */
 const MD5 = {
   'cg-ui.css': '7eb95be36326b752e8483bad925ee554',
-  'cg-ui.js': '75b09145e2d5edd702caff29cc80f3b5',
+  'cg-ui.js': 'ce6231f6e09ca59019255c9292b701b3',
 };
 
 const dir = path.join(__dirname, '..', 'public', 'cg');

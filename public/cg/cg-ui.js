@@ -1069,6 +1069,7 @@
       clearTimeout(pulsacion.timer);
       cancelAnimationFrame(pulsacion.raf);
       pulsacion = null;
+      caja.removeEventListener('touchmove', alTocarMover);
     }
     function extender() {
       const p = pulsacion;
@@ -1111,6 +1112,9 @@
         p.arrastrando = true;
         suprimirClic = true;
         modo = true;
+        // Solo mientras se arrastra para seleccionar: un `touchmove` no pasivo siempre puesto hace
+        // que WebKit (Safari y Chrome de iPhone) espere al JS en cada gesto y el scroll vaya a tirones.
+        caja.addEventListener('touchmove', alTocarMover, { passive: false });
         claves.add(p.clave);
         p.base = new Set(claves);
         ancla = p.clave;
@@ -1167,6 +1171,12 @@
         if (claves.has(k)) claves.delete(k);
         else claves.add(k);
         ancla = k;
+        // Sin nada marcado se sale del modo selección: si no, cada toque seguiría marcando y nada
+        // se abriría (en el móvil parecía que la página no respondía).
+        if (!claves.size) {
+          modo = false;
+          ancla = null;
+        }
         avisar();
       }
     };
@@ -1182,7 +1192,12 @@
     window.addEventListener('pointermove', alMover, { passive: true });
     window.addEventListener('pointerup', alSoltar);
     window.addEventListener('pointercancel', alSoltar);
-    caja.addEventListener('touchmove', alTocarMover, { passive: false });
+    // Si la página se desplaza antes de que salte la pulsación larga, era un desplazamiento, no
+    // «mantener para seleccionar» (en iPhone el dedo apoyado al frenar el scroll la disparaba).
+    const alDesplazar = () => {
+      if (pulsacion && !pulsacion.disparada) cancelarPulsacion();
+    };
+    window.addEventListener('scroll', alDesplazar, { passive: true, capture: true });
     caja.addEventListener('contextmenu', alMenu);
     caja.addEventListener('dragstart', alArrastrarNativo);
     caja.addEventListener('click', alClic, true);
@@ -1249,6 +1264,7 @@
         window.removeEventListener('pointerup', alSoltar);
         window.removeEventListener('pointercancel', alSoltar);
         caja.removeEventListener('touchmove', alTocarMover);
+        window.removeEventListener('scroll', alDesplazar, { capture: true });
         caja.removeEventListener('contextmenu', alMenu);
         caja.removeEventListener('dragstart', alArrastrarNativo);
         caja.removeEventListener('click', alClic, true);
