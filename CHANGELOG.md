@@ -1,5 +1,13 @@
 # Cambios
 
+## 2.25.1
+
+- **Lo enviado pasa solo a descargas también en JDownloader que no filtran por trabajo**: algunas
+  versiones devuelven una lista vacía al pedir los enlaces de un envío (`jobUUIDs`), y todo se
+  quedaba en el capturador. Ahora se buscan los paquetes de ese envío por nombre y carpeta.
+- Álbumes: fuera las imágenes de la propia web (fondos, logos) cuando las fotos vienen de otro servidor.
+- `POST /api/fotos/mandar` acepta la persona como texto además de `{nombre}`.
+
 ## 2.25.0 — fotos por persona y completar por persona (fase 7)
 
 - **Fotos** (Buscar → «Fotos»): los álbumes de lo buscado en los sitios que tienen sección de

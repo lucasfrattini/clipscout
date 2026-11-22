@@ -369,6 +369,32 @@ async function albumWeb(q, { signal, alias = [] } = {}) {
 const img0 = fotos => fotos[0];
 
 /**
+ * Fuera las imágenes de la propia web (fondos, logos: `/img/`, `/static/`…) cuando las fotos del
+ * álbum se sirven desde otro servidor: son adornos de la página, no fotos del álbum.
+ */
+function sinAdornosDelSitio(url, fotos) {
+  let propio;
+  try {
+    propio = new URL(url).hostname;
+  } catch {
+    return fotos;
+  }
+  const hostDe = f => {
+    try {
+      return new URL(f).hostname;
+    } catch {
+      return '';
+    }
+  };
+  if (!fotos.some(f => hostDe(f) && hostDe(f) !== propio)) return fotos;
+  return fotos.filter(
+    f =>
+      hostDe(f) !== propio ||
+      !/\/(?:img|images|static|assets|themes?|layout|css)\//i.test(new URL(f).pathname)
+  );
+}
+
+/**
  * FO-2: todas las fotos de un álbum, recorriendo su paginación (como mucho
  * `config.fotos.paginasAlbum` páginas y `maxFotosAlbum` fotos).
  */
@@ -397,7 +423,8 @@ async function extraerAlbum(url, { signal } = {}) {
     if (nuevas === 0 || fotos.length >= config.fotos.maxFotosAlbum) break;
     actual = r.siguiente;
   }
-  return { url, fotos: fotos.slice(0, config.fotos.maxFotosAlbum), paginas: paginas.size };
+  const limpias = sinAdornosDelSitio(url, fotos);
+  return { url, fotos: limpias.slice(0, config.fotos.maxFotosAlbum), paginas: paginas.size };
 }
 
 /* ── C3: nombre del álbum en disco ───────────────────────────────────── */
@@ -515,6 +542,7 @@ function limpiarAlbumes(lista) {
 
 /** La persona de destino: de la lista de clipkeeper (C1) si está, o lo que llegue. */
 async function personaDestino(entrada = {}) {
+  if (typeof entrada === 'string') entrada = { nombre: entrada };
   const nombre = String(entrada.nombre || entrada.persona || '').trim();
   if (!nombre) {
     const error = new Error('Elige a qué persona mandarlo.');

@@ -19,6 +19,7 @@ let llamadasJobs = 0;
 const consultasLinks = [];
 const movidos = [];
 let arrancado = 0;
+let sinFiltroJob = false; // como algunas versiones: queryLinks con jobUUIDs devuelve []
 let estadoGestor = null; // null = el falso no sabe responder a getCurrentState (como uno viejo)
 const jdFalso = http.createServer((req, res) => {
   const [ruta, query = ''] = req.url.split('?');
@@ -36,10 +37,28 @@ const jdFalso = http.createServer((req, res) => {
   }
   if (ruta === '/linkgrabberv2/queryLinks') {
     consultasLinks.push(params[0]);
+    if (sinFiltroJob && params[0].jobUUIDs) return responder([]);
+    if (params[0].packageUUIDs) {
+      return responder(
+        params[0].packageUUIDs.includes(7)
+          ? [
+              { uuid: 70, availability: 'ONLINE' },
+              { uuid: 71, availability: 'OFFLINE' },
+            ]
+          : []
+      );
+    }
     return responder([
       { uuid: 1, availability: 'ONLINE' },
       { uuid: 2, availability: 'OFFLINE' },
       { uuid: 3, availability: 'UNKNOWN' },
+    ]);
+  }
+  if (ruta === '/linkgrabberv2/queryPackages') {
+    return responder([
+      { uuid: 7, name: 'Ana', saveTo: '/output/Ana' },
+      { uuid: 8, name: 'Ana', saveTo: '/output/Otra' },
+      { uuid: 9, name: 'Luis', saveTo: '/output/Ana' },
     ]);
   }
   if (ruta === '/linkgrabberv2/moveToDownloadlist') {
@@ -151,6 +170,22 @@ test('tras enviar: espera al análisis, pasa a descargas lo de ESE envío y arra
   assert.deepEqual(consultasLinks.at(-1).jobUUIDs, [99]);
   assert.deepEqual(movidos.at(-1), [1, 3]); // el caído no
   assert.ok(arrancado >= 1);
+});
+
+test('si JDownloader no filtra por trabajo, mueve los paquetes de ese envío (nombre y carpeta)', async () => {
+  sinFiltroJob = true;
+  llamadasJobs = 5;
+  try {
+    const n = await descargarCuandoEste(jdUrl, 99, {
+      cadaMs: 5,
+      paquete: 'Ana',
+      destino: '/output/Ana',
+    });
+    assert.equal(n, 1);
+    assert.deepEqual(movidos.at(-1), [70], 'solo los en línea del paquete de ese nombre y carpeta');
+  } finally {
+    sinFiltroJob = false;
+  }
 });
 
 test('CS-11: con el gestor en pausa, lo enviado pasa a descargas pero no se arranca', async () => {

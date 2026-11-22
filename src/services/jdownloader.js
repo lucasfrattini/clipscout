@@ -295,7 +295,7 @@ async function anadir(url, { links, paquete, destino = null, origen = '', autost
   // analizar los enlaces de ESTE envío, se pasan a descargas y se arranca el gestor. En segundo
   // plano: la respuesta no espera.
   if (autostart && trabajo?.id) {
-    descargarCuandoEste(url, trabajo.id).catch(error =>
+    descargarCuandoEste(url, trabajo.id, { paquete, destino }).catch(error =>
       logger.warn(`JDownloader: no se pudo arrancar la descarga: ${error.message}`)
     );
   }
@@ -351,7 +351,11 @@ const esperar = ms => new Promise(resolver => setTimeout(resolver, ms).unref?.()
  * descargas (salvo los que da por caídos) y arranca las descargas. Solo toca los enlaces de ESE
  * envío: lo que ya hubiera en el capturador se queda como estaba.
  */
-async function descargarCuandoEste(url, jobId, { maxMs = 180000, cadaMs = 3000 } = {}) {
+async function descargarCuandoEste(
+  url,
+  jobId,
+  { maxMs = 180000, cadaMs = 3000, paquete = '', destino = null } = {}
+) {
   const hasta = Date.now() + maxMs;
   while (Date.now() < hasta) {
     await esperar(cadaMs);
@@ -367,6 +371,22 @@ async function descargarCuandoEste(url, jobId, { maxMs = 180000, cadaMs = 3000 }
   const ids = (Array.isArray(enlaces) ? enlaces : [])
     .filter(l => l.availability !== 'OFFLINE')
     .map(l => l.uuid);
+  // Hay versiones de JDownloader que no filtran por `jobUUIDs` (devuelven []): entonces se buscan
+  // los paquetes de ESTE envío por nombre y carpeta, y se mueven sus enlaces en línea.
+  if (ids.length === 0 && paquete) {
+    const paquetes = await llamar(url, '/linkgrabberv2/queryPackages', [{ saveTo: true }]);
+    const mios = (Array.isArray(paquetes) ? paquetes : [])
+      .filter(p => p.name === paquete && (!destino || p.saveTo === destino))
+      .map(p => p.uuid);
+    if (mios.length > 0) {
+      const suyos = await llamar(url, '/linkgrabberv2/queryLinks', [
+        { packageUUIDs: mios, availability: true },
+      ]);
+      for (const l of Array.isArray(suyos) ? suyos : []) {
+        if (l.availability !== 'OFFLINE') ids.push(l.uuid);
+      }
+    }
+  }
   if (ids.length > 0) await llamar(url, '/linkgrabberv2/moveToDownloadlist', [ids, []]);
   // CS-11: si el gestor está EN PAUSA es porque lo pausó la persona: se respeta (lo enviado queda
   // en la lista de descargas y baja al reanudar). Parado o sin saberlo, se arranca como siempre.
