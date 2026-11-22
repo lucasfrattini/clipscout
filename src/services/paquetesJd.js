@@ -256,6 +256,11 @@ async function revisar({ soloId = null, forzar = false } = {}) {
   const paquetesJd = await jd.llamar(jdUrl, '/downloadsV2/queryPackages', [
     { saveTo: true, status: true, finished: true, running: true, childCount: true },
   ]);
+  // También los del capturador, por nombre y carpeta: hay versiones de JDownloader que no
+  // filtran por `jobUUIDs` (devuelven []), y sin esto lo atascado allí no se vería.
+  const capturadorJd = await jd
+    .llamar(jdUrl, '/linkgrabberv2/queryPackages', [{ saveTo: true, childCount: true }])
+    .catch(() => []);
   const cambios = new Map();
   let sustituidas = 0;
   for (const p0 of objetivo) {
@@ -283,11 +288,24 @@ async function revisar({ soloId = null, forzar = false } = {}) {
           },
         ])
       : [];
-    const enlacesCapturador = p.jobIds.length
+    const enCapturador = (Array.isArray(capturadorJd) ? capturadorJd : []).filter(
+      k => k.name === p.nombre && (!p.destino || k.saveTo === p.destino)
+    );
+    let enlacesCapturador = p.jobIds.length
       ? await jd.llamar(jdUrl, '/linkgrabberv2/queryLinks', [
           { jobUUIDs: p.jobIds, url: true, availability: true, enabled: true },
         ])
       : [];
+    if (!(Array.isArray(enlacesCapturador) && enlacesCapturador.length) && enCapturador.length) {
+      enlacesCapturador = await jd.llamar(jdUrl, '/linkgrabberv2/queryLinks', [
+        {
+          packageUUIDs: enCapturador.map(k => k.uuid),
+          url: true,
+          availability: true,
+          enabled: true,
+        },
+      ]);
+    }
     const descarga = (Array.isArray(enlacesDescarga) ? enlacesDescarga : []).filter(esNuestro);
     const capturador = Array.isArray(enlacesCapturador) ? enlacesCapturador : [];
     const caidos = [
@@ -305,6 +323,17 @@ async function revisar({ soloId = null, forzar = false } = {}) {
       }
     }
     const r = resumir(descarga, capturador);
+    // JDownloader puede quitar de la lista lo terminado («borrar al terminar»): un envío que ya no
+    // está en ninguna de las dos listas, pasado un rato, se da por terminado.
+    if (
+      r.total === 0 &&
+      coinciden.length === 0 &&
+      enCapturador.length === 0 &&
+      ahora - p.creado > config.jd.desaparecidoTerminadoMs
+    ) {
+      r.estado = 'terminado';
+      r.desaparecido = true;
+    }
     // CS-N5: aviso al pasar a terminado o fallido (una vez: solo cuando cambia).
     if (r.estado !== p.estado && (r.estado === 'terminado' || r.estado === 'error')) {
       require('./avisos').anotar(

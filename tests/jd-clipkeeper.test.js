@@ -20,6 +20,8 @@ const paquetes = require('../src/services/paquetesJd');
  */
 
 let terminado = false;
+let quitadoAlTerminar = false;
+let capturadorConLago = false; // JDownloader con «borrar de la lista al terminar»
 const jdFalso = http.createServer((req, res) => {
   const [ruta, query = ''] = req.url.split('?');
   const params = query ? query.split('&').map(p => JSON.parse(decodeURIComponent(p))) : [];
@@ -28,6 +30,7 @@ const jdFalso = http.createServer((req, res) => {
   if (ruta === '/config/get') return responder('/output');
   if (ruta === '/linkgrabberv2/addLinks') return responder({ id: 7 });
   if (ruta === '/downloadsV2/queryPackages') {
+    if (quitadoAlTerminar) return responder([]);
     return responder([{ uuid: 1, name: 'Playa', saveTo: '/output/Viajes/Playa' }]);
   }
   if (ruta === '/downloadsV2/queryLinks') {
@@ -43,6 +46,12 @@ const jdFalso = http.createServer((req, res) => {
           ]
         : []
     );
+  }
+  if (ruta === '/linkgrabberv2/queryPackages' && capturadorConLago) {
+    return responder([{ uuid: 5, name: 'Lago', saveTo: '/output/Viajes/Lago' }]);
+  }
+  if (ruta === '/linkgrabberv2/queryLinks' && params[0].packageUUIDs) {
+    return responder([{ uuid: 50, url: 'https://ejemplo.com/v/3', availability: 'ONLINE' }]);
   }
   return responder([]);
 });
@@ -117,4 +126,45 @@ test('paquete terminado → clipkeeper escanea su carpeta, una vez', async () =>
   assert.equal(escaneos.length, 1, 'una sola vez por paquete');
   const [p] = await paquetes.listar();
   assert.ok(p.escaneado);
+});
+
+test('JDownloader que quita lo terminado de la lista: pasado el margen, terminado y escaneo', async () => {
+  const config = require('../src/config');
+  const antes = config.jd.desaparecidoTerminadoMs;
+  config.jd.desaparecidoTerminadoMs = 0;
+  escaneos.length = 0;
+  try {
+    await jd.enviar({ links: ['https://ejemplo.com/v/2'], carpeta: 'Viajes/Rio', paquete: 'Rio' });
+    quitadoAlTerminar = true;
+    await new Promise(r => setTimeout(r, 5));
+    await paquetes.revisar();
+    const p = (await paquetes.listar()).find(x => x.nombre === 'Rio');
+    assert.equal(p.estado, 'terminado');
+    assert.deepEqual(escaneos.at(-1).cuerpo, { biblioteca_id: 3, carpeta: 'Viajes/Rio' });
+  } finally {
+    quitadoAlTerminar = false;
+    config.jd.desaparecidoTerminadoMs = antes;
+  }
+});
+
+test('lo que sigue en el capturador (por nombre y carpeta) no se da por terminado', async () => {
+  const config = require('../src/config');
+  const antes = config.jd.desaparecidoTerminadoMs;
+  config.jd.desaparecidoTerminadoMs = 0;
+  try {
+    await jd.enviar({
+      links: ['https://ejemplo.com/v/3'],
+      carpeta: 'Viajes/Lago',
+      paquete: 'Lago',
+    });
+    quitadoAlTerminar = true;
+    capturadorConLago = true;
+    await paquetes.revisar();
+    const p = (await paquetes.listar()).find(x => x.nombre === 'Lago');
+    assert.notEqual(p.estado, 'terminado');
+  } finally {
+    quitadoAlTerminar = false;
+    capturadorConLago = false;
+    config.jd.desaparecidoTerminadoMs = antes;
+  }
 });

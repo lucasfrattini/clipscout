@@ -1,5 +1,13 @@
 # Cambios
 
+## 2.25.2
+
+- **Aviso a clipkeeper al terminar un paquete, también con JDownloader que borra lo terminado de la
+  lista**: antes el paquete nunca llegaba a «terminado» (desaparecía de la lista sin verse acabado) y
+  clipkeeper no escaneaba la carpeta. Ahora un envío que ya no está ni en el capturador ni en
+  descargas, pasados 3 minutos (`JD_DESAPARECIDO_TERMINADO_MS`), se da por terminado.
+- El capturador se consulta también por nombre y carpeta del paquete (no solo por trabajo).
+
 ## 2.25.1
 
 - **Lo enviado pasa solo a descargas también en JDownloader que no filtran por trabajo**: algunas

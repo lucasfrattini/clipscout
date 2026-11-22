@@ -249,6 +249,9 @@ const config = {
     vigilarCadaMs: intFromEnv('JD_VIGILAR_CADA_MS', 20000),
     // Hasta cuándo se vigila un paquete (desde que se mandó); pasado eso se deja como esté
     vigilarMaxMs: intFromEnv('JD_VIGILAR_MAX_MS', 6 * 60 * 60 * 1000),
+    // Un envío que ya no está ni en el capturador ni en descargas se da por terminado pasado esto
+    // (JDownloader puede borrar de la lista lo terminado). Margen para que acabe de analizarlo.
+    desaparecidoTerminadoMs: intFromEnv('JD_DESAPARECIDO_TERMINADO_MS', 3 * 60 * 1000),
     // Paquetes que se recuerdan (los más viejos se olvidan)
     maxPaquetes: intFromEnv('JD_MAX_PAQUETES', 300),
     // Un fichero de la caché de fichas vale para mandarlo directo si es así de reciente
