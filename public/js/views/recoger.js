@@ -306,6 +306,7 @@ export function abrirRecoger(c) {
       carpeta,
       regla: reglaFinal(),
       titulos: propuesta.propuesta.map(x => x.title || ''),
+      duraciones: propuesta.propuesta.map(x => x.durationSeconds ?? null),
     });
     if (!r) {
       mandar.disabled = false;
@@ -318,6 +319,8 @@ export function abrirRecoger(c) {
           termino: c.nombre,
           carpeta: carpeta || '',
           persona: regla?.personas?.[0]?.nombre || '',
+          // NU-4: los alias de la persona también se buscan en cada vuelta.
+          alias: propuesta.alias || [],
           etiqueta: extra,
           n,
           soloConNombre: soloNombre,

@@ -1,4 +1,4 @@
-import { ajustes } from '../api.js';
+import { ajustes, fase7 } from '../api.js';
 import { el, toast } from '../dom.js';
 import { t, texto, atributo } from '../i18n/index.js';
 import { carpetaDialog } from './dialog.js';
@@ -17,6 +17,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
   let destinos = null; // null = sin biblioteca de clipkeeper: se escribe la subcarpeta a mano
   let catalogo = {}; // personas y etiquetas de clipkeeper, aunque no tengan carpeta propia
   let ultima = null; // la última carpeta elegida en esta lista (se propone la primera)
+  let personas = []; // personas de clipkeeper con alias y su carpeta (C1, fase 7)
 
   /** Carpeta en dos pasos (qué es → nombre); ver carpetaDialog. */
   function elegirCarpeta() {
@@ -38,7 +39,10 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
   }
 
   /** `carpeta` fijada de antemano (p. ej. «Descargar en» del buscador): no se pregunta. */
-  async function enviar(links, { carpeta, regla = null, titulos = [] } = {}) {
+  async function enviar(
+    links,
+    { carpeta, regla = null, titulos = [], duraciones = [], termino = '' } = {}
+  ) {
     if (links.length === 0) return null;
     const elegido = carpeta !== undefined ? { carpeta, regla } : await elegirCarpeta();
     if (elegido === null) return null;
@@ -49,6 +53,9 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
         // Los títulos viajan para que las palabras bloqueadas (Ajustes) se apliquen también a
         // ellos en el servidor, no solo a la dirección.
         titulos,
+        // NU-1: con la duración y lo buscado, clipkeeper recibe la ficha completa (C2).
+        duraciones,
+        termino,
         carpeta: ultima,
         origen: origen(),
         regla: elegido.regla,
@@ -103,6 +110,14 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
         destinos = null;
       }
     }
+    personas = [];
+    if (configurado) {
+      try {
+        personas = (await fase7.personas()).personas || [];
+      } catch {
+        personas = [];
+      }
+    }
     boton.hidden = !configurado;
     alCargar.forEach(fn => fn());
   }
@@ -117,6 +132,8 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
     destinos: () => destinos,
     /** Personas y etiquetas de clipkeeper (para proponer la carpeta sola al buscar). */
     catalogo: () => catalogo,
+    /** Personas de clipkeeper (C1): nombre, alias y la carpeta donde están sus vídeos. */
+    personas: () => personas,
     nuevaCarpeta,
     /** La ventana de carpeta, sin «Preguntar cada vez» (Recoger). */
     elegirCarpeta,

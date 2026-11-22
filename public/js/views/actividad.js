@@ -4,7 +4,7 @@
  * Búsqueda. Tres pestañas (#/actividad/busquedas, /descargas, /programadas); los datos y las
  * rutas de la API son los mismos de siempre.
  */
-import { ajustes } from '../api.js';
+import { ajustes, fase7 } from '../api.js';
 import { el, toast } from '../dom.js';
 import { t, tp, alCambiarIdioma } from '../i18n/index.js';
 import { crearCabecera } from '../cabecera.js';
@@ -320,13 +320,166 @@ export function createActividadView(raiz) {
           enviados: p.ultimo.enviados,
         });
   };
+  /**
+   * Fase 7 · «Seguidas» (C4): las personas que se siguen (desde clipkeeper o desde aquí) van
+   * arriba, en su grupo: cada cuánto, la última vuelta, la próxima y lo último que se mandó.
+   */
+  function filaSeguida(p) {
+    const ultimos = (p.ultimo?.mandados || []).map(m => m.titulo).filter(Boolean);
+    const proxima = p.ultimaVez
+      ? new Date(Date.parse(p.ultimaVez) + p.cadaDias * 86400000).toLocaleDateString()
+      : t('seg.pronto');
+    const li = fila({
+      estado: p.activa ? (programadas.enCurso === p.id ? 'curso' : 'hecho') : 'pausa',
+      titulo: p.persona || p.termino,
+      detalle: [
+        t('aj.prog.cada.n', { n: p.cadaDias }),
+        tp('seg.limite', p.n || 0),
+        t('seg.proxima', { fecha: proxima }),
+        p.alias?.length ? t('seg.alias', { lista: p.alias.join(', ') }) : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      detalle2: ultimos.length
+        ? t('seg.ultimos', { lista: ultimos.slice(0, 3).join(' · ') })
+        : resumen(p),
+      acciones: [
+        el('button', {
+          className: 'cg-boton',
+          attrs: { type: 'button' },
+          text: t('aj.prog.ahora'),
+          on: { click: () => lanzar(p) },
+        }),
+        botonMas(t('act.mas', { nombre: p.persona || p.termino }), () =>
+          menuAcciones({
+            titulo: p.persona || p.termino,
+            acciones: [
+              {
+                texto: t(p.activa ? 'aj.prog.pausar' : 'aj.prog.reanudar'),
+                fn: async () => {
+                  await ajustes.guardarProgramada({ id: p.id, activa: !p.activa });
+                  cargarProgramadas();
+                },
+              },
+              { texto: t('seg.dejar'), peligro: true, fn: () => dejarDeSeguir(p) },
+            ],
+          })
+        ),
+      ],
+    });
+    li.classList.add('actividad__seguida');
+    return li;
+  }
+  async function dejarDeSeguir(p) {
+    const si = await confirmarIrreversible({
+      titulo: t('seg.dejar'),
+      texto: t('seg.dejarConfirmar', { persona: p.persona || p.termino }),
+      aceptar: t('seg.dejar'),
+    });
+    if (!si) return;
+    try {
+      await fase7.dejarDeSeguir(p.id);
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+    }
+    cargarProgramadas();
+  }
+  /** «Seguir a una persona» desde aquí: la lista de clipkeeper (C1), cada cuánto y cuántos. */
+  async function formularioSeguir() {
+    let lista = [];
+    try {
+      lista = (await fase7.personas()).personas || [];
+    } catch {
+      lista = [];
+    }
+    const sel = el('select', {
+      className: 'input',
+      children: lista.map((p, i) => el('option', { attrs: { value: String(i) }, text: p.nombre })),
+    });
+    const nombre = el('input', {
+      className: 'input',
+      attrs: { type: 'text', spellcheck: 'false', placeholder: t('fotos.persona.ej') },
+    });
+    const cada = el('input', {
+      className: 'input',
+      attrs: { type: 'number', min: '1', max: '90', inputmode: 'numeric' },
+    });
+    cada.value = '7';
+    const limite = el('input', {
+      className: 'input',
+      attrs: { type: 'number', min: '1', max: '200', inputmode: 'numeric' },
+    });
+    limite.value = '20';
+    const campo = (texto, control) =>
+      el('label', {
+        className: 'field',
+        children: [el('span', { className: 'field__label', text: texto }), control],
+      });
+    let hoja = null;
+    const guardarSeguir = el('button', {
+      className: 'cg-boton cg-boton--principal',
+      attrs: { type: 'button' },
+      text: t('seg.seguir'),
+      on: {
+        click: async () => {
+          const p = lista.length ? lista[Number(sel.value)] : { nombre: nombre.value.trim() };
+          if (!p?.nombre) return;
+          try {
+            await fase7.seguir({
+              persona: p.nombre,
+              alias: p.alias || [],
+              biblioteca_id: p.biblioteca_id ?? null,
+              carpeta: p.carpeta || `People/${p.nombre}`,
+              cada_dias: Number(cada.value) || 7,
+              limite: Number(limite.value) || 20,
+            });
+            toast(t('seg.siguiendo', { persona: p.nombre }), 'success', 5000);
+            hoja?.cerrar();
+            cargarProgramadas();
+          } catch (error) {
+            toast(error.message, 'error', 6000);
+          }
+        },
+      },
+    });
+    hoja = abrirHoja({
+      titulo: t('seg.seguir'),
+      contenido: [
+        lista.length ? campo(t('fotos.persona'), sel) : campo(t('fotos.persona'), nombre),
+        lista.length ? null : el('p', { className: 'cs-nota', text: t('seg.sinClipkeeper') }),
+        campo(t('seg.cada'), cada),
+        campo(t('seg.cuantos'), limite),
+        el('p', { className: 'cs-nota', text: t('seg.explica') }),
+      ].filter(Boolean),
+      pie: [guardarSeguir],
+    });
+  }
+  const botonSeguir = el('button', {
+    className: 'cg-boton',
+    attrs: { type: 'button' },
+    text: t('seg.seguir'),
+    on: { click: () => formularioSeguir() },
+  });
+
   function pintarProgramadas() {
     if (!programadas.programadas.length) {
       listaProgramadas.replaceChildren(vacio(t('aj.prog.vacio')));
       return;
     }
+    const seguidas = programadas.programadas.filter(p => p.seguida);
+    const otras = programadas.programadas.filter(p => !p.seguida);
     listaProgramadas.replaceChildren(
-      ...programadas.programadas.map(p =>
+      ...(seguidas.length
+        ? [
+            el('li', {
+              className: 'cs-lista__grupo',
+              text: t('seg.titulo', { n: seguidas.length }),
+            }),
+            ...seguidas.map(filaSeguida),
+            otras.length ? el('li', { className: 'cs-lista__grupo', text: t('seg.otras') }) : null,
+          ].filter(Boolean)
+        : []),
+      ...otras.map(p =>
         fila({
           estado: p.activa ? (programadas.enCurso === p.id ? 'curso' : 'hecho') : 'pausa',
           titulo: p.termino,
@@ -659,7 +812,7 @@ export function createActividadView(raiz) {
       verAvisos();
     } else {
       panel.replaceChildren(
-        el('div', { className: 'cs-fila-botones', children: [nuevaProgramada] }),
+        el('div', { className: 'cs-fila-botones', children: [nuevaProgramada, botonSeguir] }),
         listaProgramadas
       );
       pintarProgramadas();
@@ -678,6 +831,7 @@ export function createActividadView(raiz) {
   alCambiarIdioma(() => {
     pintarPestanas();
     nuevaProgramada.textContent = t('act.prog.nueva');
+    botonSeguir.textContent = t('seg.seguir');
     barraDescargas.children[0].textContent = t('aj.paq.actualizar');
     barraDescargas.children[1].textContent = t('aj.paq.vaciar');
     if (!raiz.hidden) mostrar(pestana);

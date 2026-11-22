@@ -403,6 +403,26 @@ export const ajustes = {
     request(`/ajustes/programadas/${encodeURIComponent(id)}/ahora`, { method: 'POST', body: '{}' }),
 };
 
+/**
+ * Fase 7: personas de clipkeeper (C1), la pestaña Fotos de Buscar (FO-1…FO-5) y «Seguidas» (C4).
+ */
+export const fase7 = {
+  personas: (q = '') => request(`/ajustes/personas${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  fotosDisponible: () => request('/fotos/disponible'),
+  buscarFotos: q => request(`/fotos/buscar?q=${encodeURIComponent(q)}`),
+  verAlbum: url => request(`/fotos/album?url=${encodeURIComponent(url)}`),
+  mandarFotos: datos => request('/fotos/mandar', { method: 'POST', body: JSON.stringify(datos) }),
+  envioFotos: id => request(`/fotos/mandar/${encodeURIComponent(id)}`),
+  seguidas: () => request('/seguidas'),
+  seguir: datos => request('/seguidas', { method: 'POST', body: JSON.stringify(datos) }),
+  dejarDeSeguir: id => request(`/seguidas/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  guardarAlbumesSitio: (id, datos) =>
+    request(`/ajustes/sitios-albumes/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(datos),
+    }),
+};
+
 /** «Recoger» (CS-N1): la propuesta de lo que se mandaría de una búsqueda. */
 export const recoger = {
   propuesta: datos =>

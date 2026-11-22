@@ -168,8 +168,14 @@ export function createProfileBar({ getConfig, applyConfig }) {
       return;
     }
 
-    const entry = { name: clean, config: getConfig() };
     const existing = profiles.findIndex(item => item.name === clean);
+    // FO-1: la plantilla de álbumes se edita en Ajustes → Sitios, no en este formulario: al
+    // sobrescribir una configuración se conserva la que tenía.
+    const previa = existing >= 0 ? profiles[existing].config || {} : {};
+    const albumes = Object.fromEntries(
+      ['albumSearchUrl', 'albumLinkPattern'].filter(k => previa[k]).map(k => [k, previa[k]])
+    );
+    const entry = { name: clean, config: { ...albumes, ...getConfig() } };
 
     // Sobrescribir en silencio perdía la configuración anterior con el mismo
     // riesgo que borrar, pero sin el mismo aviso: mismo peligro, trato

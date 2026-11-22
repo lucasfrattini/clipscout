@@ -1,4 +1,4 @@
-import { ajustes } from '../api.js';
+import { ajustes, fase7 } from '../api.js';
 import { el, clear, toast, enfocarAlAbrir, copyToClipboard } from '../dom.js';
 import { t, tp, texto, atributo, alCambiarIdioma, idiomaActual } from '../i18n/index.js';
 import { createJdEnvio } from '../components/jdEnvio.js';
@@ -545,6 +545,22 @@ export function createBuscarView(root) {
     on: { click: () => abrirRecogerHoja() },
   });
   texto(botonRecoger, 'recoger.boton');
+  // Fase 7 (FO-1): «Fotos», los álbumes de lo buscado. Solo si algún sitio tiene álbumes o hay
+  // búsqueda web; el módulo se carga al abrirlo.
+  const botonFotos = el('button', {
+    className: 'cg-boton buscar__fotos',
+    attrs: { type: 'button', hidden: '' },
+    on: { click: () => abrirFotosHoja() },
+  });
+  texto(botonFotos, 'fotos.boton');
+  let hayFotos = false;
+  fase7
+    .fotosDisponible()
+    .then(r => {
+      hayFotos = Boolean(r.sitios?.length || r.web);
+      pintarResultados();
+    })
+    .catch(() => {});
   lineaEstado.append(
     el('button', {
       className: 'buscar__estado-texto',
@@ -556,7 +572,8 @@ export function createBuscarView(root) {
     cuentaEnviados,
     cuentaDescartados,
     botonParar,
-    botonRecoger
+    botonRecoger,
+    botonFotos
   );
   const zonaSugeridos = el('div', { className: 'buscar__sugeridos', attrs: { hidden: '' } });
   const rejilla = el('div', {
@@ -710,17 +727,20 @@ export function createBuscarView(root) {
   // La misma página (un álbum con varios vídeos) se manda una sola vez: JDownloader ya la abre entera.
   async function descargar(links) {
     const titulo = new Map(resultados.map(r => [enlaceDe(r), r.title || '']));
+    const duracionDe = new Map(resultados.map(r => [enlaceDe(r), r.durationSeconds ?? null]));
     const unicos = [...new Set(links)];
     return descargarCon(unicos, {
       ...(destinoFijo === null ? {} : { carpeta: destinoFijo, regla: reglaFija }),
       titulos: unicos.map(l => titulo.get(l) || ''),
+      duraciones: unicos.map(l => duracionDe.get(l) ?? null),
     });
   }
   /** Manda con carpeta, regla y títulos dados (también «Recoger») y lo apunta como enviado. */
   async function descargarCon(links, opciones) {
     const unicos = [...new Set(links)];
     if (!unicos.length) return null;
-    const r = await jd.enviar(unicos, opciones);
+    // NU-1: lo buscado viaja para que el servidor sepa qué personas van (C2).
+    const r = await jd.enviar(unicos, { termino: ultimaBusqueda, ...opciones });
     if (r) {
       // Memoria de lo enviado: desde ya salen ocultos (con su contador) y fuera de «todo».
       const ahora = Date.now();
@@ -1041,6 +1061,7 @@ export function createBuscarView(root) {
     const p = carpetaPropuesta(q, {
       existentes: (jd.destinos() || []).map(d => d.carpeta),
       catalogo: jd.catalogo(),
+      personas: jd.personas(),
     });
     if (p) {
       destinoFijo = p.carpeta;
@@ -1077,6 +1098,13 @@ export function createBuscarView(root) {
       enviar: (links, opciones) => descargarCon(links, opciones),
       jdConfigurado: jd.configurado(),
     });
+  }
+  /** FO-1…FO-5: la hoja de álbumes de lo buscado y «Mandar a una persona». */
+  async function abrirFotosHoja() {
+    const q = ultimaBusqueda || entrada.value.trim();
+    if (!q) return;
+    const { abrirFotos } = await import('./fotos.js');
+    abrirFotos({ q, jdConfigurado: jd.configurado() });
   }
   pieAccion.append(destino, descargarTodo);
   jd.alCargar(() => {
@@ -2195,6 +2223,7 @@ export function createBuscarView(root) {
       !(trabajoVisto || trabajo) ||
       resultados.length === 0 ||
       tipoDeEntrada(ultimaBusqueda) !== 'palabra';
+    botonFotos.hidden = !hayFotos || tipoDeEntrada(ultimaBusqueda) !== 'palabra';
     descargarTodo.textContent = t('buscar.descargarTodo', { n: paraTodo.length });
     descargarTodo.disabled = paraTodo.length === 0;
 

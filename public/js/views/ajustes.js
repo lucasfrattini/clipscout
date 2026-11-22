@@ -806,6 +806,11 @@ export function createAjustesView(raiz) {
       className: 'input',
       attrs: { rows: 3, spellcheck: 'false', placeholder: 'ejemplo.com' },
     });
+    // FO-4: palabra que se añade al buscar fotos en la web (de fábrica, ninguna).
+    const palabraFotos = el('input', {
+      className: 'input',
+      attrs: { type: 'text', spellcheck: 'false', maxlength: '60' },
+    });
     const resultado = el('p', { className: 'ajustes-resultado' });
     const mostrar = r => {
       resultado.className = `ajustes-resultado ${r.ok ? 'ajustes-resultado--ok' : 'ajustes-resultado--mal'}`;
@@ -823,6 +828,7 @@ export function createAjustesView(raiz) {
         motores.value = d.motores || '';
         paginas.value = String(d.webPaginas || 2);
         sinProxy.value = (d.sinProxy || []).join('\n');
+        palabraFotos.value = d.palabraFotos || '';
       })
       .catch(() => {});
     const form = el('form', {
@@ -832,6 +838,7 @@ export function createAjustesView(raiz) {
         campo(t('aj.web.motores'), motores, t('aj.web.motores.hint')),
         campo(t('aj.web.paginas'), paginas),
         campo(t('aj.web.sinProxy'), sinProxy, t('aj.web.sinProxy.hint')),
+        campo(t('aj.web.palabraFotos'), palabraFotos, t('aj.web.palabraFotos.hint')),
         el('div', {
           className: 'ajustes-acciones',
           children: [
@@ -872,6 +879,7 @@ export function createAjustesView(raiz) {
               motores: motores.value,
               webPaginas: Number(paginas.value),
               sinProxy: sinProxy.value,
+              palabraFotos: palabraFotos.value,
             });
             motores.value = d.motores;
             sinProxy.value = d.sinProxy.join('\n');

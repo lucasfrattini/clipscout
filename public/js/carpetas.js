@@ -42,9 +42,20 @@ const normal = s =>
  * con nada, null: se sigue preguntando. Solo coincidencias exactas (sin mayúsculas ni acentos): una
  * parecida podría mandar a otra persona.
  */
-export function carpetaPropuesta(termino, { existentes = [], catalogo = {} } = {}) {
+export function carpetaPropuesta(termino, { existentes = [], catalogo = {}, personas = [] } = {}) {
   const q = normal(termino);
   if (q.length < 2) return null;
+  // Fase 7: una persona de clipkeeper (C1) por su nombre o un alias → su carpeta (la de la mayoría
+  // de sus vídeos; si no tiene, People/<nombre>) con la regla de esa persona.
+  const deClipkeeper = personas.find(p =>
+    [p.nombre, ...(p.alias || [])].some(n => normal(n) === q)
+  );
+  if (deClipkeeper) {
+    return {
+      carpeta: deClipkeeper.carpeta || `People/${deClipkeeper.nombre}`,
+      regla: { personas: [{ nombre: deClipkeeper.nombre, rol: deClipkeeper.rol }] },
+    };
+  }
   const carpeta = existentes.find(c => normal(String(c).split('/').filter(Boolean).pop()) === q);
   if (carpeta) return { carpeta, regla: null };
   const persona = (catalogo.personas || []).find(p => normal(p.nombre) === q);

@@ -3,11 +3,11 @@
  * (editar, volver a configurar, borrar). Sale de ajustes.js (CS-22); no depende de su estado.
  */
 
-import { ajustes, getProfiles, saveProfiles } from '../../api.js';
+import { ajustes, fase7, getProfiles, saveProfiles } from '../../api.js';
 import { altaSitiosDialog } from '../../components/altaSitios.js';
 import { el, toast } from '../../dom.js';
 import { t, tp } from '../../i18n/index.js';
-import { menuAcciones } from '../../hojas.js';
+import { abrirHoja, menuAcciones } from '../../hojas.js';
 
 /* ── Sitios: opciones por sitio ────────────────────────────────────── */
 
@@ -124,6 +124,11 @@ export function tarjetaSitios() {
                   }
                 },
               },
+              {
+                texto: t('aj.sitios.albumes'),
+                detalle: s.albumSearchUrl || t('aj.sitios.albumes.detalle'),
+                fn: () => editarAlbumes(s),
+              },
               { texto: t('aj.sitios.borrar'), peligro: true, fn: () => borrarSitio(s) },
             ],
           }),
@@ -169,6 +174,68 @@ export function tarjetaSitios() {
       toast(t('aj.sitios.reconfigurado', { nombre: s.nombre }), 'success', 4000);
       cargarSitios();
     }
+  }
+
+  /**
+   * FO-1: la sección de álbumes del sitio (opcional): la dirección de búsqueda de álbumes con {q}
+   * y, si hace falta, qué enlaces de esa página son álbumes. Vacía, el sitio no sale en Fotos.
+   */
+  function editarAlbumes(s) {
+    const plantilla = el('input', {
+      className: 'input',
+      attrs: {
+        type: 'url',
+        spellcheck: 'false',
+        autocomplete: 'off',
+        placeholder: `https://${s.dominio}/albums?q={q}`,
+      },
+    });
+    plantilla.value = s.albumSearchUrl || '';
+    const patron = el('input', {
+      className: 'input',
+      attrs: { type: 'text', spellcheck: 'false', autocomplete: 'off', placeholder: '/album/' },
+    });
+    patron.value = s.albumLinkPattern || '';
+    const campo = (texto, control, ayuda) =>
+      el('label', {
+        className: 'field',
+        children: [
+          el('span', { className: 'field__label', text: texto }),
+          control,
+          el('span', { className: 'field__hint', text: ayuda }),
+        ],
+      });
+    let hoja = null;
+    const guardarAlbumes = el('button', {
+      className: 'cg-boton cg-boton--principal',
+      attrs: { type: 'button' },
+      text: t('aj.guardar'),
+      on: {
+        click: async () => {
+          try {
+            const r = await fase7.guardarAlbumesSitio(s.id, {
+              dominio: s.dominio,
+              albumSearchUrl: plantilla.value.trim(),
+              albumLinkPattern: patron.value.trim(),
+            });
+            s.albumSearchUrl = r.albumSearchUrl;
+            s.albumLinkPattern = r.albumLinkPattern;
+            toast(t('aj.guardado'));
+            hoja?.cerrar();
+          } catch (error) {
+            toast(error.message, 'error', 6000);
+          }
+        },
+      },
+    });
+    hoja = abrirHoja({
+      titulo: t('aj.sitios.albumes.titulo', { nombre: s.nombre }),
+      contenido: [
+        campo(t('aj.sitios.albumes.url'), plantilla, t('aj.sitios.albumes.url.hint')),
+        campo(t('aj.sitios.albumes.patron'), patron, t('aj.sitios.albumes.patron.hint')),
+      ],
+      pie: [guardarAlbumes],
+    });
   }
 
   /** Borrar un sitio no se deshace (su configuración se pierde): mantener pulsado. */

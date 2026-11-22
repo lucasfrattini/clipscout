@@ -30,7 +30,16 @@ const guardar = (clave, valor) => {
 
 /** Texto de un aviso en el idioma de la interfaz. */
 export function textoAviso(a) {
-  return t(`aviso.${a.tipo}`, a.params || {});
+  const p = a.params || {};
+  // Fase 7 (C4): lo que mandó una persona seguida, con los primeros títulos.
+  if (a.tipo === 'programada' && p.seguida) {
+    const base = t('aviso.seguida', p);
+    return p.titulos?.length ? `${base}: ${p.titulos.join(' · ')}` : base;
+  }
+  if (a.tipo === 'programada' && p.titulos?.length) {
+    return `${t('aviso.programada', p)}: ${p.titulos.join(' · ')}`;
+  }
+  return t(`aviso.${a.tipo}`, p);
 }
 
 /**

@@ -76,3 +76,17 @@ test('carpeta propuesta: nada parecido a medias ni términos de una letra', asyn
   assert.equal(carpetaPropuesta('a', { existentes: ['People/A'], catalogo }), null);
   assert.equal(carpetaPropuesta('montaña', {}), null);
 });
+
+test('fase 7: lo buscado es una persona de clipkeeper (nombre o alias) → su carpeta (C1)', async () => {
+  const { carpetaPropuesta } = await cargar();
+  const personas = [
+    { nombre: 'Ana Pérez', rol: 'actriz', alias: ['Anita P'], carpeta: 'Viajes/Ana Pérez' },
+    { nombre: 'Luis Gómez', rol: 'actor', alias: [], carpeta: null },
+  ];
+  assert.deepEqual(carpetaPropuesta('anita p', { personas }), {
+    carpeta: 'Viajes/Ana Pérez',
+    regla: { personas: [{ nombre: 'Ana Pérez', rol: 'actriz' }] },
+  });
+  assert.equal(carpetaPropuesta('luis gomez', { personas }).carpeta, 'People/Luis Gómez');
+  assert.equal(carpetaPropuesta('anita', { personas }), null);
+});

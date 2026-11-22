@@ -1158,3 +1158,97 @@ cg-chips.actividad__pestanas {
   align-items: center;
   min-height: 44px;
 }
+
+/* Fase 7 · Fotos (FO-1…FO-5): álbumes de lo buscado, dos por fila en el móvil. */
+.buscar__fotos {
+  flex: none;
+  padding-inline: 12px;
+  font-size: 0.9rem;
+}
+.buscar__recoger + .buscar__fotos {
+  margin-left: 4px;
+}
+.buscar__recoger[hidden] + .buscar__fotos {
+  margin-left: auto;
+}
+.fotos__estado,
+.fotos__notas {
+  margin: 0 0 8px;
+  color: var(--c-text-muted);
+  font-size: 0.92rem;
+}
+.fotos__notas:empty {
+  display: none;
+}
+.fotos__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fotos__album {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--cg-borde);
+  border-radius: var(--cg-radio-chico);
+  background: var(--cg-superficie);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fotos__album[aria-pressed='true'] {
+  border-color: var(--cg-acento);
+  box-shadow: 0 0 0 2px var(--cg-acento-suave);
+}
+.fotos__portada {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--c-border);
+}
+.fotos__texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 8px 8px;
+}
+.fotos__texto strong {
+  overflow: hidden;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fotos__texto small {
+  color: var(--c-text-muted);
+}
+.fotos__tengo {
+  align-self: flex-start;
+  padding: 1px 6px;
+  border-radius: var(--cg-radio-total);
+  background: var(--cg-ok-suave);
+  color: var(--cg-ok);
+  font-size: 0.78rem;
+}
+.fotos .cs-hoja-pie {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+}
+.fotos__mandar {
+  width: 100%;
+}
+
+/* Fase 7 · Seguidas (C4) en Actividad. */
+.actividad__seguida .cs-fila__texto small {
+  white-space: normal;
+}
