@@ -406,3 +406,69 @@ número que enseña la primera página de resultados de cada sitio («1.234 resu
 Ver `FASE7-SPEC`: clonbuster analiza las imágenes de las carpetas `carpeta_fotos` y manda los mismos
 `eventos` que con vídeos; clipkeeper avisa con `/incremental` también de las fotos nuevas. clipscout
 no interviene.
+
+## Añadido en 0.37 (fase 7, clipkeeper)
+
+Rutas nuevas que abre una clave de conexión: `GET /personas`, `POST /esperados`, `GET /esperados`.
+
+### `GET /personas` (C1)
+
+`{"personas": [{"id", "nombre", "rol", "alias": [..], "biblioteca_id", "carpeta": "People/Ana Pérez" | null,
+"carpeta_fotos": "Fotos", "videos": n, "fotos": n, "foto": bool}]}`. `carpeta`: la carpeta (relativa a
+`biblioteca_id`) con más vídeos de la persona cuyo último tramo es su nombre o un alias (cuentan también sus
+álbumes); a igualdad, la que lleva su nombre. Sin ella, `null` (y `biblioteca_id` = la primera biblioteca).
+`?q=` sin acentos ni mayúsculas, en nombre y alias. Salen todas las personas.
+
+### `POST /esperados` y `GET /esperados?estado=` (C2, ingreso con metadatos)
+
+Cuerpo `{"biblioteca_id", "carpeta", "items": [{"tipo": "video"|"album", "origen_url", "titulo", "personas",
+"etiquetas", "duracion", "sustituye_video_id", "album", "n_fotos"}]}` (hasta 500) → `201 {"ids"}`; 404 si la
+biblioteca no existe, 400 si los items no valen. Caducan a los 14 días. Emparejado en cualquier escaneo:
+
+- Vídeo: fichero NUEVO en `carpeta` (o una subcarpeta). Si se conocen las dos duraciones, solo valen las
+  de ±3 % o ±5 s (gana la más cercana); si no, el nombre del fichero más parecido al título; si no, el
+  único esperado que queda en esa carpeta. Recibe título (solo si el del fichero es un código o no hay),
+  personas, etiquetas y `origen_url`. Con `sustituye_video_id`, el fichero pasa a ser la calidad principal
+  de ese vídeo (la anterior queda como otra calidad o, si estaba rota o no estaba, se olvida) y la ficha se
+  conserva.
+- Álbum: fotos nuevas en `carpeta/<carpeta_fotos>/<album saneado>/`; el álbum recibe `origen_url` (y la
+  persona si no la tenía).
+
+`GET` devuelve las filas con `estado` (`pendiente|emparejado|caducado`), `emparejado_con` (vídeo o álbum),
+`n_fotos`, `album` y, en los álbumes, `fotos_emparejadas` (fotos ya catalogadas en él).
+
+### Fotos (C3, C8)
+
+Estructura `<carpeta de la persona>/<carpeta_fotos>/<Álbum>/<ficheros>`; fuera de ella clipkeeper no
+cataloga imágenes. `POST /incremental` de clonbuster lleva también las rutas absolutas de las fotos nuevas.
+Los `eventos` de clonbuster (`archivo.movido` / `archivo.borrado`, por ruta y `cid`) se aplican también a
+las fotos: a una papelera o fuera de la biblioteca → dejan de verse; de vuelta a una carpeta de fotos →
+recuperan su fila y su álbum. Las fotos que aparta clipkeeper van a la papelera común (`id` del diario
+`foto-<id>`) y se restauran y eliminan como los lotes de clonbuster.
+
+### clipkeeper llama a clipscout (C4–C7)
+
+- C4 «Seguir» desde la página de persona: `POST /seguir {persona, alias, biblioteca_id, carpeta, cada_dias,
+  limite}`, `GET /seguir` (se busca la de esa persona; `ultimos_enviados` puede ser lista o número) y
+  `DELETE /seguir/{id}`.
+- C5 «Mejorables»: `POST /mejorar` (≤ 200), `GET /mejorar/{trabajo}`, `POST /mejorar/{trabajo}/enviar`.
+- C6 «Volver a descargar» (Salud): `POST /reenviar` con `sustituye_video_id` = el vídeo roto o desaparecido.
+- C7 «Huecos»: `GET /recuento?termino=<nombre>`; `total` puede ser `null`.
+
+## Fase 7 (2026-11): fotos por persona (clonbuster 0.25.0)
+
+Estructura de fotos en disco (C3): `<carpeta de la persona>/<carpeta_fotos>/<Álbum>/<ficheros>`, p. ej.
+`People/Ana Pérez/Fotos/Vacaciones/001.jpg`. Imágenes: `jpg jpeg png webp gif avif heic heif`.
+
+### Fotos en clonbuster (C8)
+
+- clonbuster analiza las fotos de una biblioteca de vídeos cuando están dentro de una carpeta que se
+  llama como su ajuste `carpeta_fotos` (fábrica «Fotos», sin distinguir mayúsculas, a cualquier
+  profundidad), aunque la biblioteca se diera de alta solo con vídeos. Ajuste «Incluir fotos de las
+  carpetas de fotos» (`fotos_carpetas` en `GET|PUT /api/deteccion`), encendido de fábrica. Es un
+  ajuste propio: no se lee el `carpeta_fotos` de clipkeeper.
+- `POST /api/crew/v1/incremental` acepta también rutas de fotos nuevas; se analizan si están en una
+  carpeta de fotos (o si la biblioteca tiene el tipo «fotos»). El resto se ignora como siempre.
+- Al apartar, sustituir o restaurar fotos, clonbuster manda los mismos eventos que con vídeos
+  (`archivo.movido` con `{origen, destino, cid}`; `archivo.borrado` al eliminar de la papelera).
+  Sustituir una foto no llama a `POST /api/crew/v1/heredar` (las fichas son de vídeos).
