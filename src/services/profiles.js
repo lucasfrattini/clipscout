@@ -31,6 +31,10 @@ const CONFIG_KEYS = [
   'useJavaScript',
   'openLicenseOnly',
   'paginationMode',
+  // Fase 7 (FO-1), opcionales: plantilla de búsqueda de ÁLBUMES (con {q}) y qué enlaces de esa
+  // página son álbumes. Sin plantilla, el sitio no sale en la pestaña Fotos.
+  'albumSearchUrl',
+  'albumLinkPattern',
 ];
 
 const MAX_NAME_LENGTH = 120;

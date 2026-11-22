@@ -12,6 +12,7 @@ const crewRoutes = require('./crew');
 const buscarRoutes = require('./buscar');
 const sitiosRoutes = require('./sitios');
 const sistemaRoutes = require('./sistema');
+const fase7Routes = require('./fase7');
 
 const router = express.Router();
 
@@ -55,6 +56,8 @@ router.use(scrapeRoutes);
 router.use(videoRoutes);
 router.use(profileRoutes);
 router.use(crewRoutes);
+// Después de las del protocolo de siempre: `/crew/v1/status` es público y lo atiende crew.js.
+router.use(fase7Routes);
 router.use(buscarRoutes);
 router.use(sitiosRoutes);
 

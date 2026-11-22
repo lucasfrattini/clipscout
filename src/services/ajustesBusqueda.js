@@ -10,6 +10,7 @@ const crew = require('./crew');
  * - `motores`: qué buscadores consulta SearXNG (los que bloquean, fuera). Lista separada por comas.
  * - `webPaginas`: páginas de resultados del buscador por sitio.
  * - `sinProxy`: dominios que van directos, sin la VPN (bloquean su salida).
+ * - `palabraFotos`: palabra que se añade al buscar fotos en la web (FO-4); de fábrica, ninguna.
  *
  * Los valores del entorno (.env) son solo los de partida: lo guardado en Ajustes manda. Se
  * guardan en data/crew.json junto al resto de ajustes, y se aplican en caliente: el cliente HTTP lee
@@ -21,6 +22,8 @@ const DEFECTO = () => ({
   motores: config.busqueda.webMotores,
   webPaginas: config.busqueda.webPaginas,
   sinProxy: [...config.outboundProxyBypass],
+  // FO-4: palabra extra para buscar fotos en la web (de fábrica, ninguna).
+  palabraFotos: config.fotos.palabraWeb,
 });
 
 function limpiarDominios(lista) {
@@ -56,6 +59,7 @@ function aplicar(a) {
   config.busqueda.webMotores = a.motores;
   config.busqueda.webPaginas = a.webPaginas;
   config.outboundProxyBypass.splice(0, config.outboundProxyBypass.length, ...a.sinProxy);
+  config.fotos.palabraWeb = a.palabraFotos || '';
 }
 
 async function leer() {
@@ -83,6 +87,14 @@ async function guardar(cambios = {}) {
         ? actual.webPaginas
         : Math.min(5, Math.max(1, Number.parseInt(cambios.webPaginas, 10) || 1)),
     sinProxy: cambios.sinProxy === undefined ? actual.sinProxy : limpiarDominios(cambios.sinProxy),
+    palabraFotos:
+      cambios.palabraFotos === undefined
+        ? actual.palabraFotos || ''
+        : String(cambios.palabraFotos)
+            .replace(/[\u0000-\u001f]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 60),
   };
   const cambiaProxy = nuevo.sinProxy.join(',') !== actual.sinProxy.join(',');
   await crew.cambiar(d => {

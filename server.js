@@ -82,6 +82,9 @@ const escuchar = () =>
 const server = config.host
   ? app.listen(config.port, config.host, escuchar)
   : app.listen(config.port, escuchar);
+// Fase 7: conexiones abiertas ≥ 65 s (Node cierra a los 5 s y Safari reutiliza la conexión cerrada:
+// «Load failed» al guardar). Ver src/app.js.
+require('./src/app').ajustarConexiones(server);
 
 // Apagado ordenado (services/apagado.js): lo mismo por POST /api/apagar (lanzador, instalador)
 // que por SIGTERM/SIGINT (Docker, systemd, Ctrl+C). Con una señal se espera menos a lo que esté

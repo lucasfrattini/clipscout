@@ -263,4 +263,17 @@ function createApp() {
   return app;
 }
 
-module.exports = { createApp, config, PUBLIC_DIR };
+/**
+ * Tiempos de las conexiones del servidor HTTP. Node cierra una conexión en reposo a los 5 s, y
+ * Safari (y algunos proxys) la reutilizan justo después: la petición sale por una conexión ya
+ * cerrada y falla con «Load failed». Con 65 s (más que los 60 de los proxys habituales) es el
+ * cliente quien la cierra primero. `headersTimeout` tiene que ser algo mayor que `keepAliveTimeout`.
+ */
+const KEEP_ALIVE_MS = 65000;
+function ajustarConexiones(server) {
+  server.keepAliveTimeout = KEEP_ALIVE_MS;
+  server.headersTimeout = KEEP_ALIVE_MS + 1000;
+  return server;
+}
+
+module.exports = { createApp, ajustarConexiones, KEEP_ALIVE_MS, config, PUBLIC_DIR };

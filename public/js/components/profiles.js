@@ -26,6 +26,8 @@ export const CONFIG_KEYS = [
   'useJavaScript',
   'openLicenseOnly',
   'paginationMode',
+  'albumSearchUrl',
+  'albumLinkPattern',
 ];
 
 /**

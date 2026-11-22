@@ -68,10 +68,22 @@ const PERMITIDAS_CONEXION = [
   ['POST', '/api/crew/v1/conexiones/renovar'],
   ['POST', '/api/crew/v1/sesion/validar'],
   ['POST', '/api/crew/v1/sesion/cerrar'],
+  // Fase 7 (clipkeeper): seguir a una persona (C4), mejorar calidad (C5), volver a descargar (C6)
+  // y recuento (C7). Las que llevan un id van como expresión.
+  ['POST', '/api/crew/v1/seguir'],
+  ['GET', '/api/crew/v1/seguir'],
+  ['DELETE', /^\/api\/crew\/v1\/seguir\/[\w-]{1,64}$/],
+  ['POST', '/api/crew/v1/mejorar'],
+  ['GET', /^\/api\/crew\/v1\/mejorar\/[\w-]{1,64}$/],
+  ['POST', /^\/api\/crew\/v1\/mejorar\/[\w-]{1,64}\/enviar$/],
+  ['POST', '/api/crew/v1/reenviar'],
+  ['GET', '/api/crew/v1/recuento'],
 ];
 const permitidaConConexion = req =>
   PERMITIDAS_CONEXION.some(
-    ([m, ruta]) => (req.method === m || (m === 'GET' && req.method === 'HEAD')) && req.path === ruta
+    ([m, ruta]) =>
+      (req.method === m || (m === 'GET' && req.method === 'HEAD')) &&
+      (typeof ruta === 'string' ? req.path === ruta : ruta.test(req.path))
   );
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));

@@ -383,6 +383,9 @@ router.get(
           nombre: s.nombre,
           dominio,
           jdDirecto: directo.esDirecto(`https://${dominio}/`, opciones),
+          // FO-1: plantilla de álbumes (opcional) de su configuración.
+          albumSearchUrl: s.perfil.config.albumSearchUrl || '',
+          albumLinkPattern: s.perfil.config.albumLinkPattern || '',
           fueraPorDefecto: directo.fueraPorDefecto(dominio, opciones),
           estadisticas: cifras[dominio] || null,
           salud: salud[dominio] || null,
