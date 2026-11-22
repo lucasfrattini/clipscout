@@ -56,19 +56,28 @@ comparan en tiempo constante.
 
 **Lista de permisos de clipscout** con clave de conexión:
 
-| Método | Ruta                              | Para qué                                                             |
-| ------ | --------------------------------- | -------------------------------------------------------------------- |
-| `GET`  | `/api/crew/v1/status`             | Probar la conexión                                                   |
-| `GET`  | `/api/crew/v1/imagenes`           | Fotos para clipkeeper                                                |
-| `POST` | `/api/crew/v1/conexiones`         | Solo la «vuelta» de una conexión que ya existe con esa app y esa URL |
-| `POST` | `/api/crew/v1/conexiones/renovar` | Pasar a claves de conexión                                           |
-| `POST` | `/api/crew/v1/sesion/validar`     | Inicio de sesión único                                               |
-| `POST` | `/api/crew/v1/sesion/cerrar`      | «Salir» desde otra app                                               |
+| Método   | Ruta                                    | Para qué                                                             |
+| -------- | --------------------------------------- | -------------------------------------------------------------------- |
+| `GET`    | `/api/crew/v1/status`                   | Probar la conexión                                                   |
+| `GET`    | `/api/crew/v1/imagenes`                 | Fotos para clipkeeper                                                |
+| `POST`   | `/api/crew/v1/conexiones`               | Solo la «vuelta» de una conexión que ya existe con esa app y esa URL |
+| `POST`   | `/api/crew/v1/conexiones/renovar`       | Pasar a claves de conexión                                           |
+| `POST`   | `/api/crew/v1/sesion/validar`           | Inicio de sesión único                                               |
+| `POST`   | `/api/crew/v1/sesion/cerrar`            | «Salir» desde otra app                                               |
+| `POST`   | `/api/crew/v1/seguir`                   | Seguir a una persona (fase 7, C4)                                    |
+| `GET`    | `/api/crew/v1/seguir`                   | Personas seguidas (C4)                                               |
+| `DELETE` | `/api/crew/v1/seguir/{id}`              | Dejar de seguir (C4)                                                 |
+| `POST`   | `/api/crew/v1/mejorar`                  | Buscar mejor calidad (C5)                                            |
+| `GET`    | `/api/crew/v1/mejorar/{trabajo}`        | Progreso y candidatos (C5)                                           |
+| `POST`   | `/api/crew/v1/mejorar/{trabajo}/enviar` | Mandar los elegidos (C5)                                             |
+| `POST`   | `/api/crew/v1/reenviar`                 | Volver a descargar (C6)                                              |
+| `GET`    | `/api/crew/v1/recuento`                 | Cuántos tiene cada sitio de un término (C7)                          |
 
 `GET /conexiones` y `DELETE /conexiones/{id}` piden la clave de administración. clipscout llama a
 clipkeeper a `POST /buscar` («¿ya lo tengo?»), `GET /destinos`, `POST /reglas` y `POST /escanear`
-(además de `status`, `conexiones`, `conexiones/renovar` y `sesion/*`): esas tienen que estar en la
-lista de permisos de clipkeeper.
+(además de `status`, `conexiones`, `conexiones/renovar` y `sesion/*`) y, desde la fase 7, a
+`POST /tengo`, `GET /personas` y `POST|GET /esperados`: esas tienen que estar en la lista de
+permisos de clipkeeper.
 
 ### Alta, vuelta y renovación
 
@@ -300,3 +309,100 @@ X-Api-Key: <clave de clipkeeper>
 - `CLIPGEIST_CLIPSCOUT_URL`: la URL propia que se anuncia en `/status` si no hay otra en Ajustes.
 - `deploy/clipgeist/compose.yaml` levanta las tres apps con estas variables y las URLs internas
   de la red de compose.
+
+## Fase 7 (2026-11): fotos por persona y completar por persona
+
+Contratos C1–C8 de `FASE7-SPEC`. `X-Api-Key` = clave de la app de destino. Lo nuevo es compatible:
+una app anterior responde `404` y la otra sigue como antes.
+
+### C1 · clipkeeper `GET /api/crew/v1/personas[?q=]`
+
+`{"personas": [{"id", "nombre", "rol", "alias": [..], "biblioteca_id", "carpeta", "carpeta_fotos",
+"videos", "fotos", "foto"}]}`. `carpeta`: la carpeta (relativa a su biblioteca) con la mayoría de sus
+vídeos, cuyo último tramo es su nombre o un alias; si no hay, `null` (clipscout usa entonces
+`People/<nombre>`). `carpeta_fotos`: ajuste de clipkeeper (fábrica «Fotos»). `q` busca sin acentos ni
+mayúsculas en nombre y alias. clipscout la recuerda un minuto y la usa para: detectar personas en lo
+que manda (nombre o alias como palabras enteras, o pegado si el nombre tiene dos palabras o más; los
+de menos de 3 letras no cuentan), buscar también por los alias, «Mandar a una persona» y proponer la
+carpeta de la persona cuando lo buscado es su nombre o un alias.
+
+### C2 · clipkeeper `POST /api/crew/v1/esperados` (ingreso con metadatos)
+
+clipscout lo llama justo después de **cada** envío correcto al gestor de descargas (búsqueda a mano,
+Recoger, programadas y seguidas, fotos, mejorar y volver a descargar), en tandas de 500:
+
+```json
+{ "biblioteca_id": 1, "carpeta": "People/Ana Pérez",
+  "items": [ { "tipo": "video", "origen_url": "https://…", "titulo": "Día de playa",
+               "personas": ["Ana Pérez"], "etiquetas": ["Verano"], "duracion": 312.0,
+               "sustituye_video_id": null },
+             { "tipo": "album", "origen_url": "https://…", "titulo": "Vacaciones",
+               "album": "Vacaciones", "personas": ["Ana Pérez"], "n_fotos": 24 } ] }
+→ 201 {"ids": [..]}
+```
+
+- `biblioteca_id`: la del gestor de descargas (Ajustes → JDownloader) o la que llegó en C4/C5/C6. Sin
+  biblioteca no se avisa.
+- `carpeta`: la del envío (vídeos) o la de la persona (álbumes: las fotos van a
+  `carpeta/<carpeta_fotos>/<album>/`).
+- `personas`: las de la regla de la carpeta, las que dice quien llama y las detectadas con C1 en el
+  término buscado, el título y la dirección. `etiquetas`: las de la regla.
+- Si clipkeeper no está, responde 404 o no responde, el envío ya está hecho y no cambia.
+- `GET /api/crew/v1/esperados?estado=pendiente|emparejado|caducado`: clipscout lo usa para
+  «¿ya lo tengo?» de álbumes (por `origen_url`).
+
+### C3 · Fotos en disco
+
+`<carpeta de la persona>/<carpeta_fotos>/<Álbum>/<ficheros>`. Nombre de álbum sin
+`/ \ : * ? " < > |`, sin `..`, ≤ 80 caracteres, recortado (vacío → `Album`). Un paquete del gestor
+por álbum.
+
+### C4 · clipscout «Seguir a una persona»
+
+- `POST /api/crew/v1/seguir` `{"persona", "alias": [], "biblioteca_id", "carpeta", "cada_dias": 7,
+"limite": 20}` → `201 {"id"}`. Si ya se sigue a esa persona (sin acentos ni mayúsculas), se
+  actualiza y devuelve su id. Sin `carpeta`, `People/<persona>`.
+- `GET /api/crew/v1/seguir` → `{"seguidas": [{"id", "persona", "alias", "carpeta", "biblioteca_id",
+"cada_dias", "limite", "activa", "ultima", "proxima", "ultimos_enviados": [{"titulo", "url"}],
+"ultimo_total", "ultimo_error"}]}`. `ultima` y `proxima` en ISO 8601 (`ultima: null` si no se ha
+  lanzado; entonces `proxima` es ahora: se lanza en los 5 minutos siguientes). `ultimos_enviados`:
+  lo mandado en la última vuelta (hasta 20).
+- `DELETE /api/crew/v1/seguir/{id}` → `{"ok": true}`; 404 si no es una seguida.
+
+Por dentro es una programada de «Recoger» (fase 6) con la persona como término, sus alias (se
+buscan también y valen como su nombre), solo lo que lleva el nombre, los más largos, como mucho
+`limite` por vuelta, a `carpeta`, y C2 al mandar. Avisos (`programada`, con `seguida: true` y los
+primeros títulos) en Actividad.
+
+### C5 · clipscout «Mejorar calidad»
+
+- `POST /api/crew/v1/mejorar` `{"items": [{"video_id", "titulo", "personas", "duracion", "alto",
+"biblioteca_id", "carpeta"}]}` (1–200; si no, 400) → `202 {"trabajo"}`.
+- `GET /api/crew/v1/mejorar/{trabajo}` → `{"estado": "buscando"|"hecho"|"error", "hechos", "total",
+"propuestas": [{"video_id", "candidatos": [{"url", "titulo", "sitio", "duracion", "alto",
+"miniatura"}]}]}`. Candidato: la misma persona (o un alias) en el título o la dirección, título
+  parecido (la mitad de las palabras del más corto), duración ±3 % (las dos conocidas) y `alto`
+  mayor que el actual. El alto se deduce del título o la dirección (720/1080/1440/2160); sin dato,
+  no es candidato. Como mucho 3, de más alto a menos. Una búsqueda por persona (los vídeos sin
+  persona, por su título). Trabajos en memoria (los 20 últimos); uno que no existe, 404.
+- `POST /api/crew/v1/mejorar/{trabajo}/enviar` `{"elegidos": [{"video_id", "url"}]}` → `{"enviados",
+"fallos": [{"video_id", "url", "error"}]}`. Solo candidatos propuestos en ese trabajo. Un paquete
+  por carpeta, a la carpeta del vídeo, y C2 con `sustituye_video_id`.
+
+### C6 · clipscout `POST /api/crew/v1/reenviar`
+
+`{"items": [{"origen_url", "biblioteca_id", "carpeta", "titulo", "personas", "sustituye_video_id"?}]}`
+(1–500) → `{"enviados", "fallos": [{"origen_url", "error"}]}`. Un paquete por carpeta y C2.
+
+### C7 · clipscout `GET /api/crew/v1/recuento?termino=…`
+
+`{"termino", "total": n|null, "sitios": [{"sitio", "total": n|null}], "fecha"}`. Mejor esfuerzo: el
+número que enseña la primera página de resultados de cada sitio («1.234 resultados», «Videos
+(87)»…), sin navegador; `null` si no lo dice o no responde. `total`: la suma de los conocidos (o
+`null`). Caché de 24 h por término (sin acentos ni mayúsculas). Sin término, 400.
+
+### C8 · Fotos en clonbuster
+
+Ver `FASE7-SPEC`: clonbuster analiza las imágenes de las carpetas `carpeta_fotos` y manda los mismos
+`eventos` que con vídeos; clipkeeper avisa con `/incremental` también de las fotos nuevas. clipscout
+no interviene.

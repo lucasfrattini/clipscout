@@ -91,6 +91,15 @@ progress, real cancellation and export.
   what is new to JDownloader — with a minimum length, words it must or must not contain, and
   a person or category for clipkeeper. The same video found on several sites is sent once.
   Optionally at most N per run, only those carrying the name, longest first. Starts empty.
+- **Photos** (**Photos** next to the results): albums for the same search on the sites that have
+  an albums section (set its search address in _Settings → Sites → ⋯ → Photo albums_) and, with
+  SearXNG, on the web (only results that name the person). Pick albums and **Send to <person>**:
+  each album goes, full-size and as one package, to `<person folder>/Fotos/<album>` (clipkeeper's photos folder).
+- **Follow a person** (_Activity → Scheduled_, or from clipkeeper): a weekly Collect for their name
+  and aliases into their folder, with alerts listing what was sent.
+- **Arrives complete in clipkeeper**: every send tells clipkeeper what is coming (title, people
+  —also by alias—, tags, length and source page), so the library entry is born filled in. Searching
+  a clipkeeper person also searches their aliases and proposes their folder.
 - **Alerts**: a dot on _Activity_ (and a browser notification if you allow it in _Settings →
   System_) when a scheduled search sends something or fails, a download finishes or fails, a
   site breaks or a long search ends.

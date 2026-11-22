@@ -1,5 +1,38 @@
 # Cambios
 
+## 2.25.0 — fotos por persona y completar por persona (fase 7)
+
+- **Fotos** (Buscar → «Fotos»): los álbumes de lo buscado en los sitios que tienen sección de
+  álbumes —se configura en Ajustes → Sitios → ⋯ → «Álbumes de fotos», con una dirección con `{q}`
+  como la de vídeos; un sitio sin ella no sale— y, si hay SearXNG, en la web (solo resultados que
+  nombran a la persona; palabra extra opcional en Ajustes → Búsqueda, de fábrica ninguna). Cada
+  álbum con portada, nº de fotos, sitio y «ya lo tienes / faltan fotos / en camino».
+- **Mandar a una persona**: se elige la persona de clipkeeper y cada álbum va en su paquete a
+  `<carpeta de la persona>/Fotos/<álbum>`, con las fotos a tamaño completo (se recorre la
+  paginación del álbum; fuera miniaturas, iconos y anuncios). Como siempre, clipscout no descarga:
+  manda enlaces directos al gestor.
+- **Ingreso con metadatos**: cada envío al gestor (Buscar, Recoger, programadas, fotos, mejorar y
+  volver a descargar) avisa a clipkeeper de lo que va a llegar —título, personas (por el término,
+  el título y sus alias), etiquetas, duración y página de origen— para que la ficha nazca completa.
+- **Alias**: si lo buscado es una persona de clipkeeper, se busca también por sus alias, «Recoger»
+  los acepta como su nombre y se propone su carpeta como destino.
+- **Seguir a una persona** (desde clipkeeper o desde Actividad → Programadas → «Seguir a una
+  persona»): una programada de Recoger con todos sus alias a su carpeta; grupo «Seguidas» con la
+  próxima vuelta y lo último mandado, y avisos con los títulos.
+- **Para clipkeeper**: mejorar calidad (busca la misma escena en más resolución), volver a
+  descargar un fichero roto desde su origen y «cuántos tiene cada sitio» de un término.
+- Las conexiones HTTP se mantienen 65 s (Safari daba «Load failed» al reutilizar una cerrada).
+
+**Al actualizar**: no hay que hacer nada; ninguna ruta cambia. Rutas nuevas del protocolo:
+`/api/crew/v1/seguir` (POST, GET, DELETE `/{id}`), `/mejorar` (POST, GET `/{trabajo}`, POST
+`/{trabajo}/enviar`), `/reenviar` y `/recuento` (también con la clave de conexión). clipscout llama a
+clipkeeper a `GET /personas` y `POST|GET /esperados`: con un clipkeeper anterior a 0.37 (404) todo
+sigue como antes, sin metadatos ni lista de personas. Interfaz: `/api/ajustes/personas`,
+`/api/fotos/*`, `/api/seguidas` y `PUT /api/ajustes/sitios-albumes/{id}`. Campos nuevos opcionales
+en la configuración de un sitio (`albumSearchUrl`, `albumLinkPattern`), en las programadas
+(`alias`, `bibliotecaId`, `seguida`) y en Ajustes → Búsqueda (`palabraFotos`). Fichero nuevo en la
+carpeta de datos: `fotos-enviadas.json`.
+
 ## 2.24.0 — funciones nuevas (fase 6)
 
 - **Recoger** (en Buscar, junto a los resultados): de lo que encontró la búsqueda de una persona o
