@@ -728,6 +728,22 @@ export const en = {
     'Replace their configuration with the one in the file? Their name and order are kept.',
   'aj.sitios.importarReemplazar': 'Replace',
   'aj.sitios.importadoReemplazo': 'Updated {n} sites.',
+  'aj.jd.calidad.boton': 'Quality per site',
+  'aj.jd.calidad.boton.hint':
+    'Which quality JDownloader downloads from each site (for example, only the best instead of all).',
+  'aj.jd.calidad.titulo': 'Quality in JDownloader',
+  'aj.jd.calidad.cargando': 'Asking JDownloader…',
+  'aj.jd.calidad.nada': 'JDownloader has no quality settings for your sites.',
+  'aj.jd.calidad.hint':
+    'These are the settings of each site plugin in JDownloader: they change there right away.',
+  'aj.jd.calidad.resolucion': 'Download {p}p',
+  'aj.sitios.ficha.poner': 'Pass the page to JDownloader',
+  'aj.sitios.ficha.quitar': 'Stop passing the page to JDownloader',
+  'aj.sitios.ficha.hint':
+    'For sites whose video is not visible on the page: JDownloader opens it and extracts the video itself.',
+  'aj.sitios.ceroUno': 'Reset its numbers',
+  'aj.sitios.ceroUno.hint':
+    'If it was being skipped for giving no results, it is tried again on the next search.',
   'buscar.placeholder': 'A name, a word or a link…',
   'buscar.boton': 'Search',
   'buscar.paginas': 'Pages per site',

@@ -275,6 +275,7 @@ async function probar(configSitio, termino, { signal }) {
       .slice(0, 3)
       .map(d => ({ titulo: d.title || null, url: d.url, duracion: d.duration || null })),
     bloqueo: r.diagnostico?.bloqueo?.sospechoso === true,
+    fichas: (r.links || []).slice(0, 3),
   };
 }
 
@@ -350,6 +351,20 @@ async function configurarSitio({ url, termino }, { signal, emit = () => {} } = {
     if (otra.ficheros > 0 || otra.enlaces > resultado.enlaces) {
       configSitio.useJavaScript = true;
       resultado = otra;
+    }
+  }
+  // Sin ficheros pero con fichas: si JDownloader tiene un plugin para este sitio, se le pasa la
+  // página del vídeo (muchos sitios firman sus ficheros y caducan; el plugin los resuelve).
+  if (resultado.ficheros === 0 && resultado.fichas?.length && !signal?.aborted) {
+    const jd = require('./jdownloader');
+    if (await jd.tienePlugin(resultado.fichas[0])) {
+      emit({ type: 'paso', paso: 'prueba_jdownloader' });
+      const conFicha = { ...configSitio, fichaComoFichero: true };
+      const otra = await probarSinRomper(conFicha);
+      if (otra.ficheros > 0) {
+        configSitio.fichaComoFichero = true;
+        resultado = otra;
+      }
     }
   }
   const nombre = `${host} — búsqueda`;

@@ -400,7 +400,107 @@ async function descargarCuandoEste(
   return ids.length;
 }
 
+/* ── Plugins de JDownloader: ¿sabe con este sitio? y sus ajustes de calidad ───────────────── */
+
+/** URL de JDownloader configurada, o error si no lo está. */
+async function urlJd() {
+  const { url } = await ajustes();
+  if (!url) throw new ErrorJd('Conecta JDownloader en Ajustes → JDownloader.', 400);
+  return url;
+}
+
+/** ¿JDownloader tiene un plugin propio para este enlace? (no el genérico de enlaces directos) */
+async function tienePlugin(enlace) {
+  try {
+    const regex = await llamar(await urlJd(), '/plugins/getPluginRegex', [enlace]);
+    // Sin plugin propio, JDownloader devuelve la lista vacía.
+    return Array.isArray(regex) && regex.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// Solo los ajustes que deciden QUÉ se baja de un vídeo (calidad, formatos): el resto del plugin
+// (dominios, idioma, cuentas…) no pinta nada aquí.
+const AJUSTE_DE_CALIDAD = /quality|best|^\d{3,4}p?$|hls|mp4|resolution|format/i;
+
+/** El nombre de un dominio sin www ni sufijo («www.ejemplo.com» → «ejemplo»). */
+const etiquetaDominio = dominio =>
+  String(dominio || '')
+    .replace(/^www\./, '')
+    .split('.')[0];
+
+/**
+ * Los ajustes de calidad de los plugins de JDownloader para estos dominios. Dos sitios donde viven:
+ * los ajustes avanzados (`/config`) y los de plugins antiguos (`/plugins`). Devuelve
+ * `[{ dominio, ajustes: [{ api, interfaceName, storage, clave, tipo, valor, porDefecto, opciones }] }]`.
+ */
+async function ajustesCalidad(dominios) {
+  const base = await urlJd();
+  const salida = [];
+  for (const dominio of dominios) {
+    const nombre = etiquetaDominio(dominio).replace(/[^a-z0-9-]/gi, '');
+    if (nombre.length < 3) continue;
+    const consulta = {
+      pattern: `(?i).*${nombre}.*`,
+      values: true,
+      defaultValues: true,
+      enumInfo: true,
+    };
+    const vistos = new Set();
+    const lista = [];
+    for (const api of ['config', 'plugins']) {
+      let filas = [];
+      try {
+        filas = (await llamar(base, `/${api}/query`, [consulta])) || [];
+      } catch {
+        filas = [];
+      }
+      for (const f of filas) {
+        const dueño = String(f.interfaceName || '').toLowerCase();
+        if (!dueño.includes(nombre.toLowerCase()) || !AJUSTE_DE_CALIDAD.test(f.key || '')) continue;
+        const id = `${f.interfaceName}|${f.key}`;
+        if (vistos.has(id)) continue;
+        vistos.add(id);
+        lista.push({
+          api,
+          interfaceName: f.interfaceName,
+          storage: f.storage || null,
+          clave: f.key,
+          tipo: f.abstractType || typeof f.value,
+          valor: f.value,
+          porDefecto: f.defaultValue,
+          opciones: (f.enumOptions || []).map(o =>
+            Array.isArray(o) ? { valor: o[0], texto: o[1] } : o
+          ),
+        });
+      }
+    }
+    if (lista.length) salida.push({ dominio, ajustes: lista });
+  }
+  return salida;
+}
+
+/** Cambia UN ajuste de calidad de un plugin (los mismos que devuelve `ajustesCalidad`). */
+async function guardarAjusteCalidad({ api, interfaceName, storage, clave, valor }) {
+  if (!AJUSTE_DE_CALIDAD.test(String(clave || ''))) {
+    throw new ErrorJd('Solo se pueden cambiar ajustes de calidad.', 400);
+  }
+  const base = await urlJd();
+  if (api === 'plugins') {
+    await llamar(base, '/plugins/set', [interfaceName, storage, clave, valor]);
+  } else if (api === 'config') {
+    await llamar(base, '/config/set', [interfaceName, storage, clave, valor]);
+  } else {
+    throw new ErrorJd('Ajuste no válido.', 400);
+  }
+  return { ok: true };
+}
+
 module.exports = {
+  tienePlugin,
+  ajustesCalidad,
+  guardarAjusteCalidad,
   vaciarCapturador,
   llamar,
   anadir,

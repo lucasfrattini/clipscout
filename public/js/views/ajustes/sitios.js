@@ -125,6 +125,34 @@ export function tarjetaSitios() {
                 },
               },
               {
+                texto: t(s.fichaComoFichero ? 'aj.sitios.ficha.quitar' : 'aj.sitios.ficha.poner'),
+                detalle: t('aj.sitios.ficha.hint'),
+                fn: async () => {
+                  try {
+                    await ajustes.guardarSitio(s.dominio, {
+                      fichaComoFichero: !s.fichaComoFichero,
+                    });
+                    s.fichaComoFichero = !s.fichaComoFichero;
+                    toast(t('aj.guardado'));
+                  } catch (error) {
+                    toast(error.message, 'error', 6000);
+                  }
+                },
+              },
+              {
+                texto: t('aj.sitios.ceroUno'),
+                detalle: t('aj.sitios.ceroUno.hint'),
+                fn: async () => {
+                  try {
+                    await ajustes.ponerACeroEstadisticas(s.dominio);
+                    toast(t('aj.guardado'));
+                    cargarSitios();
+                  } catch (error) {
+                    toast(error.message, 'error', 6000);
+                  }
+                },
+              },
+              {
                 texto: t('aj.sitios.albumes'),
                 detalle: s.albumSearchUrl || t('aj.sitios.albumes.detalle'),
                 fn: () => editarAlbumes(s),

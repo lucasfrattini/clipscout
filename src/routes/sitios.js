@@ -67,6 +67,7 @@ router.post('/sitios', async (req, res, next) => {
       perfiles.push({ name: String(s.nombre || host), config: s.config });
     }
     const guardados = await writeProfiles(perfiles);
+    await marcarFichaComoFichero(nuevos);
     logger.info('Sitios dados de alta', { nuevos: nuevos.length - saltados, saltados });
     res.json({
       success: true,
@@ -80,6 +81,16 @@ router.post('/sitios', async (req, res, next) => {
 });
 
 const FORMATO_EXPORTADO = 'clipscout-sitios';
+
+/** La opción «pasar la página a JDownloader» va por dominio (el Explorador reescribe el perfil). */
+async function marcarFichaComoFichero(sitios) {
+  for (const s of sitios) {
+    const host = hostDe(s?.config?.searchUrl || '');
+    if (host && s.config.fichaComoFichero === true) {
+      await directo.guardarOpcionesSitio(host, { fichaComoFichero: true });
+    }
+  }
+}
 
 /**
  * GET /api/sitios/exportar — la configuración de TODOS los sitios en un fichero, para pasársela a
@@ -97,7 +108,11 @@ router.get('/sitios/exportar', async (req, res, next) => {
         nombre: p.name,
         ...(p.note ? { nota: p.note } : {}),
         config: p.config,
-        opciones: { jdDirecto: o.jdDirecto === true, fueraPorDefecto: o.fueraPorDefecto === true },
+        opciones: {
+          jdDirecto: o.jdDirecto === true,
+          fueraPorDefecto: o.fueraPorDefecto === true,
+          fichaComoFichero: o.fichaComoFichero === true || p.config.fichaComoFichero === true,
+        },
       };
     });
     const fecha = new Date().toISOString().slice(0, 10);
@@ -166,6 +181,7 @@ router.post('/sitios/importar', async (req, res, next) => {
       await directo.guardarOpcionesSitio(host, {
         jdDirecto: o.jdDirecto === true,
         fueraPorDefecto: o.fueraPorDefecto === true,
+        fichaComoFichero: o.fichaComoFichero === true,
       });
     }
     logger.info('Sitios importados', { anadidos, actualizados, saltados });
@@ -200,6 +216,7 @@ router.post('/sitios/reconfigurar', async (req, res, next) => {
       cambiados += 1;
     }
     if (cambiados > 0) await writeProfiles(perfiles);
+    await marcarFichaComoFichero(nuevos);
     logger.info('Sitios reconfigurados', { cambiados, sinSitio });
     res.json({ success: true, cambiados, sinSitio });
   } catch (error) {

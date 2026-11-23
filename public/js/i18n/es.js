@@ -733,6 +733,22 @@ export const es = {
     '¿Cambiar su configuración por la del fichero? Se conservan su nombre y su orden.',
   'aj.sitios.importarReemplazar': 'Cambiar',
   'aj.sitios.importadoReemplazo': 'Actualizados {n} sitios.',
+  'aj.jd.calidad.boton': 'Calidad por sitio',
+  'aj.jd.calidad.boton.hint':
+    'Qué calidad baja JDownloader de cada sitio (por ejemplo, solo la mejor y no todas).',
+  'aj.jd.calidad.titulo': 'Calidad en JDownloader',
+  'aj.jd.calidad.cargando': 'Preguntando a JDownloader…',
+  'aj.jd.calidad.nada': 'JDownloader no tiene ajustes de calidad para tus sitios.',
+  'aj.jd.calidad.hint':
+    'Son los ajustes del plugin de cada sitio en JDownloader: se cambian allí al momento.',
+  'aj.jd.calidad.resolucion': 'Bajar {p}p',
+  'aj.sitios.ficha.poner': 'Pasar la página a JDownloader',
+  'aj.sitios.ficha.quitar': 'Dejar de pasar la página a JDownloader',
+  'aj.sitios.ficha.hint':
+    'Para sitios cuyo vídeo no se ve en la ficha: JDownloader la abre y saca el vídeo él mismo.',
+  'aj.sitios.ceroUno': 'Poner sus cifras a cero',
+  'aj.sitios.ceroUno.hint':
+    'Si se saltaba por no dar resultados, vuelve a probarse en la próxima búsqueda.',
   'buscar.placeholder': 'Un nombre, una palabra o un enlace…',
   'buscar.boton': 'Buscar',
   'buscar.paginas': 'Páginas por sitio',

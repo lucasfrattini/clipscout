@@ -27,7 +27,7 @@ async function opcionesSitios() {
   return (await crew.datos()).sitios || {};
 }
 
-/** Cambia las opciones de un dominio. `cambios`: `{ jdDirecto, fueraPorDefecto }`. */
+/** Cambia las opciones de un dominio. `cambios`: `{ jdDirecto, fueraPorDefecto, fichaComoFichero }`. */
 async function guardarOpcionesSitio(dominio, cambios = {}) {
   const host = hostDe(`https://${String(dominio || '').replace(/^https?:\/\//, '')}`);
   if (!host) throw new crew.ErrorCrew('Dominio no válido.');
@@ -36,6 +36,8 @@ async function guardarOpcionesSitio(dominio, cambios = {}) {
     const actual = d.sitios[host] || {};
     if ('jdDirecto' in cambios) actual.jdDirecto = cambios.jdDirecto === true;
     if ('fueraPorDefecto' in cambios) actual.fueraPorDefecto = cambios.fueraPorDefecto === true;
+    // «Pasar la página a JDownloader»: el sitio firma sus ficheros y el gestor resuelve la ficha.
+    if ('fichaComoFichero' in cambios) actual.fichaComoFichero = cambios.fichaComoFichero === true;
     d.sitios[host] = actual;
     return { dominio: host, ...actual };
   });

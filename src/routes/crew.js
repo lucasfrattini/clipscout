@@ -387,6 +387,9 @@ router.get(
           albumSearchUrl: s.perfil.config.albumSearchUrl || '',
           albumLinkPattern: s.perfil.config.albumLinkPattern || '',
           fueraPorDefecto: directo.fueraPorDefecto(dominio, opciones),
+          fichaComoFichero:
+            opciones[dominio]?.fichaComoFichero === true ||
+            s.perfil.config.fichaComoFichero === true,
           estadisticas: cifras[dominio] || null,
           salud: salud[dominio] || null,
         };
@@ -411,6 +414,28 @@ router.put(
 );
 
 /* ── JDownloader (API local) ────────────────────────────────────────── */
+
+/** Ajustes de calidad de los plugins de JDownloader para los sitios guardados (o `?dominios=`). */
+router.get(
+  '/ajustes/jdownloader/calidad',
+  manejar(async req => {
+    const pedidos = String(req.query.dominios || '')
+      .split(',')
+      .map(d => d.trim())
+      .filter(Boolean);
+    const dominios = pedidos.length
+      ? pedidos
+      : [
+          ...new Set((await listarSitios()).map(s => hostDe(s.perfil.config.searchUrl || ''))),
+        ].filter(Boolean);
+    return { sitios: await require('../services/jdownloader').ajustesCalidad(dominios) };
+  })
+);
+/** Cambia un ajuste de calidad de un plugin de JDownloader. */
+router.put(
+  '/ajustes/jdownloader/calidad',
+  manejar(req => require('../services/jdownloader').guardarAjusteCalidad(req.body || {}))
+);
 
 /** Asistente, paso «Úsalo desde el móvil»: direcciones de esta app en la red local. */
 router.get(

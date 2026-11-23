@@ -285,6 +285,8 @@ async function buscarEnTodos(
   // navegador para nada y retrasaba a los demás. Se saltan, con el motivo, hasta que se reponen
   // sus estadísticas (Ajustes → Sitios → poner a cero).
   const muertos = await sitiosSinResultados();
+  // Opciones por dominio (Ajustes → Sitios → ⋯): p. ej. «pasar la página a JDownloader».
+  const opcionesDominio = await directo.opcionesSitios().catch(() => ({}));
 
   const resumen = await mapLimit(elegidos, config.busqueda.sitiosALaVez, async sitio => {
     if (signal?.aborted) return { id: sitio.id, total: 0, cancelado: true };
@@ -344,6 +346,8 @@ async function buscarEnTodos(
     try {
       const params = normalizeCrawlParams({
         ...c,
+        fichaComoFichero:
+          c.fichaComoFichero === true || opcionesDominio[dominio]?.fichaComoFichero === true,
         searchTerm: q,
         // Las páginas las elige quien busca (no el rango guardado en la configuración).
         endPage: (Number.parseInt(c.startPage, 10) || 1) + porSitio - 1,

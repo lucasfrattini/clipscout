@@ -12,6 +12,10 @@
   (antes solo salían los anuncios de esas fichas), y un sitio puede entregar la propia ficha cuando firma sus
   ficheros (opción `fichaComoFichero`: el gestor de descargas la resuelve).
 - Las estadísticas de un sitio se pueden poner a cero solas (para que vuelva a probarse uno que se saltaba).
+- **Todo desde la app**: en Ajustes → Sitios → ⋯, «Pasar la página a JDownloader» y «Poner sus cifras a cero»;
+  en Ajustes → JDownloader, **Calidad por sitio** (los ajustes de calidad del plugin de cada sitio en
+  JDownloader: solo la mejor, calidad preferida, formatos). El alta automática prueba sola a pasar la página
+  cuando el sitio no da ficheros y JDownloader tiene un plugin para él.
 
 ## 2.26.0
 

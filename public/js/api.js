@@ -344,7 +344,14 @@ export const ajustes = {
       body: JSON.stringify({ titulos, duraciones, persona, enlaces, contar }),
       // `contar`: false, o el id de la búsqueda (el servidor cuenta cada búsqueda una vez)
     }),
-  ponerACeroEstadisticas: () => request('/ajustes/sitios/estadisticas', { method: 'DELETE' }),
+  ponerACeroEstadisticas: dominio =>
+    request(
+      `/ajustes/sitios/estadisticas${dominio ? `?dominio=${encodeURIComponent(dominio)}` : ''}`,
+      { method: 'DELETE' }
+    ),
+  calidadJd: () => request('/ajustes/jdownloader/calidad'),
+  guardarCalidadJd: ajuste =>
+    request('/ajustes/jdownloader/calidad', { method: 'PUT', body: JSON.stringify(ajuste) }),
   jdownloader: () => request('/ajustes/jdownloader'),
   busqueda: () => request('/ajustes/busqueda'),
   proxy: () => request('/ajustes/proxy'),

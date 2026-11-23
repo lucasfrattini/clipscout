@@ -1268,3 +1268,12 @@ cg-chips.actividad__pestanas {
 .actividad__limpiar {
   min-height: 44px;
 }
+.cs-calidad-jd__sitio {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid var(--cg-borde);
+}
+.cs-calidad-jd__sitio h4 {
+  margin: 0;
+}

@@ -20,6 +20,7 @@ import {
   tarjetaRespaldos,
 } from './ajustes/sistema.js';
 import { tarjetaSitios } from './ajustes/sitios.js';
+import { abrirCalidadJd } from './ajustes/calidadJd.js';
 import { crearConexiones } from './ajustes/conexiones.js';
 
 export function createAjustesView(raiz) {
@@ -585,7 +586,24 @@ export function createAjustesView(raiz) {
           ],
         }),
         form,
-        el('div', { className: 'card__body', children: [guiaJd()] }),
+        el('div', {
+          className: 'card__body',
+          children: [
+            el('div', {
+              className: 'cs-fila-botones',
+              children: [
+                el('button', {
+                  className: 'cg-boton',
+                  attrs: { type: 'button' },
+                  text: t('aj.jd.calidad.boton'),
+                  on: { click: () => abrirCalidadJd() },
+                }),
+              ],
+            }),
+            el('p', { className: 'cs-nota', text: t('aj.jd.calidad.boton.hint') }),
+            guiaJd(),
+          ],
+        }),
       ],
     });
   }
