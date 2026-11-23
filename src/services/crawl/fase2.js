@@ -42,27 +42,29 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
     // SSRF de antes y los topes de después. Una extensión no se salta los
     // límites del motor, solo sabe dónde mirar.
     const extension = findExtension(url);
-    let candidatos = extension?.extraerFicheros
+    const candidatos = extension?.extraerFicheros
       ? extension.extraerFicheros(html, { baseUrl: url, extensions, extractFilesFromHtml })
       : extractFilesFromHtml(doc, url, extensions);
-    // Sitio que firma sus ficheros: la ficha misma es lo que se entrega (solo una ficha de vídeo,
-    // con su reproductor; un listado o una página de canal no).
-    if (
-      fichaComoFichero &&
-      !candidatos.some(c => !/creatives|\/ads?\//i.test(c)) &&
-      /<video|player|mediaDefinition/i.test(html)
-    ) {
-      candidatos = [url];
-    }
 
     // Una ficha no contiene solo su vídeo: también los clips de vista
     // previa de los relacionados y los anuncios de terceros. Se separa
     // el grano de la paja ANTES de estampar nada.
-    const { files: clasificados, discarded } = selectRelevantFiles(
+    let { files: clasificados, discarded } = selectRelevantFiles(
       candidatos,
       url,
       extractDeclaredVideoUrls(doc, url)
     );
+    // Sitio que firma sus ficheros (`fichaComoFichero`): si en la ficha no hay ningún fichero fiable
+    // (nada, o solo anuncios y vistas previas), se entrega la propia ficha y el gestor de descargas
+    // la resuelve. Solo en una ficha de vídeo, con su reproductor; un listado o un canal no.
+    if (
+      fichaComoFichero &&
+      !clasificados.some(f => !f.suspect) &&
+      /<video|player|mediaDefinition/i.test(html)
+    ) {
+      clasificados = [{ url, suspect: false, reason: null }];
+      discarded = [...discarded, ...candidatos];
+    }
 
     const found = [...new Set(clasificados.map(f => f.url))];
     const porUrl = new Map(clasificados.map(f => [f.url, f]));
