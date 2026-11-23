@@ -35,6 +35,9 @@ const CONFIG_KEYS = [
   // página son álbumes. Sin plantilla, el sitio no sale en la pestaña Fotos.
   'albumSearchUrl',
   'albumLinkPattern',
+  // Sitios que firman el fichero (caduca en horas): se entrega la propia ficha y el gestor de
+  // descargas la resuelve. Viaja con la configuración exportada, a diferencia de una extensión.
+  'fichaComoFichero',
 ];
 
 const MAX_NAME_LENGTH = 120;

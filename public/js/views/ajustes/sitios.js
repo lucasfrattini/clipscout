@@ -263,6 +263,55 @@ export function tarjetaSitios() {
     }
   }
 
+  /** Subir una configuración exportada (de otra persona o de otro equipo). */
+  async function subirConfiguracion(fichero) {
+    let datos;
+    try {
+      datos = JSON.parse(await fichero.text());
+    } catch {
+      toast(t('aj.sitios.importarNoValido'), 'error', 6000);
+      return;
+    }
+    const enviar = async reemplazar => {
+      const r = await fetch(`/api/sitios/importar${reemplazar ? '?reemplazar=1' : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.detail || j.error || t('aj.sitios.importarNoValido'));
+      return j;
+    };
+    try {
+      const r = await enviar(false);
+      toast(t('aj.sitios.importado', { anadidos: r.anadidos, saltados: r.saltados }));
+      if (r.saltados > 0) {
+        const si = await window.cgConfirmar({
+          titulo: t('aj.sitios.importarYa', { n: r.saltados }),
+          texto: t('aj.sitios.importarYaTexto'),
+          aceptar: t('aj.sitios.importarReemplazar'),
+        });
+        if (si) {
+          const r2 = await enviar(true);
+          toast(t('aj.sitios.importadoReemplazo', { n: r2.actualizados }));
+        }
+      }
+      cargarSitios();
+    } catch (error) {
+      toast(error.message, 'error', 6000);
+    }
+  }
+  const entradaFichero = el('input', {
+    attrs: { type: 'file', accept: '.json,application/json', hidden: '' },
+    on: {
+      change: () => {
+        const f = entradaFichero.files?.[0];
+        entradaFichero.value = '';
+        if (f) subirConfiguracion(f);
+      },
+    },
+  });
+
   cargarSitios();
   return el('section', {
     className: 'card',
@@ -292,6 +341,18 @@ export function tarjetaSitios() {
                   },
                 },
               }),
+              el('a', {
+                className: 'cg-boton cg-boton--fantasma',
+                attrs: { href: '/api/sitios/exportar', download: '' },
+                text: t('aj.sitios.exportar'),
+              }),
+              el('button', {
+                className: 'cg-boton cg-boton--fantasma',
+                attrs: { type: 'button' },
+                text: t('aj.sitios.importar'),
+                on: { click: () => entradaFichero.click() },
+              }),
+              entradaFichero,
               el('button', {
                 className: 'cg-boton cg-boton--fantasma',
                 attrs: { type: 'button' },

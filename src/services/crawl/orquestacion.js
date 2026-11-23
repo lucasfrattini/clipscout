@@ -66,6 +66,7 @@ module.exports = function crear({ assertUrlIsSafe, collectLinks, findFiles }) {
       licenseFilter = 'off',
       withSizes = false,
       withThumbnails = false,
+      fichaComoFichero = false,
       /** Tope de fichas a revisar en la fase 2 (la pestaña Buscar: una búsqueda rápida). 0 = sin tope. */
       maxLinks = 0,
       /** Caché de fichas compartida entre búsquedas (Buscar). El Explorador va siempre fresco. */
@@ -156,6 +157,7 @@ module.exports = function crear({ assertUrlIsSafe, collectLinks, findFiles }) {
         licenseFilter,
         withSizes,
         withThumbnails,
+        fichaComoFichero,
         usarCache,
         pausa,
         signal: timeoutSignal,

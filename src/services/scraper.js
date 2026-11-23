@@ -316,6 +316,7 @@ function normalizeCrawlParams(input) {
     licenseFilter: input.licenseFilter === 'open-only' ? 'open-only' : 'off',
     withSizes: input.withSizes === true || input.withSizes === 'true',
     withThumbnails: input.withThumbnails === true || input.withThumbnails === 'true',
+    fichaComoFichero: input.fichaComoFichero === true || input.fichaComoFichero === 'true',
   };
 }
 

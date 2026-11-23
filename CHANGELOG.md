@@ -5,6 +5,13 @@
 - **«Limpiar» en Buscar**: una × junto a la caja vacía lo escrito y lo que se ve; al volver a Buscar ya no
   aparece la última búsqueda (sigue en Actividad y, si estaba en marcha, sigue buscando).
 - **«Limpiar» en Actividad**: borra las búsquedas terminadas (pestaña Búsquedas) y los avisos (pestaña Avisos).
+- **Descargar y subir la configuración de sitios** (Ajustes → Sitios): un fichero con todos los sitios y sus
+  opciones, para pasárselo a otra persona. Al subirlo se suman los que faltan; los que ya tienes se pueden
+  reemplazar o dejar como están.
+- **Más sitios que dan resultados**: se leen también los vídeos que el reproductor declara dentro de un script
+  (antes solo salían los anuncios de esas fichas), y un sitio puede entregar la propia ficha cuando firma sus
+  ficheros (opción `fichaComoFichero`: el gestor de descargas la resuelve).
+- Las estadísticas de un sitio se pueden poner a cero solas (para que vuelva a probarse uno que se saltaba).
 
 ## 2.26.0
 

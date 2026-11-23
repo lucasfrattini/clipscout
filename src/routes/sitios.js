@@ -8,6 +8,7 @@ const { AppError } = require('../lib/errors');
 const { configurarSitio, portadaDe } = require('../services/autoSitio');
 const { readProfiles, writeProfiles } = require('../services/profiles');
 const { hostDe } = require('../services/web');
+const directo = require('../services/directo');
 
 const router = express.Router();
 
@@ -73,6 +74,102 @@ router.post('/sitios', async (req, res, next) => {
       saltados,
       total: guardados.length,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const FORMATO_EXPORTADO = 'clipscout-sitios';
+
+/**
+ * GET /api/sitios/exportar — la configuración de TODOS los sitios en un fichero, para pasársela a
+ * otra persona o a otro equipo: cada sitio con su configuración y sus opciones (JDownloader
+ * directo, fuera por defecto). Sin claves, sin estadísticas, sin búsquedas.
+ */
+router.get('/sitios/exportar', async (req, res, next) => {
+  try {
+    const perfiles = await readProfiles();
+    const opciones = await directo.opcionesSitios();
+    const sitios = perfiles.map(p => {
+      const host = hostDe(p.config.searchUrl || '');
+      const o = opciones[host] || {};
+      return {
+        nombre: p.name,
+        ...(p.note ? { nota: p.note } : {}),
+        config: p.config,
+        opciones: { jdDirecto: o.jdDirecto === true, fueraPorDefecto: o.fueraPorDefecto === true },
+      };
+    });
+    const fecha = new Date().toISOString().slice(0, 10);
+    res.set('Content-Disposition', `attachment; filename="clipscout-sitios-${fecha}.json"`);
+    res.json({
+      formato: FORMATO_EXPORTADO,
+      version: 1,
+      exportado: new Date().toISOString(),
+      sitios,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/sitios/importar { formato, sitios: [{ nombre, config, opciones }] } — suma los sitios de
+ * un fichero exportado. Los de un dominio que ya está se saltan (no se pisa lo propio), salvo con
+ * `?reemplazar=1`, que cambia su configuración conservando nombre y posición.
+ */
+router.post('/sitios/importar', async (req, res, next) => {
+  try {
+    const cuerpo = req.body || {};
+    if (cuerpo.formato !== FORMATO_EXPORTADO || !Array.isArray(cuerpo.sitios)) {
+      throw new AppError(
+        'Ese fichero no es una configuración de sitios de clipscout.',
+        400,
+        'FORMATO_SITIOS'
+      );
+    }
+    const reemplazar = req.query.reemplazar === '1';
+    const perfiles = await readProfiles();
+    const porHost = new Map(perfiles.map((p, i) => [hostDe(p.config.searchUrl || ''), i]));
+    let anadidos = 0;
+    let actualizados = 0;
+    let saltados = 0;
+    const opcionesNuevas = [];
+    for (const s of cuerpo.sitios.slice(0, 500)) {
+      const host = hostDe(s?.config?.searchUrl || '');
+      if (!host) {
+        saltados += 1;
+        continue;
+      }
+      const perfil = {
+        name: String(s.nombre || host),
+        ...(s.nota ? { note: String(s.nota) } : {}),
+        config: s.config,
+      };
+      if (porHost.has(host)) {
+        if (!reemplazar) {
+          saltados += 1;
+          continue;
+        }
+        const i = porHost.get(host);
+        perfiles[i] = { ...perfiles[i], config: s.config };
+        actualizados += 1;
+      } else {
+        porHost.set(host, perfiles.length);
+        perfiles.push(perfil);
+        anadidos += 1;
+      }
+      if (s.opciones && typeof s.opciones === 'object') opcionesNuevas.push([host, s.opciones]);
+    }
+    const guardados = await writeProfiles(perfiles);
+    for (const [host, o] of opcionesNuevas) {
+      await directo.guardarOpcionesSitio(host, {
+        jdDirecto: o.jdDirecto === true,
+        fueraPorDefecto: o.fueraPorDefecto === true,
+      });
+    }
+    logger.info('Sitios importados', { anadidos, actualizados, saltados });
+    res.json({ success: true, anadidos, actualizados, saltados, total: guardados.length });
   } catch (error) {
     next(error);
   }

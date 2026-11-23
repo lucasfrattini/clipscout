@@ -31,15 +31,29 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
    * duración, título y miniatura. Es lo que guarda la caché de fichas, así que no depende de nada
    * de la exploración en curso (topes, ficheros ya vistos): eso lo aplica quien llama.
    */
-  function extraerFicha(html, doc, url, { extensions, withThumbnails = false }) {
+  function extraerFicha(
+    html,
+    doc,
+    url,
+    { extensions, withThumbnails = false, fichaComoFichero = false }
+  ) {
     // Si una extensión reclama esta ficha, extrae ella. Lo que devuelva
     // pasa por las mismas validaciones que el resto: la comprobación
     // SSRF de antes y los topes de después. Una extensión no se salta los
     // límites del motor, solo sabe dónde mirar.
     const extension = findExtension(url);
-    const candidatos = extension?.extraerFicheros
+    let candidatos = extension?.extraerFicheros
       ? extension.extraerFicheros(html, { baseUrl: url, extensions, extractFilesFromHtml })
       : extractFilesFromHtml(doc, url, extensions);
+    // Sitio que firma sus ficheros: la ficha misma es lo que se entrega (solo una ficha de vídeo,
+    // con su reproductor; un listado o una página de canal no).
+    if (
+      fichaComoFichero &&
+      !candidatos.some(c => !/creatives|\/ads?\//i.test(c)) &&
+      /<video|player|mediaDefinition/i.test(html)
+    ) {
+      candidatos = [url];
+    }
 
     // Una ficha no contiene solo su vídeo: también los clips de vista
     // previa de los relacionados y los anuncios de terceros. Se separa
@@ -131,6 +145,8 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
       // Miniaturas: NUNCA por defecto. Son peticiones extra a los sitios
       // explorados, así que solo si el usuario las pide.
       withThumbnails = false,
+      /** Sin fichero en la ficha, se entrega la propia ficha (lo resuelve el gestor de descargas). */
+      fichaComoFichero = false,
       licenseFilter,
       signal,
       /**
@@ -218,7 +234,7 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
         try {
           // Caché de fichas (solo si quien llama la pide: Buscar y programadas). Con el filtro de
           // licencia no se usa, porque ese filtro necesita el documento entero.
-          const opcionesCache = { extensions, withThumbnails };
+          const opcionesCache = { extensions, withThumbnails, fichaComoFichero };
           let ficha =
             usarCache && licenseFilter !== 'open-only' ? cacheFichas.get(url, opcionesCache) : null;
 
@@ -268,7 +284,7 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
               }
             }
 
-            ficha = extraerFicha(html, doc, url, { extensions, withThumbnails });
+            ficha = extraerFicha(html, doc, url, { extensions, withThumbnails, fichaComoFichero });
             if (usarCache && licenseFilter !== 'open-only') {
               cacheFichas.set(url, opcionesCache, ficha);
             }
