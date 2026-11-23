@@ -760,6 +760,7 @@ export const es = {
   'resultados.mas': 'Más: exportar, copiar',
   'resultados.filtrar': 'Filtrar',
   'perfiles.mas': 'Guardar, borrar o compartir esta configuración',
+  'app.recargar': 'Recargar',
   'buscar.placeholder': 'Un nombre, una palabra o un enlace…',
   'buscar.boton': 'Buscar',
   'buscar.paginas': 'Páginas por sitio',

@@ -1,5 +1,12 @@
 # Cambios
 
+## 2.28.2
+
+- iPhone: «Borrar el historial» (y los recientes) responden al toque; antes la lista se escondía al perder
+  el foco la caja, antes de que llegara el toque.
+- Si una pantalla no carga, lo dice en la propia pantalla, con el motivo y «Recargar», en vez de quedarse en
+  blanco; y los errores del navegador quedan en el registro del servidor (en el móvil no hay consola).
+
 ## 2.28.1
 
 - **Gestos** (cg-ui 1.5.0): las hojas se cierran arrastrando hacia abajo también desde su contenido; en

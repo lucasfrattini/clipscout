@@ -104,6 +104,34 @@ function crearVistas({ limits }) {
 
 const toastErrorDeCarga = () => toast(t('app.errorCarga'), 'error', 8000);
 
+/**
+ * Errores del navegador al registro del servidor (Ajustes → Sistema → Diagnóstico): en el móvil no
+ * hay consola, y sin esto un fallo solo se ve como una pantalla en blanco.
+ */
+function reportarError(tipo, error, extra = '') {
+  try {
+    const cuerpo = JSON.stringify({
+      tipo,
+      mensaje: String(error?.message || error || '').slice(0, 500),
+      pila: String(error?.stack || '').slice(0, 1500),
+      extra: String(extra).slice(0, 200),
+      url: location.hash,
+      ua: navigator.userAgent,
+    });
+    fetch('/api/cliente/error', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: cuerpo,
+    }).catch(() => {});
+  } catch {
+    /* sin red: nada que hacer */
+  }
+}
+window.addEventListener('error', e =>
+  reportarError('error', e.error || e.message, `${e.filename}:${e.lineno}`)
+);
+window.addEventListener('unhandledrejection', e => reportarError('promesa', e.reason));
+
 function initRouter(vistas) {
   const barra = document.querySelector('cg-barra-inferior');
   const sections = {
@@ -172,7 +200,24 @@ function initRouter(vistas) {
         // Si entretanto se cambió de pantalla, el foco es de la otra.
         if (actual === pedida) v?.focus?.();
       })
-      .catch(() => toastErrorDeCarga());
+      .catch(error => {
+        reportarError('vista', error, name);
+        // En vez de una pantalla en blanco: qué pasó y cómo reintentar.
+        const caja = document.getElementById(`view-${name}`);
+        if (caja && !caja.childElementCount) {
+          caja.textContent = '';
+          const p = document.createElement('p');
+          p.className = 'cs-nota cs-error-vista';
+          p.textContent = `${t('app.errorCarga')} (${String(error?.message || error).slice(0, 160)})`;
+          const b = document.createElement('button');
+          b.className = 'cg-boton cg-boton--principal';
+          b.type = 'button';
+          b.textContent = t('app.recargar');
+          b.addEventListener('click', () => location.reload());
+          caja.append(p, b);
+        }
+        toastErrorDeCarga();
+      });
   }
 
   window.addEventListener('hashchange', () => {

@@ -755,6 +755,7 @@ export const en = {
   'resultados.mas': 'More: export, copy',
   'resultados.filtrar': 'Filter',
   'perfiles.mas': 'Save, delete or share this setup',
+  'app.recargar': 'Reload',
   'buscar.placeholder': 'A name, a word or a link…',
   'buscar.boton': 'Search',
   'buscar.paginas': 'Pages per site',

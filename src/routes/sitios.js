@@ -80,6 +80,27 @@ router.post('/sitios', async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/cliente/error — un error de JavaScript del navegador, al registro (en el móvil no hay
+ * consola). Solo texto acotado; nunca falla.
+ */
+router.post('/cliente/error', (req, res) => {
+  const b = req.body || {};
+  const corto = (v, n) =>
+    String(v || '')
+      .replace(/\s+/g, ' ')
+      .slice(0, n);
+  logger.warn('Error en el navegador', {
+    tipo: corto(b.tipo, 20),
+    mensaje: corto(b.mensaje, 500),
+    pila: corto(b.pila, 1500),
+    extra: corto(b.extra, 200),
+    url: corto(b.url, 100),
+    ua: corto(b.ua, 200),
+  });
+  res.status(204).end();
+});
+
 const FORMATO_EXPORTADO = 'clipscout-sitios';
 
 /** La opción «pasar la página a JDownloader» va por dominio (el Explorador reescribe el perfil). */

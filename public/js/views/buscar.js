@@ -461,9 +461,14 @@ export function createBuscarView(root) {
     cajaEnfocada = true;
     mostrarRecientes();
   });
+  // En iPhone, tocar un botón de «Recientes» quita antes el foco de la caja (se esconde el
+  // teclado): si la lista se ocultaba al momento, el toque caía en el vacío y no hacía nada.
+  // Se espera un poco a ocultarla para que el toque llegue al botón.
   entrada.addEventListener('blur', () => {
     cajaEnfocada = false;
-    mostrarRecientes();
+    setTimeout(() => {
+      if (!cajaEnfocada) mostrarRecientes();
+    }, 300);
   });
   entrada.addEventListener('input', () => mostrarRecientes());
   const zonaInicio = el('section', {
