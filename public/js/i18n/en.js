@@ -717,6 +717,8 @@ export const en = {
   'head.buscar.titulo': 'Search — clipscout',
   'head.buscar.desc': 'Search for a name on all your saved sites at once.',
   'buscar.titulo': 'Search',
+  'buscar.limpiar': 'Clear',
+  'act.limpiar': 'Clear',
   'buscar.placeholder': 'A name, a word or a link…',
   'buscar.boton': 'Search',
   'buscar.paginas': 'Pages per site',

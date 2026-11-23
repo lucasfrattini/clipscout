@@ -1,5 +1,11 @@
 # Cambios
 
+## 2.27.0
+
+- **«Limpiar» en Buscar**: una × junto a la caja vacía lo escrito y lo que se ve; al volver a Buscar ya no
+  aparece la última búsqueda (sigue en Actividad y, si estaba en marcha, sigue buscando).
+- **«Limpiar» en Actividad**: borra las búsquedas terminadas (pestaña Búsquedas) y los avisos (pestaña Avisos).
+
 ## 2.26.0
 
 - **Buscar mucho más rápido**: las fichas de vídeo se abren en el navegador sin bajar la página entera (antes

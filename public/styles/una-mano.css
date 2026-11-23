@@ -1252,3 +1252,19 @@ cg-chips.actividad__pestanas {
 .actividad__seguida .cs-fila__texto small {
   white-space: normal;
 }
+/* «Limpiar» junto a la caja: una ×, solo cuando hay algo que limpiar. */
+.buscar__limpiar {
+  flex: none;
+}
+.buscar__limpiar[hidden] {
+  display: none;
+}
+.actividad__grupo-limpiar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.actividad__limpiar {
+  min-height: 44px;
+}

@@ -256,6 +256,16 @@ router.get('/buscar/actual', (req, res) => {
   res.json({ busqueda: fondo.actual() });
 });
 
+/** DELETE /api/buscar/terminadas — «Limpiar» el historial de búsquedas de Actividad. */
+router.delete('/buscar/terminadas', (req, res) => {
+  res.json({ borradas: fondo.borrarTerminadas() });
+});
+
+/** DELETE /api/buscar/actual — «Limpiar»: al volver a Buscar ya no aparece la última búsqueda. */
+router.delete('/buscar/actual', (req, res) => {
+  res.json({ ok: fondo.olvidarActual() });
+});
+
 /** POST /api/buscar/trabajos/:id/parar */
 router.post('/buscar/trabajos/:id/parar', (req, res) => {
   res.json({ ok: fondo.parar(req.params.id) });

@@ -114,10 +114,20 @@ export function createBuscarView(root) {
     attrs: { type: 'button', 'aria-haspopup': 'dialog' },
     on: { click: () => abrirFiltros() },
   });
+  // «Limpiar»: vacía la caja y lo que se ve, y al volver ya no aparece la última búsqueda (que sigue
+  // en Actividad y, si estaba en marcha, sigue buscando).
+  const botonLimpiar = el('button', {
+    className: 'cg-boton cg-boton--icono cg-boton--fantasma buscar__limpiar',
+    attrs: { type: 'button', hidden: '' },
+    children: [icono('cerrar')],
+    on: { click: () => limpiarPantalla() },
+  });
+  atributo(botonLimpiar, 'aria-label', 'buscar.limpiar');
+  atributo(botonLimpiar, 'title', 'buscar.limpiar');
   const formCaja = el('form', {
     className: 'buscar__fila',
     attrs: { role: 'search' },
-    children: [entrada, boton, botonFiltros],
+    children: [entrada, botonLimpiar, boton, botonFiltros],
     on: {
       submit: e => {
         e.preventDefault();
@@ -1535,6 +1545,30 @@ export function createBuscarView(root) {
     zonaResultados.hidden = false;
     zonaInicio.hidden = true;
     mostrarRecientes();
+    pintarLimpiar();
+  }
+
+  function pintarLimpiar() {
+    botonLimpiar.hidden = !entrada.value.trim() && zonaResultados.hidden;
+  }
+  entrada.addEventListener('input', pintarLimpiar);
+
+  /** «Limpiar»: la pantalla vuelve al principio y el servidor olvida la última búsqueda. */
+  function limpiarPantalla() {
+    soltar();
+    trabajo = null;
+    trabajoVisto = null;
+    entrada.value = '';
+    ultimaBusqueda = '';
+    reiniciar();
+    listados = new Map();
+    zonaResultados.hidden = true;
+    zonaInicio.hidden = false;
+    pintarInicio();
+    pintarLimpiar();
+    mostrarRecientes();
+    fetch('/api/buscar/actual', { method: 'DELETE' }).catch(() => {});
+    entrada.focus();
   }
 
   /** «término → carpeta» por línea (también «->», «=>» o un tabulador); las vacías no cuentan. */

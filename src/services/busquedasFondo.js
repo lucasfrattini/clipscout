@@ -753,7 +753,33 @@ function actual() {
     : null;
 }
 
+/** «Limpiar» en Buscar: la pantalla deja de reengancharse a la última búsqueda (que sigue en
+ *  Actividad, y en marcha si lo estaba). */
+function olvidarActual() {
+  if (ultima === null) return false;
+  ultima = null;
+  marcarCambio();
+  return true;
+}
+
+/** «Limpiar» en Actividad: borra las búsquedas terminadas (las en marcha y en cola siguen). */
+function borrarTerminadas() {
+  let n = 0;
+  for (const [id, b] of busquedas) {
+    if (b.estado !== 'fin') continue;
+    busquedas.delete(id);
+    pendientes.delete(id);
+    porBorrar.add(id);
+    if (ultima === id) ultima = null;
+    n += 1;
+  }
+  if (n) marcarCambio();
+  return n;
+}
+
 module.exports = {
+  borrarTerminadas,
+  olvidarActual,
   iniciar,
   suscribir,
   parar,

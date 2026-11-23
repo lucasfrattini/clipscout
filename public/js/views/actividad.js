@@ -110,6 +110,15 @@ export function createActividadView(raiz) {
     pintarPestanas();
     if (pestana === 'busquedas') pintarCola();
   }
+  /** «Limpiar» de una lista del historial (sin pregunta: solo borra historial, ningún fichero). */
+  function botonLimpiar(fn) {
+    return el('button', {
+      className: 'cg-boton cg-boton--fantasma actividad__limpiar',
+      attrs: { type: 'button' },
+      text: t('act.limpiar'),
+      on: { click: fn },
+    });
+  }
   function pintarCola() {
     if (!cola.length) {
       listaBusquedas.replaceChildren(
@@ -126,8 +135,14 @@ export function createActividadView(raiz) {
         ...activas.map(filaBusqueda),
         terminadas.length
           ? el('li', {
-              className: 'cs-lista__grupo',
-              text: t('buscar.cola.terminadas', { n: terminadas.length }),
+              className: 'cs-lista__grupo actividad__grupo-limpiar',
+              children: [
+                el('span', { text: t('buscar.cola.terminadas', { n: terminadas.length }) }),
+                botonLimpiar(async () => {
+                  await fetch('/api/buscar/terminadas', { method: 'DELETE' }).catch(() => {});
+                  cargarCola();
+                }),
+              ],
             })
           : null,
         ...terminadas.slice(0, 50).map(filaBusqueda),
@@ -752,6 +767,20 @@ export function createActividadView(raiz) {
     }
     const error = /_error$|_fallido$|_roto$/;
     listaAvisos.replaceChildren(
+      el('li', {
+        className: 'cs-lista__grupo actividad__grupo-limpiar',
+        children: [
+          el('span'),
+          botonLimpiar(async () => {
+            await fetch('/api/avisos', { method: 'DELETE' }).catch(() => {});
+            datosAvisos = { ...datosAvisos, avisos: [], sinLeer: 0 };
+            cuentas.avisos = 0;
+            pintarPestanas();
+            pintarAvisos();
+            window.dispatchEvent(new CustomEvent('clipscout:avisos-vaciados'));
+          }),
+        ],
+      }),
       ...datosAvisos.avisos.slice(0, 50).map(a => {
         const li = fila({
           estado: error.test(a.tipo) ? 'error' : 'hecho',

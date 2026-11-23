@@ -550,6 +550,12 @@ router.post(
   manejar(req => require('../services/avisos').marcarLeidos(req.body?.hasta))
 );
 
+/** DELETE /api/avisos — «Limpiar»: los borra todos. */
+router.delete(
+  '/avisos',
+  manejar(() => require('../services/avisos').vaciar())
+);
+
 /* ── Búsquedas programadas ─────────────────────────────────────────── */
 
 router.get(

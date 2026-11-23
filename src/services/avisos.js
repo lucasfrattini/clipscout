@@ -61,6 +61,16 @@ async function listar({ desde = 0 } = {}) {
   };
 }
 
+/** «Limpiar» en Actividad → Avisos: los borra todos (la numeración sigue, para no repetir ids). */
+async function vaciar() {
+  return almacen.cambiar(d => {
+    const n = (d.avisos || []).length;
+    d.leidoHasta = Math.max(d.leidoHasta || 0, (d.avisos || []).at(-1)?.id || 0);
+    d.avisos = [];
+    return { borrados: n };
+  });
+}
+
 /** Marca como leído todo hasta `hasta` (o todo). */
 async function marcarLeidos(hasta) {
   return almacen.cambiar(d => {
@@ -74,4 +84,4 @@ async function marcarLeidos(hasta) {
   });
 }
 
-module.exports = { anotar, listar, marcarLeidos, TIPOS };
+module.exports = { anotar, listar, marcarLeidos, vaciar, TIPOS };

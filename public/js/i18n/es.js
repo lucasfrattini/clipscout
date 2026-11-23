@@ -722,6 +722,8 @@ export const es = {
   'head.buscar.titulo': 'Buscar — clipscout',
   'head.buscar.desc': 'Busca un nombre en todos tus sitios guardados a la vez.',
   'buscar.titulo': 'Buscar',
+  'buscar.limpiar': 'Limpiar',
+  'act.limpiar': 'Limpiar',
   'buscar.placeholder': 'Un nombre, una palabra o un enlace…',
   'buscar.boton': 'Buscar',
   'buscar.paginas': 'Páginas por sitio',
