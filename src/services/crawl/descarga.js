@@ -18,9 +18,9 @@ const { analizarRespuesta, analizarError, combinar } = require('../../lib/blocki
  * cada URL tiene su registro de fallo, y tragarse el motivo dejaba al usuario
  * sin saber por qué una página no dio ficheros.
  */
-async function renderPageOrFallback(url, { signal }) {
+async function renderPageOrFallback(url, { signal, scroll = true }) {
   try {
-    return await renderPage(url, { signal });
+    return await renderPage(url, { signal, scroll });
   } catch (error) {
     if (signal?.aborted) throw error;
     logger.warn(`Navegador falló en ${url}, se reintenta por HTTP`, error.message);

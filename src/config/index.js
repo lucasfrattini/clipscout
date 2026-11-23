@@ -187,6 +187,8 @@ const config = {
     maxPaginas: intFromEnv('BUSQUEDA_MAX_PAGINAS', 50),
     // Fichas que se abren como mucho por sitio Y POR PÁGINA pedida (cada una es una visita)
     maxEnlaces: intFromEnv('BUSQUEDA_MAX_ENLACES', 30),
+    // Sitio con al menos estas búsquedas y ningún resultado: se salta (0 = nunca)
+    minBusquedasMuerto: intFromEnv('BUSQUEDA_MIN_BUSQUEDAS_MUERTO', 20),
     // Búsqueda web («site:») con SearXNG; vacío = desactivada
     searxngUrl: (process.env.SEARXNG_URL || '').trim(),
     webPaginas: intFromEnv('BUSQUEDA_WEB_PAGINAS', 2),
@@ -390,7 +392,7 @@ const config = {
     userDataDir: process.env.BROWSER_USER_DATA_DIR || path.join(os.tmpdir(), 'chromium-data'),
     // Tamaño del pool: se reutilizan páginas en vez de lanzar un Chromium
     // por cada URL, que era el mayor coste de la versión anterior.
-    poolSize: intFromEnv('BROWSER_POOL_SIZE', 2),
+    poolSize: intFromEnv('BROWSER_POOL_SIZE', 4),
     navigationTimeoutMs: intFromEnv('BROWSER_NAVIGATION_TIMEOUT_MS', 30000),
     // Tope para CUALQUIER orden del protocolo DevTools. Sin esto, un
     // page.evaluate que no vuelve (páginas con scripts que bloquean el hilo)
@@ -405,6 +407,8 @@ const config = {
     waitUntil: process.env.BROWSER_WAIT_UNTIL || 'domcontentloaded',
     // Espera tras el scroll para que cargue el contenido diferido
     settleMs: intFromEnv('BROWSER_SETTLE_MS', 2500),
+    // Fichas de vídeo (fase 2): sin scroll, solo esta espera a que el reproductor ponga su fuente
+    fichaSettleMs: intFromEnv('BROWSER_FICHA_SETTLE_MS', 700),
     scrollStepPx: intFromEnv('BROWSER_SCROLL_STEP_PX', 500),
     maxScrollPx: intFromEnv('BROWSER_MAX_SCROLL_PX', 10000),
     // Se cierra el navegador tras este tiempo sin uso

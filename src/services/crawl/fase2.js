@@ -227,7 +227,7 @@ module.exports = function crear({ extractFilesFromHtml, isUrlSafe }) {
             // el reproductor con JavaScript encontraba los enlaces pero ningún
             // fichero, y en los que bloquean clientes sin navegador fallaba entera.
             const html = useJavaScript
-              ? await renderPageOrFallback(url, { signal })
+              ? await renderPageOrFallback(url, { signal, scroll: false })
               : await fetchHtmlWithRetry(url, { signal, timeout: config.http.fileScanTimeoutMs });
 
             // Un challenge servido con 200 llega por el camino bueno y se ve igual

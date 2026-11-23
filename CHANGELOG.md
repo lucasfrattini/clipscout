@@ -1,5 +1,14 @@
 # Cambios
 
+## 2.26.0
+
+- **Buscar mucho más rápido**: las fichas de vídeo se abren en el navegador sin bajar la página entera (antes
+  hasta 12 s por ficha) y el navegador usa 4 pestañas en vez de 2. Una búsqueda que antes revisaba 12 fichas
+  de un sitio en 2 minutos ahora revisa 30 en unos 40 s.
+- **Se saltan los sitios que nunca dan nada**: con 20 búsquedas o más y ningún resultado, el sitio sale como
+  «Nunca dio resultados: se salta» en vez de abrir decenas de fichas para nada (`BUSQUEDA_MIN_BUSQUEDAS_MUERTO`,
+  0 = nunca). Vuelve a buscarse al poner las estadísticas a cero en Ajustes → Sitios.
+
 ## 2.25.4
 
 - **Fotos de una persona juntas en `<persona>/Fotos`**: cada álbum sigue siendo un paquete, pero ya no

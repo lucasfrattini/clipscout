@@ -382,6 +382,9 @@ async function renderPage(url, { scroll = true, signal } = {}) {
         await autoScroll(page);
         // NOTA: page.waitForTimeout fue eliminado en Puppeteer v22.
         await new Promise(resolve => setTimeout(resolve, config.browser.settleMs));
+      } else if (config.browser.fichaSettleMs > 0) {
+        // Una ficha no necesita bajar 10 000 px: el reproductor pone su fuente al cargar.
+        await new Promise(resolve => setTimeout(resolve, config.browser.fichaSettleMs));
       }
 
       return page.content();

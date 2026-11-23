@@ -219,6 +219,22 @@ async function buscarEnAbierta(q, { excluir, signal, emit, todosLosItems, agrupa
  * @param {object} entrada  { q, sitios: [ids] | null (todos) }
  * @param {object} opciones { signal, emit }
  */
+/** dominio → búsquedas, de los sitios con `busqueda.minBusquedasMuerto` búsquedas o más y ningún resultado. */
+async function sitiosSinResultados() {
+  const minimo = config.busqueda.minBusquedasMuerto;
+  if (!(minimo > 0)) return new Map();
+  try {
+    const sitios = await estadisticas.leer();
+    return new Map(
+      Object.entries(sitios)
+        .filter(([, v]) => (v.busquedas || 0) >= minimo && !(v.resultados > 0))
+        .map(([d, v]) => [d, v.busquedas])
+    );
+  } catch {
+    return new Map();
+  }
+}
+
 async function buscarEnTodos(
   {
     q,
@@ -265,6 +281,10 @@ async function buscarEnTodos(
   // Proxy de salida caído: los sitios que salen por él fallan ya, con un motivo claro, en vez de
   // esperar cada uno su tiempo máximo. Los de «Sitios sin VPN» van directos y se buscan igual.
   const proxyCaido = await proxyNoResponde(emit);
+  // Sitios que nunca dieron nada en muchas búsquedas: cada uno abría decenas de fichas en el
+  // navegador para nada y retrasaba a los demás. Se saltan, con el motivo, hasta que se reponen
+  // sus estadísticas (Ajustes → Sitios → poner a cero).
+  const muertos = await sitiosSinResultados();
 
   const resumen = await mapLimit(elegidos, config.busqueda.sitiosALaVez, async sitio => {
     if (signal?.aborted) return { id: sitio.id, total: 0, cancelado: true };
@@ -273,6 +293,13 @@ async function buscarEnTodos(
       emit({ type: 'sitio_inicio', sitio: sitio.id });
       emit({ type: 'sitio_fin', sitio: sitio.id, total: 0, error: ERROR_PROXY });
       return { id: sitio.id, total: 0, error: ERROR_PROXY };
+    }
+    const dominioSitio = hostDe(c.searchUrl || '');
+    if (muertos.has(dominioSitio)) {
+      const error = `Nunca dio resultados en ${muertos.get(dominioSitio)} búsquedas: se salta`;
+      emit({ type: 'sitio_inicio', sitio: sitio.id });
+      emit({ type: 'sitio_fin', sitio: sitio.id, total: 0, error, saltado: true });
+      return { id: sitio.id, total: 0, error, saltado: true };
     }
     emit({ type: 'sitio_inicio', sitio: sitio.id });
     let total = 0;
@@ -588,6 +615,7 @@ async function buscarEnlace(
 
 module.exports = {
   buscarEnTodos,
+  sitiosSinResultados,
   buscarEnlace,
   listarSitios,
   clavesDeIds,
