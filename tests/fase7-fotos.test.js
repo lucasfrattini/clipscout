@@ -192,7 +192,7 @@ test('FO-1/FO-4: buscar álbumes en los sitios con plantilla y en la web (filtro
   assert.equal((await ajustesBusqueda.leer()).palabraFotos, '');
 });
 
-test('FO-3: mandar a una persona = un paquete por álbum en su carpeta de fotos, y C2', async () => {
+test('FO-3: mandar a una persona = un paquete por álbum, todos en su carpeta de fotos, y C2', async () => {
   personas.olvidar();
   jdFalso.estado.anadidos.length = 0;
   ck.estado.esperados.length = 0;
@@ -225,8 +225,8 @@ test('FO-3: mandar a una persona = un paquete por álbum en su carpeta de fotos,
       a.links.split('\n').length,
     ]),
     [
-      ['Vacaciones', '/output/People/Ana Pérez/Fotos/Vacaciones', 5],
-      ['Día de playa', '/output/People/Ana Pérez/Fotos/Día de playa', 1],
+      ['Vacaciones', '/output/People/Ana Pérez/Fotos', 5],
+      ['Día de playa', '/output/People/Ana Pérez/Fotos', 1],
     ]
   );
   assert.equal(jdFalso.estado.anadidos[0].sourceUrl, `${base}/album/vacaciones`);
@@ -239,8 +239,8 @@ test('FO-3: mandar a una persona = un paquete por álbum en su carpeta de fotos,
       e.items[0].n_fotos,
     ]),
     [
-      [3, 'People/Ana Pérez', 'album', 'Vacaciones', 5],
-      [3, 'People/Ana Pérez', 'album', 'Día de playa', 1],
+      [3, 'People/Ana Pérez', 'album', 'Fotos', 5],
+      [3, 'People/Ana Pérez', 'album', 'Fotos', 1],
     ]
   );
   assert.deepEqual(ck.estado.esperados[0].items[0].personas, ['Ana Pérez']);

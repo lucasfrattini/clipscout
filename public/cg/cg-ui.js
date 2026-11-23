@@ -152,10 +152,15 @@
   // ── Modales: pila, Escape, foco atrapado y página bloqueada ──────────────
   const pila = [];
   let bloqueos = 0;
-  function bloquear(si) {
-    bloqueos = Math.max(0, bloqueos + (si ? 1 : -1));
+  // La página se bloquea mientras haya algún modal abierto DE VERDAD (en la pila), no con un contador
+  // que, si se descuadra, la deja sin poder desplazarse para siempre.
+  function bloquear() {
+    for (let i = pila.length - 1; i >= 0; i--) if (!pila[i].isConnected || !pila[i]._abierto) pila.splice(i, 1);
+    bloqueos = pila.length;
     raiz.classList.toggle('cg-bloqueado', bloqueos > 0);
   }
+  // Volver atrás o a la pestaña: si algo quedó a medias, la página se desbloquea.
+  ['pageshow', 'popstate'].forEach(n => window.addEventListener(n, () => bloquear()));
   const ENFOCABLE =
     'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])';
   function enfocables(nodo) {
@@ -210,8 +215,8 @@
       const velo = (this._velo = el('div', { class: claseVelo, 'aria-hidden': 'true' }));
       velo.addEventListener('click', () => this._escape());
       document.body.append(velo);
-      bloquear(true);
       pila.push(this);
+      bloquear();
       this.classList.remove('cg-cerrando');
       this.style.removeProperty('--cg-arrastre');
       this.scrollTop = 0;
@@ -228,7 +233,7 @@
       this._abierto = false;
       const i = pila.indexOf(this);
       if (i >= 0) pila.splice(i, 1);
-      bloquear(false);
+      bloquear();
       this.classList.remove('cg-visible');
       this.classList.add('cg-cerrando');
       if (this._velo) {
@@ -413,49 +418,9 @@
     }
   }
 
-  /** El botón solo «se pulsa» tras mantenerlo apretado `ms` (ratón, dedo, Espacio o Intro). */
-  function mantenerPulsado(boton, ms, alCompletar, alSoltarAntes) {
-    let temporizador = null;
-    boton.classList.add('cg-mantener');
-    boton.style.touchAction = 'none';
-    const empezar = () => {
-      if (temporizador) return;
-      boton.classList.add('cg-llenando');
-      vibrar(8);
-      temporizador = setTimeout(() => {
-        temporizador = null;
-        boton.classList.remove('cg-llenando');
-        vibrar(20);
-        alCompletar();
-      }, ms);
-    };
-    const parar = () => {
-      if (!temporizador) return;
-      clearTimeout(temporizador);
-      temporizador = null;
-      boton.classList.remove('cg-llenando');
-      if (alSoltarAntes) alSoltarAntes();
-    };
-    const tecla = e => e.key === ' ' || e.key === 'Enter';
-    boton.addEventListener('pointerdown', e => {
-      if (e.button === 0) empezar();
-    });
-    ['pointerup', 'pointerleave', 'pointercancel', 'blur'].forEach(n => boton.addEventListener(n, parar));
-    boton.addEventListener('keydown', e => {
-      if (!tecla(e)) return;
-      e.preventDefault();
-      if (!e.repeat) empezar();
-    });
-    boton.addEventListener('keyup', e => {
-      if (tecla(e)) parar();
-    });
-    boton.addEventListener('click', e => e.preventDefault());
-    boton.addEventListener('contextmenu', e => e.preventDefault());
-  }
-
   /**
    * cgConfirmar({titulo, texto, aceptar, cancelar, peligro, mantener}) → Promise<boolean>.
-   * Con `mantener`, el botón de aceptar exige mantenerlo pulsado 1,5 s (lo irreversible).
+   * `mantener` se acepta por compatibilidad y ya no cambia nada: aceptar es un toque.
    */
   function cgConfirmar(opciones) {
     const o = typeof opciones === 'string' ? { texto: opciones } : opciones || {};
@@ -471,13 +436,13 @@
         el('span', {}, textoAceptar),
       );
       const cancelar = el('button', { type: 'button', class: 'cg-boton', 'data-cg-cancelar': '' }, o.cancelar || t('cancelar'));
-      const pista = o.mantener ? el('p', { class: 'cg-dialogo-pista' }, t('mantener', textoAceptar)) : null;
+      // `mantener` ya no exige mantener pulsado (Lucas, 2026-11-22: incómodo en el móvil): el propio
+      // diálogo, con el número y el tamaño y «Cancelar» con el foco, es la confirmación.
       const dialogo = el(
         'cg-dialogo',
         { role: 'alertdialog', class: o.peligro ? 'cg-dialogo--peligro' : null },
         o.titulo ? el('h2', { class: 'cg-dialogo-titulo' }, o.titulo) : null,
         o.texto ? el('p', { class: 'cg-dialogo-texto' }, o.texto) : null,
-        pista,
         el('div', { class: 'cg-dialogo-botones' }, cancelar, aceptar),
       );
       if (!o.titulo) dialogo.setAttribute('aria-label', o.texto || textoAceptar);
@@ -485,26 +450,10 @@
       dialogo.addEventListener('cg-cerrar', () => resolver(respuesta), { once: true });
       dialogo._alTerminar = () => dialogo.remove();
       cancelar.addEventListener('click', () => dialogo.cerrar());
-      if (o.mantener) {
-        if (pista) pista.id = nuevoId('cg-pista');
-        aceptar.setAttribute('aria-describedby', pista.id);
-        mantenerPulsado(
-          aceptar,
-          o.ms || 1500,
-          () => {
-            respuesta = true;
-            dialogo.cerrar(true);
-          },
-          () => {
-            pista.animate?.([{ color: 'var(--cg-acento)' }, { color: '' }], { duration: 900 });
-          },
-        );
-      } else {
-        aceptar.addEventListener('click', () => {
-          respuesta = true;
-          dialogo.cerrar(true);
-        });
-      }
+      aceptar.addEventListener('click', () => {
+        respuesta = true;
+        dialogo.cerrar(true);
+      });
       document.body.append(dialogo);
       dialogo.abrir();
       // Lo peligroso empieza en «Cancelar»; lo demás, en el botón principal.

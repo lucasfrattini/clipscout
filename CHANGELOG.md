@@ -1,5 +1,15 @@
 # Cambios
 
+## 2.25.4
+
+- **Fotos de una persona juntas en `<persona>/Fotos`**: cada álbum sigue siendo un paquete, pero ya no
+  crea su propia subcarpeta.
+- **Scroll en el iPhone** (Safari y Chrome): sin `overscroll-behavior` en html/body (en WebKit enganchaba el
+  desplazamiento, sobre todo en la app de la pantalla de inicio); el bloqueo de la página con un
+  modal abierto depende de los modales abiertos de verdad, no de un contador que podía quedarse
+  descuadrado y dejar la página sin desplazarse.
+- **Confirmar un borrado es un toque** en el diálogo: ya no hay que mantener pulsado.
+
 ## 2.25.3
 
 - cg-ui común: deslizar ya no dispara «mantener para seleccionar», sin nada marcado se sale del modo

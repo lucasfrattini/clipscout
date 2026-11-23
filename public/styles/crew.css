@@ -9,13 +9,10 @@
  * chocar con las de cada app.
  */
 
-/* iPhone (Safari y Chrome, ambos WebKit): al arrastrar hacia abajo para recargar, la página a veces
-   se queda desplazada, con la parte de arriba oculta y sin poder volver a ella hasta recargar. Sin
-   rebote no hay gesto que la descoloque; para recargar, el botón del navegador. */
-html,
-body {
-  overscroll-behavior-y: none;
-}
+/* Sin `overscroll-behavior` en html/body (2026-11-22): en iPhone (Safari y Chrome, ambos WebKit) no
+   quita el tirar para recargar (WebKit 275947) y, sobre todo en la app añadida a la pantalla de
+   inicio, deja el desplazamiento enganchado al documento y la página sin responder (WebKit 222654).
+   El rebote normal de iOS es lo que menos falla. */
 
 :root {
   --cc-fondo: #f4f6f9;

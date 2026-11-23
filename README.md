@@ -94,7 +94,7 @@ progress, real cancellation and export.
 - **Photos** (**Photos** next to the results): albums for the same search on the sites that have
   an albums section (set its search address in _Settings → Sites → ⋯ → Photo albums_) and, with
   SearXNG, on the web (only results that name the person). Pick albums and **Send to <person>**:
-  each album goes, full-size and as one package, to `<person folder>/Fotos/<album>` (clipkeeper's photos folder).
+  each album goes, full-size and as one package, to `<person folder>/Fotos` (all of a person's photos together, in clipkeeper's photos folder).
 - **Follow a person** (_Activity → Scheduled_, or from clipkeeper): a weekly Collect for their name
   and aliases into their folder, with alerts listing what was sent.
 - **Arrives complete in clipkeeper**: every send tells clipkeeper what is coming (title, people

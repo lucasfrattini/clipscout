@@ -569,9 +569,11 @@ async function mandarAlbum(album, persona, { signal } = {}) {
   const fotos = album.fotos || (await extraerAlbum(album.url, { signal })).fotos;
   if (!fotos.length) return { url: album.url, enviados: 0, error: 'No se encontraron fotos.' };
   const nombre = nombreAlbum(album.titulo || new URL(album.url).pathname.split('/').pop());
+  // Todas las fotos de una persona juntas en `<persona>/Fotos/` (sin subcarpeta por álbum): así lo
+  // pidió Lucas; clipkeeper trata lo suelto en `Fotos/` como un solo álbum.
   const r = await jd.enviar({
     links: fotos,
-    carpeta: `${persona.carpeta}/${persona.carpetaFotos}/${nombre}`,
+    carpeta: `${persona.carpeta}/${persona.carpetaFotos}`,
     paquete: nombre,
     origen: album.url,
     bibliotecaId: persona.bibliotecaId,
@@ -581,7 +583,7 @@ async function mandarAlbum(album, persona, { signal } = {}) {
         tipo: 'album',
         origen_url: album.url,
         titulo: album.titulo || nombre,
-        album: nombre,
+        album: persona.carpetaFotos,
         personas: [persona.nombre],
         n_fotos: fotos.length,
       },
