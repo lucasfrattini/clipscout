@@ -80,3 +80,31 @@ export function fechaCorta(ms, idioma = 'es') {
     return '';
   }
 }
+
+/**
+ * SU-UX-021: fecha y hora para listas, en el idioma de la interfaz y sin segundos: «hace 5 min»,
+ * «hace 2 h» si es de las últimas 24 h; si no, «23/11, 22:26» (con año solo si no es el actual).
+ */
+export function fechaHora(valor, idioma = 'es') {
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return '';
+  const seg = (Date.now() - d.getTime()) / 1000;
+  try {
+    if (seg >= 0 && seg < 86400) {
+      const rtf = new Intl.RelativeTimeFormat(idioma, { numeric: 'auto', style: 'short' });
+      if (seg < 60) return rtf.format(0, 'second');
+      if (seg < 3600) return rtf.format(-Math.round(seg / 60), 'minute');
+      return rtf.format(-Math.round(seg / 3600), 'hour');
+    }
+    const mismoAno = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleString(idioma, {
+      day: '2-digit',
+      month: '2-digit',
+      ...(mismoAno ? {} : { year: '2-digit' }),
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return d.toLocaleString();
+  }
+}

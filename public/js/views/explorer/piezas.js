@@ -305,7 +305,7 @@ export function panelPropuesta(resultado, { alCerrar }) {
           // botón de "Limpiar" (`resetButton`) no se toca: esta X es la
           // única forma nueva de cerrar el panel sin vaciar el formulario.
           el('button', {
-            className: 'button button--secondary button--small button--icon',
+            className: 'cg-boton cg-boton--icono',
             text: '×',
             attrs: { type: 'button', 'aria-label': t('propuesta.cerrar') },
             on: { click: alCerrar },

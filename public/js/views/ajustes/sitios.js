@@ -6,7 +6,7 @@
 import { ajustes, fase7, getProfiles, saveProfiles } from '../../api.js';
 import { altaSitiosDialog } from '../../components/altaSitios.js';
 import { el, toast } from '../../dom.js';
-import { t, tp } from '../../i18n/index.js';
+import { t, tp, idiomaActual } from '../../i18n/index.js';
 import { abrirHoja, menuAcciones } from '../../hojas.js';
 
 /* ── Sitios: opciones por sitio ────────────────────────────────────── */
@@ -15,7 +15,7 @@ import { abrirHoja, menuAcciones } from '../../hojas.js';
 function textoSalud(salud) {
   const desde = salud.ultimaConResultados
     ? t('aj.sitios.roto.desde', {
-        fecha: new Date(salud.ultimaConResultados).toLocaleDateString(),
+        fecha: new Date(salud.ultimaConResultados).toLocaleDateString(idiomaActual()),
       })
     : '';
   const error = salud.ultimoError ? ` (${salud.ultimoError})` : '';
@@ -185,7 +185,16 @@ export function tarjetaSitios() {
           className: 'cs-sitio__texto',
           children: [
             el('strong', { text: aviso ? `⚠ ${s.nombre}` : s.nombre }),
-            el('span', { text: [s.dominio, ...cifras.slice(0, 2)].join(' · ') }),
+            // CS-UX-023: en el móvil solo el dominio; las cifras, en el «⋯» (y en escritorio, aquí).
+            el('span', {
+              children: [
+                document.createTextNode(s.dominio),
+                el('span', {
+                  className: 'cs-sitio__cifras',
+                  text: ` · ${cifras.slice(0, 2).join(' · ')}`,
+                }),
+              ],
+            }),
           ],
         }),
         el('label', { className: 'cs-interruptor', children: [interruptor, el('span')] }),

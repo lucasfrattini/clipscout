@@ -83,7 +83,7 @@ export function createJdEnvio({ visibles, origen = () => '' }) {
   }
 
   const boton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button', hidden: '' },
     on: { click: () => enviar(visibles()) },
   });

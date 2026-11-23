@@ -14,7 +14,7 @@
   'use strict';
   if (window.cg && window.cg.version) return; // cargado dos veces: nada
 
-  const VERSION = '1.4.0';
+  const VERSION = '1.5.0';
   const raiz = document.documentElement;
 
   // ── Textos ────────────────────────────────────────────────────────────
@@ -108,6 +108,35 @@
     deshacer: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     lista: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>',
     anadir: '<path d="M12 5v14M5 12h14"/>',
+    // 1.5.0 (SU-UX-022): los que faltaban para no usar emoji en ningún control.
+    corazon: '<path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.8 3.9 4.5 7.3 4.5c2 0 3.5 1.1 4.7 2.7 1.2-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.3 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/>',
+    corazonLleno: '<path fill="currentColor" d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.8 3.9 4.5 7.3 4.5c2 0 3.5 1.1 4.7 2.7 1.2-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.3 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/>',
+    completa: '<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>',
+    llenar: '<path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/><path d="M4 4l6 6M20 4l-6 6M4 20l6-6M20 20l-6-6"/>',
+    girar: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4.5h-4.5"/>',
+    bucle: '<path d="M17 2.5l3 3-3 3"/><path d="M4 11.5V10a4.5 4.5 0 0 1 4.5-4.5H20"/><path d="M7 21.5l-3-3 3-3"/><path d="M20 12.5V14a4.5 4.5 0 0 1-4.5 4.5H4"/>',
+    siguiente: '<path d="M5 5l9 7-9 7z"/><path d="M18 5v14"/>',
+    anterior: '<path d="M19 5l-9 7 9 7z"/><path d="M6 5v14"/>',
+    adelante: '<path d="M9 5l7 7-7 7"/>',
+    velocidad: '<path d="M12 21a9 9 0 1 1 9-9"/><path d="M12 12l4.5-4.5"/><path d="M12 7v1M7 12H6M16.5 16.5l.7.7"/>',
+    sonido: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>',
+    silencio: '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>',
+    categoria: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M17 13.5v7M13.5 17h7"/>',
+    salud: '<path d="M12 20.5s-7.5-4.6-9.2-9.3C1.6 7.8 3.9 4.5 7.3 4.5c2 0 3.5 1.1 4.7 2.7 1.2-1.6 2.7-2.7 4.7-2.7 3.4 0 5.7 3.3 4.5 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/><path d="M7 12h2.5l1.5-2.5 2 5 1.5-2.5H17"/>',
+    candado: '<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+    teclado: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h.01M9.5 10h.01M13 10h.01M16.5 10h.01M7.5 14h9"/>',
+    globo: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.5 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.5-3.8-9S9.5 5.5 12 3z"/>',
+    aviso: '<path d="M12 3.5L2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.01"/>',
+    lapiz: '<path d="M4 20l1-4.5L16 4.5a2.1 2.1 0 0 1 3 3L8 18.5z"/><path d="M14 6.5l3 3"/>',
+    separar: '<path d="M12 3v18"/><path d="M8 8l-4 4 4 4M16 8l4 4-4 4"/>',
+    varita: '<path d="M4 20L15 9"/><path d="M14 4v3M14 11v3M10 7.5h3M17 7.5h3M17.5 4.5l-1.5 1.5"/>',
+    play: '<path d="M7 4.5l13 7.5-13 7.5z"/>',
+    pausa: '<path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>',
+    imagen: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="9.5" r="1.8"/><path d="M21 16l-5-5-9 9"/>',
+    rejilla: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+    enlace: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L11.7 6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.5-1.5"/>',
+    ayuda: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17v.01"/>',
+    sinConexion: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 19h16"/>',
   };
   const plantilla = document.createElement('template');
   /** Un icono: <svg class="cg-icono"> si el nombre existe; si no, el texto tal cual (p. ej. un emoji). */
@@ -716,23 +745,32 @@
         this._hoja.append(this._lista);
         document.body.append(this._hoja);
       }
+      // 1.5.0 (CK-UX-002): `data-grupo` en los destinos de «Más» los agrupa con un título.
+      let grupoAnterior = null;
       this._lista.replaceChildren(
         ...this._destinos()
           .filter(n => n.hasAttribute('data-mas'))
-          .map(n => {
-            const nombre = [...n.childNodes].filter(x => !(x.classList && x.classList.contains('cg-punto-texto')))
-              .map(x => x.textContent).join('').trim();
-            const b = el('button', { type: 'button' }, icono(n.dataset.icono || ''), nombre);
-            if (n.hasAttribute('data-activo')) b.setAttribute('aria-current', 'page');
-            if (n.hasAttribute('data-cg-aviso')) b.setAttribute('data-cg-aviso', '');
-            b.addEventListener('click', () => {
-              this._hoja.cerrar();
-              n.click(); // el destino de verdad: vale su href o el manejador de la app
-            });
-            return b;
+          .flatMap(n => {
+            const grupo = n.getAttribute('data-grupo');
+            const cab = grupo && grupo !== grupoAnterior
+              ? [el('div', { class: 'cg-hoja-grupo', role: 'presentation' }, grupo)] : [];
+            grupoAnterior = grupo || grupoAnterior;
+            return [...cab, this._filaMas(n)];
           }),
       );
       this._hoja.abrir();
+    }
+    _filaMas(n) {
+      const nombre = [...n.childNodes].filter(x => !(x.classList && x.classList.contains('cg-punto-texto')))
+        .map(x => x.textContent).join('').trim();
+      const b = el('button', { type: 'button' }, icono(n.dataset.icono || ''), nombre);
+      if (n.hasAttribute('data-activo')) b.setAttribute('aria-current', 'page');
+      if (n.hasAttribute('data-cg-aviso')) b.setAttribute('data-cg-aviso', '');
+      b.addEventListener('click', () => {
+        this._hoja.cerrar();
+        n.click(); // el destino de verdad: vale su href o el manejador de la app
+      });
+      return b;
     }
   }
 

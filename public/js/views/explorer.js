@@ -528,21 +528,22 @@ export function createExplorerView(container, { limits }) {
   // ── Lanzar ─────────────────────────────────────────────────────────
 
   const submitButton = el('button', {
-    className: 'button button--large',
+    className: 'cg-boton cg-boton--principal',
     attrs: { type: 'submit' },
   });
+  // CS-UX-013: fantasma, no compite con «Explorar ahora».
   const detectButton = el('button', {
-    className: 'button button--secondary',
+    className: 'cg-boton cg-boton--fantasma',
     attrs: { type: 'button' },
   });
   const resetButton = el('button', {
-    className: 'button button--ghost',
+    className: 'cg-boton cg-boton--fantasma',
     attrs: { type: 'button' },
   });
 
   /** Aparece solo cuando hay una exploración frenada que continuar. */
   const continueButton = el('button', {
-    className: 'button',
+    className: 'cg-boton cg-boton--principal',
     attrs: { type: 'button' },
   });
   show(continueButton, false);
@@ -603,8 +604,8 @@ export function createExplorerView(container, { limits }) {
 
   function crearBotonQuitarFila(onClick) {
     const boton = el('button', {
-      className: 'button button--secondary button--icon',
-      text: '✕',
+      className: 'cg-boton cg-boton--fantasma cg-boton--icono',
+      children: [window.cgIcono ? window.cgIcono('cerrar') : document.createTextNode('✕')],
       attrs: { type: 'button' },
       on: { click: onClick },
     });
@@ -835,7 +836,7 @@ export function createExplorerView(container, { limits }) {
   const resumenRangoValor = el('span', { className: 'config-summary__value' });
 
   const resumenEditarBtn = el('button', {
-    className: 'button button--ghost button--small config-summary__editar',
+    className: 'cg-boton cg-boton--fantasma config-summary__editar',
     attrs: { type: 'button' },
   });
   texto(resumenEditarBtn, 'explorer.resumen.editar');
@@ -850,7 +851,7 @@ export function createExplorerView(container, { limits }) {
    * mantienen idénticas por definición.
    */
   const resumenNuevaBtn = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
   });
   texto(resumenNuevaBtn, 'explorer.resumen.nuevaBusqueda');
@@ -1844,7 +1845,7 @@ export function createExplorerView(container, { limits }) {
       if (esEditor && pedido !== editando) {
         editando = pedido;
         const nombre = await profileBar.elegirPorIndice(Number(pedido));
-        if (nombre) toast(t('explorer.editando', { nombre }));
+        if (nombre) cabecera.poner('explorer.editor', nombre);
         else toast(t('explorer.noExiste'), 'error', 6000);
       } else if (!/^\d+$/.test(pedido)) editando = null;
       enfocarAlAbrir(fields.searchUrl);

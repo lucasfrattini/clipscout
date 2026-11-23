@@ -237,6 +237,29 @@ html.cg-con-barra:not(.cg-seleccionando) { --cg-hueco-avisos: var(--cg-ocupa-aba
   outline: 3px solid var(--cg-acento);
   outline-offset: 2px;
 }
+/* 1.5.0 (SU-UX-025): foco visible también en lo propio de cada app (con :where, cualquier regla
+   de la app manda). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--cg-acento);
+  outline-offset: 2px;
+}
+/* 1.5.0 (SU-UX-023): casillas y radios de 22 px, y la etiqueta que las envuelve con 44 px de alto
+   (toda la fila se toca). Los interruptores propios (role=switch) se dibujan en cada app. */
+:where(input[type='checkbox']:not([role='switch']), input[type='radio']) {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  accent-color: var(--cg-acento);
+}
+:where(label:has(> input[type='checkbox']:not([role='switch'])), label:has(> input[type='radio'])) {
+  min-height: var(--cg-tactil);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(*) { scroll-behavior: auto !important; }
+}
 
 /* ── <cg-barra-inferior> ───────────────────────────────────────────── */
 cg-barra-inferior {
@@ -626,7 +649,8 @@ cg-hoja:not(:has(> [slot='pie']))::after {
 .cg-hoja-lista .cg-icono { color: var(--cg-tenue); }
 .cg-hoja-lista > [aria-current='page'] .cg-icono { color: inherit; }
 
-@media (min-width: 769px) {
+/* 1.5.0: hoja abajo también en tablet vertical; centrada solo a partir de 1025 px. */
+@media (min-width: 1025px) {
   cg-hoja {
     bottom: 50%;
     max-height: min(80vh, 760px);
@@ -824,9 +848,10 @@ cg-chips > .cg-chips-filtros {
   margin-left: auto;
   margin-right: 16px;
   scroll-snap-align: none;
-  background: var(--cg-texto);
-  border-color: var(--cg-texto);
-  color: var(--cg-fondo);
+  /* 1.5.0 (SU-UX-012): fantasma con borde; no compite con la acción principal de la pantalla. */
+  background: var(--cg-superficie);
+  border-color: var(--cg-borde);
+  color: var(--cg-texto);
   box-shadow: -12px 0 12px -4px var(--cg-fondo);
 }
 /* Tapa el hueco de 16 px a su derecha: por ahí no asoma ningún chip. */
@@ -840,7 +865,8 @@ cg-chips > .cg-chips-filtros::after {
   background: var(--cg-fondo);
   pointer-events: none;
 }
-cg-chips > .cg-chips-filtros:hover { border-color: var(--cg-texto); filter: brightness(1.15); }
+cg-chips > .cg-chips-filtros:hover { border-color: var(--cg-texto); }
+cg-chips > .cg-chips-filtros .cg-chips-cuenta { background: var(--cg-acento); color: var(--cg-acento-texto); }
 cg-chips > .cg-chips-filtros .cg-icono { width: 20px; height: 20px; }
 cg-chips .cg-chips-cuenta {
   min-width: 22px;
@@ -1000,3 +1026,13 @@ cg-barra-accion :focus-visible { outline-color: var(--cg-acento-claro) !importan
   background: var(--cg-acento-suave);
   box-shadow: inset 3px 0 0 var(--cg-acento);
 }
+
+/* 1.5.0 (CK-UX-002): título de grupo dentro de la hoja «Más». */
+.cg-hoja-lista > .cg-hoja-grupo {
+  padding: 14px 16px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cg-tenue);
+  text-transform: none;
+}
+.cg-hoja-lista > .cg-hoja-grupo:first-child { padding-top: 4px; }

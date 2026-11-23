@@ -39,7 +39,7 @@ export function crearConexiones({ pintar, campo }) {
               ],
             }),
             el('button', {
-              className: 'button button--small',
+              className: 'cg-boton',
               attrs: { type: 'button' },
               text: t('aj.con.anadir'),
               on: {
@@ -128,7 +128,10 @@ export function crearConexiones({ pintar, campo }) {
               : null,
             el('span', {
               className: 'field__hint',
-              children: [`${c.app} · `, el('a', { attrs: { href: c.url }, text: c.url })],
+              children: [
+                `${c.app} · `,
+                el('a', { className: 'cs-enlace-tactil', attrs: { href: c.url }, text: c.url }),
+              ],
             }),
             el('span', {
               className: 'field__hint',
@@ -146,14 +149,14 @@ export function crearConexiones({ pintar, campo }) {
           className: 'ajustes-acciones',
           children: [
             el('button', {
-              className: 'button button--secondary button--small',
+              className: 'cg-boton',
               attrs: { type: 'button' },
               text: t('aj.con.probar'),
               on: { click: comprobar },
             }),
             c.entrada
               ? el('button', {
-                  className: 'button button--secondary button--small',
+                  className: 'cg-boton',
                   attrs: { type: 'button' },
                   text: t('aj.con.revocar'),
                   on: {
@@ -180,7 +183,7 @@ export function crearConexiones({ pintar, campo }) {
                 })
               : null,
             el('button', {
-              className: 'button button--secondary button--small ajustes-peligro',
+              className: 'cg-boton ajustes-peligro',
               attrs: { type: 'button' },
               text: t('aj.con.quitar'),
               on: {
@@ -276,7 +279,7 @@ export function crearConexiones({ pintar, campo }) {
           className: 'ajustes-acciones',
           children: [
             el('button', {
-              className: 'button button--ghost button--small',
+              className: 'cg-boton cg-boton--fantasma',
               attrs: { type: 'button' },
               text: t('aj.con.cancelar'),
               on: {
@@ -288,7 +291,7 @@ export function crearConexiones({ pintar, campo }) {
             }),
             el('span', { className: 'ajustes-separador' }),
             el('button', {
-              className: 'button button--secondary button--small',
+              className: 'cg-boton',
               attrs: { type: 'button' },
               text: t('aj.con.probar'),
               on: {
@@ -302,7 +305,7 @@ export function crearConexiones({ pintar, campo }) {
               },
             }),
             el('button', {
-              className: 'button button--small',
+              className: 'cg-boton',
               attrs: { type: 'submit' },
               text: t('aj.con.guardar'),
             }),

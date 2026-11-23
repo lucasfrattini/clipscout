@@ -8,7 +8,8 @@
 import { ajustes, sistema } from '../../api.js';
 import { confirmDialog } from '../../components/dialog.js';
 import { el, toast } from '../../dom.js';
-import { t } from '../../i18n/index.js';
+import { t, idiomaActual } from '../../i18n/index.js';
+import { fechaHora } from '../../unaMano.js';
 
 const tarjeta = ({ id, titulo, hint, cuerpo }) =>
   el('section', {
@@ -26,7 +27,7 @@ const tarjeta = ({ id, titulo, hint, cuerpo }) =>
     ],
   });
 
-const boton = (texto, onClick, clase = 'button button--small button--secondary') =>
+const boton = (texto, onClick, clase = 'cg-boton') =>
   el('button', {
     className: clase,
     attrs: { type: 'button' },
@@ -36,7 +37,7 @@ const boton = (texto, onClick, clase = 'button button--small button--secondary')
 
 const enlaceDescarga = (href, texto, nombre) =>
   el('a', {
-    className: 'button button--small button--secondary',
+    className: 'cg-boton',
     attrs: { href, download: nombre },
     text: texto,
   });
@@ -135,7 +136,7 @@ export function tarjetaRespaldos({ recargar }) {
                       toast(error.message, 'error', 6000);
                     }
                   },
-                  'button button--small button--secondary ajustes-peligro'
+                  'cg-boton ajustes-peligro'
                 ),
               ],
             }),
@@ -283,7 +284,7 @@ export function tarjetaDiagnostico() {
               className: 'cs-diagnostico__errores',
               children: d.ultimos_errores.slice(0, 5).map(e =>
                 el('li', {
-                  text: `${new Date(e.fecha).toLocaleString()} · ${e.codigo} · ${e.id}`,
+                  text: `${fechaHora(e.fecha, idiomaActual())} · ${e.codigo} · ${e.id}`,
                 })
               ),
             }),
@@ -346,7 +347,7 @@ function bloqueVersion(estado) {
         el('p', {
           className: 'field__hint',
           text: e.comprobado
-            ? t('aj.version.alDia', { cuando: new Date(e.comprobado).toLocaleString() })
+            ? t('aj.version.alDia', { cuando: fechaHora(e.comprobado, idiomaActual()) })
             : t('aj.version.sinComprobar'),
         })
       );

@@ -1,5 +1,25 @@
 # Cambios
 
+## 2.28.0
+
+Auditoría de UX (clipscout):
+
+- **Barra**: «Avanzada» se llama **Explorar** y «Apps» pasa a **Más** (apps, guía y salir). El pie de estado
+  solo aparece si algo falla.
+- **Buscar**: una sola cruz al escribir (la de «Limpiar»); «Filtros» y la lupa sin relleno oscuro; «Borrar el
+  historial» con Deshacer; sin botones repetidos en el inicio; en Filtros la profundidad manda y las páginas
+  exactas quedan en «Avanzado»; la vista (grandes o lista) en un botón junto a los resultados.
+- **Resultados**: la casilla solo al seleccionar (mantener pulsado) o con el ratón encima; una línea de
+  datos (sitio, repetidos, álbum); sin emoji.
+- **Explorar**: la tarjeta de resultados solo cuando hay resultados, con los filtros plegados en «Filtrar» y
+  exportar y copiar en «⋯»; guardar, borrar y compartir una configuración en «⋯»; el editor de un sitio dice
+  su nombre en el título; carril de pasos de una línea en el móvil; toques de 44 px.
+- **Analizar enlace** (antes «Vídeos»): el botón siempre a la vista en el móvil.
+- **Actividad**: el aviso de sitios sin resultados en una línea; descargas con una línea de datos y «⋯»
+  (reintentar, carpeta); el punto rojo se apaga al entrar; fechas en tu idioma y sin segundos.
+- **Ajustes**: en el móvil, secciones sin marco doble y los sitios sin cifras (en el «⋯»).
+- Botones de una sola familia (`cg-boton`) y cg-ui 1.5.0 (iconos, foco, casillas de 22 px).
+
 ## 2.27.0
 
 - **«Limpiar» en Buscar**: una × junto a la caja vacía lo escrito y lo que se ve; al volver a Buscar ya no

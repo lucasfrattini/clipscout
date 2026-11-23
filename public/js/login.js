@@ -3,7 +3,7 @@
 // otro equipo pide además el código que la app escribe en su registro al arrancar.
 const TEXTOS = {
   es: {
-    inicia: 'Inicia sesión para entrar.',
+    inicia: 'Inicia sesión',
     usuario: 'Usuario',
     clave: 'Contraseña',
     entrar: 'Entrar',
@@ -13,7 +13,7 @@ const TEXTOS = {
     crear: 'Crear usuario',
   },
   en: {
-    inicia: 'Sign in to continue.',
+    inicia: 'Sign in',
     usuario: 'Username',
     clave: 'Password',
     entrar: 'Sign in',

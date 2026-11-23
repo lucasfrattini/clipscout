@@ -169,7 +169,7 @@ async function iniciar() {
         url.value = actual.url || '';
         const resultado = el('p', { className: 'asis-nota', attrs: { 'aria-live': 'polite' } });
         const probar = el('button', {
-          className: 'button button--secondary button--small',
+          className: 'cg-boton',
           text: t('asis.descargas.probar'),
           attrs: { type: 'button' },
           on: {
@@ -224,7 +224,7 @@ async function iniciar() {
           botonSiguiente.textContent = perfiles.length ? t('asis.siguiente') : t('asis.despues');
         };
         const anadir = el('button', {
-          className: 'button button--secondary',
+          className: 'cg-boton',
           text: t('asis.sitios.anadir'),
           attrs: { type: 'button', id: 'asis-anadir-sitios' },
           on: {
@@ -273,7 +273,7 @@ async function iniciar() {
           }
           const clave = entrada({ type: 'password', autocomplete: 'off' });
           const conectar = el('button', {
-            className: 'button button--small',
+            className: 'cg-boton',
             text: t('asis.apps.conectar'),
             attrs: { type: 'button' },
             on: {

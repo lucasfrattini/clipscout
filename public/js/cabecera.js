@@ -16,9 +16,10 @@ export function crearCabecera({ tituloClave, id, atras = null, acciones = [] }) 
   if (atras) cab.setAttribute('atras', '');
   cab.append(h1, el('div', { className: 'cs-cabecera-acciones', children: [...acciones] }));
   let clave = tituloClave;
+  let sufijo = '';
   let destino = atras;
   const pintar = () => {
-    h1.textContent = t(clave);
+    h1.textContent = sufijo ? `${t(clave)} · ${sufijo}` : t(clave);
   };
   pintar();
   alCambiarIdioma(pintar);
@@ -30,8 +31,10 @@ export function crearCabecera({ tituloClave, id, atras = null, acciones = [] }) 
   });
   return {
     nodo: cab,
-    poner(nuevaClave) {
+    /** `extra`: texto tras el título («Editor de sitio · <sitio>», SU-UX-020). */
+    poner(nuevaClave, extra = '') {
       clave = nuevaClave;
+      sufijo = extra;
       pintar();
     },
     atras(nuevoDestino) {

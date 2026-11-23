@@ -155,12 +155,12 @@ export function promptDialog({
       cuerpo.append(label, input);
 
       const botonCancelar = el('button', {
-        className: 'button button--secondary',
+        className: 'cg-boton',
         attrs: { type: 'button' },
         on: { click: () => cerrar(null) },
       });
       const botonAceptar = el('button', {
-        className: 'button',
+        className: 'cg-boton cg-boton--principal',
         attrs: { type: 'button' },
         on: { click: () => cerrar(input.value) },
       });
@@ -198,12 +198,12 @@ export function confirmDialog({ titleKey, bodyKey, bodyParams, variant = 'defaul
       cuerpo.append(mensaje);
 
       const botonCancelar = el('button', {
-        className: 'button button--secondary',
+        className: 'cg-boton',
         attrs: { type: 'button' },
         on: { click: () => cerrar(false) },
       });
       const botonAceptar = el('button', {
-        className: variant === 'danger' ? 'button button--danger' : 'button',
+        className: variant === 'danger' ? 'cg-boton cg-boton--peligro' : 'button',
         attrs: { type: 'button' },
         on: { click: () => cerrar(true) },
       });
@@ -289,7 +289,7 @@ export function chooseDialog({ titleKey, labelKey, labelParams, opciones, nuevaK
 
       cuerpo.append(ayuda, filtro, lista);
       const botonCancelar = el('button', {
-        className: 'button button--secondary',
+        className: 'cg-boton',
         attrs: { type: 'button' },
         on: { click: () => cerrar(null) },
       });
@@ -346,13 +346,16 @@ export function carpetaDialog({
         attrs: { type: 'text', autocomplete: 'off', enterkeyhint: 'done' },
       });
       const lista = el('div', { className: 'dialog__chips' });
-      const aceptar = el('button', { className: 'button', attrs: { type: 'button' } });
+      const aceptar = el('button', {
+        className: 'cg-boton cg-boton--principal',
+        attrs: { type: 'button' },
+      });
       const volver = el('button', {
-        className: 'button button--secondary',
+        className: 'cg-boton',
         attrs: { type: 'button' },
       });
       const cancelar = el('button', {
-        className: 'button button--secondary',
+        className: 'cg-boton',
         attrs: { type: 'button' },
       });
       let tipo = null;

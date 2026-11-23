@@ -69,17 +69,17 @@ export function altaSitiosDialog({ dominios = [], termino = '', reconfigurar = f
         cerrar(n);
       };
       const botonCerrar = el('button', {
-        className: 'button button--secondary',
+        className: 'cg-boton',
         attrs: { type: 'button' },
         on: { click: () => salir(0) },
       });
       const botonProbar = el('button', {
-        className: 'button button--secondary',
+        className: 'cg-boton',
         attrs: { type: 'button' },
         on: { click: () => probarTodos() },
       });
       const botonGuardar = el('button', {
-        className: 'button',
+        className: 'cg-boton cg-boton--principal',
         attrs: { type: 'button', disabled: '' },
         on: { click: () => guardar() },
       });

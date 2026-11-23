@@ -159,7 +159,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
    * acción sin ninguno destacar.
    */
   const copyButton = el('button', {
-    className: 'button button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: {
       click: async () => {
@@ -194,7 +194,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
    * deshacer la última tanda, y devolverlo todo.
    */
   const undoButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: {
       click: () => {
@@ -209,7 +209,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
   atributo(undoButton, 'title', 'resultados.deshacer.title');
 
   const restoreButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: {
       click: () => {
@@ -318,7 +318,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
   });
 
   const exportToggleButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false' },
     on: {
       click: clickEvent => {
@@ -525,9 +525,25 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
     children: [
       texto(el('h3', { className: 'card__title' }), 'resultados.titulo'),
       contador,
+      // CS-UX-012: a la vista solo «Enviar a JDownloader» (y deshacer); exportar y copiar, en «⋯».
       el('div', {
         className: 'results__actions',
-        children: [undoButton, restoreButton, exportDropdown, jd.boton, copyButton],
+        children: [
+          undoButton,
+          restoreButton,
+          jd.boton,
+          el('details', {
+            className: 'results__mas',
+            children: [
+              el('summary', {
+                className: 'cg-boton cg-boton--fantasma cg-boton--icono',
+                attrs: { 'aria-label': t('resultados.mas'), title: t('resultados.mas') },
+                children: [window.cgIcono ? window.cgIcono('mas') : document.createTextNode('⋯')],
+              }),
+              el('div', { className: 'results__mas-menu', children: [exportDropdown, copyButton] }),
+            ],
+          }),
+        ],
       }),
     ],
   });
@@ -615,9 +631,18 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
 
   const list = el('ul', { className: 'result-list' });
 
+  // CS-UX-012: filtros plegados en «Filtrar» y la tarjeta entera oculta mientras no hay resultados.
+  const filtrosPlegables = el('details', {
+    className: 'results__filtrar',
+    children: [
+      texto(el('summary', { className: 'results__filtrar-titulo' }), 'resultados.filtrar'),
+      filtros,
+    ],
+  });
   const root = el('div', {
     className: 'card results',
-    children: [cabecera, filtros, columnas, list],
+    attrs: { hidden: '' },
+    children: [cabecera, filtrosPlegables, columnas, list],
   });
 
   /* ── Render ──────────────────────────────────────────────────────── */
@@ -670,7 +695,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
           className: 'result-item result-item--empty',
           children: [
             emptyState({
-              icon: estabaFiltrado ? '🔍' : '○',
+              icon: estabaFiltrado ? 'buscar' : 'lista',
               title: t(estabaFiltrado ? 'resultados.sinCoincidencias' : emptyTitleKey),
               text: t(estabaFiltrado ? 'resultados.sinCoincidencias.texto' : emptyTextKey),
             }),
@@ -803,7 +828,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
               // Quitar: sin confirmación, porque es reversible. Deshacer y
               // "restaurar ocultos" son las dos salidas.
               el('button', {
-                className: 'button button--secondary button--icon result-item__quitar',
+                className: 'cg-boton cg-boton--icono result-item__quitar',
                 text: '✕',
                 attrs: { type: 'button', 'aria-label': t('resultados.ocultar') },
                 on: {
@@ -968,7 +993,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
               esElegido
                 ? null
                 : el('button', {
-                    className: 'button button--secondary button--small miembro__sacar',
+                    className: 'cg-boton miembro__sacar',
                     text: t('resultados.grupo.noEsDuplicado'),
                     attrs: { type: 'button', title: t('resultados.grupo.noEsDuplicado.title') },
                     on: {
@@ -1175,6 +1200,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
 
     setItems(newItems) {
       items = [...new Set(newItems)];
+      root.hidden = items.length === 0;
       recalcularRangos();
       applyFilter();
     },
@@ -1205,6 +1231,7 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
 
     clear() {
       items = [];
+      root.hidden = true;
       meta = new Map();
       duplicadoDe = new Map();
       grupos = new Map();

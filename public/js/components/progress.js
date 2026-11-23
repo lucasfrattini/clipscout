@@ -88,7 +88,7 @@ export function createProgressPanel() {
    * siempre cuando una exploración se está haciendo larga.
    */
   const cancelButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
   });
   atributo(cancelButton, 'title', 'progreso.frenar.title');

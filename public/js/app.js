@@ -223,12 +223,15 @@ async function initHealth() {
   try {
     const health = await getHealth();
     dot.className = 'status-dot status-dot--ok';
+    // CS-UX-002: si todo va bien no se dice nada (el detalle está en Ajustes › Sistema).
+    dot.closest('.footer')?.setAttribute('hidden', '');
     tomarElControl();
     estado = { ok: true, browserEnabled: health.browserEnabled, maxPages: health.limits.maxPages };
     pintar();
     return health.limits;
   } catch {
     dot.className = 'status-dot status-dot--error';
+    dot.closest('.footer')?.removeAttribute('hidden');
     tomarElControl();
     estado = { ok: false };
     pintar();
@@ -395,7 +398,7 @@ async function avisoSinCifrar() {
   texto.textContent = t('aviso.cifrado');
   const boton = document.createElement('button');
   boton.type = 'button';
-  boton.className = 'button button--small button--secondary';
+  boton.className = 'cg-boton';
   boton.textContent = t('aviso.cerrar');
   boton.addEventListener('click', () => {
     try {

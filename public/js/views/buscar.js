@@ -97,7 +97,8 @@ export function createBuscarView(root) {
   /* ── Cabecera: la caja de búsqueda ──────────────────────────────── */
   const entrada = el('input', {
     className: 'input buscar__entrada',
-    attrs: { type: 'search', autocomplete: 'off', enterkeyhint: 'search' },
+    // `text` y no `search`: el navegador no añade su propia cruz junto a «Limpiar» (CS-UX-005).
+    attrs: { type: 'text', inputmode: 'search', autocomplete: 'off', enterkeyhint: 'search' },
   });
   atributo(entrada, 'placeholder', 'buscar.placeholder');
   atributo(entrada, 'aria-label', 'buscar.placeholder');
@@ -244,9 +245,19 @@ export function createBuscarView(root) {
       el('p', { className: 'cs-nota', text: textoAyudaSitios() }),
       el('p', { className: 'field__label', text: t('buscar.modo.titulo') }),
       (pintarModos(), chipsPaginas),
-      el('label', {
-        className: 'field buscar__paginas-fino',
-        children: [el('span', { className: 'field__label', text: t('buscar.paginas') }), paginas],
+      // CS-UX-008: la profundidad manda; el número exacto, plegado.
+      el('details', {
+        className: 'buscar__avanzado',
+        children: [
+          el('summary', { text: t('buscar.avanzado') }),
+          el('label', {
+            className: 'field buscar__paginas-fino',
+            children: [
+              el('span', { className: 'field__label', text: t('buscar.paginas') }),
+              paginas,
+            ],
+          }),
+        ],
       }),
       hayWeb ? casilla(conWeb, 'buscar.web.siempre', 'buscar.webSi.detalle') : null,
       hayWeb ? casilla(abierta, 'buscar.webTodo', 'buscar.webTodo.detalle') : null,
@@ -264,7 +275,6 @@ export function createBuscarView(root) {
               }),
             ],
           }),
-      casilla(compacta, 'buscar.vista.compacta', 'buscar.vista.compacta.detalle'),
       el('div', {
         className: 'cs-fila-botones',
         children: [
@@ -428,8 +438,20 @@ export function createBuscarView(root) {
             text: t('buscar.recientes.borrar'),
             on: {
               click: async () => {
+                // Sin pregunta y con «Deshacer» (SU-UX-011): solo es historial.
+                const antes = historial;
                 await fetch('/api/buscar/historial', { method: 'DELETE' }).catch(() => {});
                 pintarRecientes();
+                window.cgAviso?.(t('buscar.recientes.borrado'), {
+                  deshacer: async () => {
+                    await fetch('/api/buscar/historial', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ busquedas: antes }),
+                    }).catch(() => {});
+                    pintarRecientes();
+                  },
+                });
               },
             },
           })
@@ -563,6 +585,25 @@ export function createBuscarView(root) {
     on: { click: () => abrirFotosHoja() },
   });
   texto(botonFotos, 'fotos.boton');
+  // CS-UX-009: la vista de los resultados (grandes o lista) junto a ellos, no en Filtros.
+  const botonVista = el('button', {
+    className: 'cg-boton cg-boton--fantasma cg-boton--icono buscar__vista',
+    attrs: { type: 'button' },
+    on: {
+      click: () => {
+        compacta.checked = !compacta.checked;
+        compacta.dispatchEvent(new Event('change'));
+        pintarBotonVista();
+      },
+    },
+  });
+  function pintarBotonVista() {
+    botonVista.replaceChildren(icono(compacta.checked ? 'rejilla' : 'lista'));
+    const txt = t(compacta.checked ? 'buscar.vista.grande' : 'buscar.vista.compacta');
+    botonVista.setAttribute('aria-label', txt);
+    botonVista.title = txt;
+  }
+  pintarBotonVista();
   let hayFotos = false;
   fase7
     .fotosDisponible()
@@ -583,7 +624,8 @@ export function createBuscarView(root) {
     cuentaDescartados,
     botonParar,
     botonRecoger,
-    botonFotos
+    botonFotos,
+    botonVista
   );
   const zonaSugeridos = el('div', { className: 'buscar__sugeridos', attrs: { hidden: '' } });
   const rejilla = el('div', {
@@ -1369,8 +1411,11 @@ export function createBuscarView(root) {
     }
     pintarBotonFiltros();
     botonAgregar.textContent = t('buscar.agregarSitios');
-    botonAgregar.className = sitios.length === 0 ? 'cg-boton cg-boton--principal' : 'cg-boton';
+    botonAgregar.className = sitios.length === 0 ? 'button' : 'cg-boton';
     botonVarias.textContent = t('buscar.varias');
+    // CS-UX-007: con sitios, los dos ya están en la hoja Filtros; en el inicio solo sin ninguno.
+    botonAgregar.hidden = sitios.length > 0;
+    botonVarias.hidden = true;
   }
   entrada.addEventListener('input', pintarInicio);
 
@@ -1959,11 +2004,13 @@ export function createBuscarView(root) {
             on: {
               error: e => {
                 miniaturasRotas.add(r.thumbnail);
-                e.currentTarget.replaceWith(el('span', { className: 'buscar__sin', text: '▶' }));
+                e.currentTarget.replaceWith(
+                  el('span', { className: 'buscar__sin', children: [icono('play')] })
+                );
               },
             },
           })
-        : el('span', { className: 'buscar__sin', text: '▶' });
+        : el('span', { className: 'buscar__sin', children: [icono('play')] });
     const oculto = pasada.motivos.get(r);
     const kAlbum = claveAlbum(r);
     const grupoAlbum = kAlbum ? albumes.get(kAlbum) : null;
@@ -1971,13 +2018,11 @@ export function createBuscarView(root) {
     const extra =
       (copias.get(r.url)?.representante === r.url ? copias.get(r.url).n - 1 : 0) +
       (ocultarRepetidos ? (cuentaPagina.get(clavePagina(r)) || 1) - 1 : 0);
+    // CS-UX-010: una línea corta (la duración ya va sobre la miniatura; la relevancia ordena).
     const meta = [
-      r.duration || null,
       nombreDelSitio,
-      Number.isFinite(r.relevancia) ? `${r.relevancia} %` : null,
       extra > 0 ? `+${extra}` : null,
-      esCabezaAlbum ? `▣ ${grupoAlbum.length}` : null,
-      r.web ? '🌐' : null,
+      esCabezaAlbum ? tp('buscar.album.n', grupoAlbum.length) : null,
     ].filter(Boolean);
     const estadoFila = oculto
       ? oculto === 'bloqueada'
@@ -2043,7 +2088,7 @@ export function createBuscarView(root) {
             'aria-label': t('buscar.mas'),
             title: t('buscar.mas'),
           },
-          text: '⋯',
+          children: [icono('mas')],
           on: { click: () => menuFila(r, { esCabezaAlbum, grupoAlbum, kAlbum, tituloFila }) },
         }),
       ],

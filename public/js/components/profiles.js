@@ -84,7 +84,7 @@ export function createProfileBar({ getConfig, applyConfig }) {
 
   const saveButton = texto(
     el('button', {
-      className: 'button button--secondary button--small',
+      className: 'cg-boton',
       attrs: { type: 'button' },
       on: { click: () => saveCurrent() },
     }),
@@ -93,7 +93,7 @@ export function createProfileBar({ getConfig, applyConfig }) {
 
   const deleteButton = texto(
     el('button', {
-      className: 'button button--secondary button--small',
+      className: 'cg-boton',
       attrs: { type: 'button' },
       on: { click: () => deleteCurrent() },
     }),
@@ -101,7 +101,7 @@ export function createProfileBar({ getConfig, applyConfig }) {
   );
 
   const linkButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: {
       click: async () => {
@@ -229,19 +229,33 @@ export function createProfileBar({ getConfig, applyConfig }) {
     refreshSelect();
   }
 
+  // CS-UX-012: el selector a la vista; Guardar, Borrar y Copiar enlace, en «⋯».
+  const masPerfil = el('details', {
+    className: 'results__mas profiles__mas',
+    children: [
+      el('summary', {
+        className: 'cg-boton cg-boton--fantasma cg-boton--icono',
+        attrs: { 'aria-label': t('perfiles.mas'), title: t('perfiles.mas') },
+        children: [window.cgIcono ? window.cgIcono('mas') : document.createTextNode('⋯')],
+      }),
+      el('div', {
+        className: 'results__mas-menu',
+        children: [saveButton, deleteButton, linkButton],
+      }),
+    ],
+  });
   const savedControls = el('div', {
     className: 'profiles__saved',
     children: [
       texto(el('span', { className: 'profiles__label' }), 'perfiles.etiqueta'),
       select,
-      saveButton,
-      deleteButton,
+      masPerfil,
     ],
   });
 
   const root = el('div', {
     className: 'profiles',
-    children: [savedControls, linkButton, note],
+    children: [savedControls, note],
   });
 
   // La opcion "elige una" del desplegable es texto traducido dentro de una

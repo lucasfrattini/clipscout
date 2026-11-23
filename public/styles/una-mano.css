@@ -428,13 +428,13 @@ cg-chips.buscar__pestanas {
   gap: 6px;
   padding: 0 12px;
   border-radius: var(--cg-radio-total);
-  background: var(--cg-texto);
-  border-color: var(--cg-texto);
-  color: var(--cg-fondo);
+  /* SU-UX-012: con borde y sin relleno oscuro (no compite con la lupa, que es la acción). */
+  background: var(--cg-superficie);
+  border-color: var(--cg-borde);
+  color: var(--cg-texto);
 }
 .buscar__boton-filtros:hover {
-  background: var(--cg-texto);
-  filter: brightness(1.15);
+  border-color: var(--cg-texto);
 }
 .buscar__boton-filtros .cg-icono {
   width: 20px;
@@ -1276,4 +1276,165 @@ cg-chips.actividad__pestanas {
 }
 .cs-calidad-jd__sitio h4 {
   margin: 0;
+}
+.footer[hidden] {
+  display: none;
+}
+.buscar__avanzado > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--cg-tenue);
+  cursor: pointer;
+}
+/* CS-UX-010: la casilla solo en modo selección (mantener pulsado) y, con ratón, al pasar por encima. */
+html:not(.cg-seleccionando) .buscar__casilla {
+  display: none;
+}
+@media (hover: hover) {
+  html:not(.cg-seleccionando) .buscar__tarjeta:hover .buscar__casilla,
+  html:not(.cg-seleccionando) .buscar__casilla:focus-visible {
+    display: grid;
+  }
+}
+.buscar__sin .cg-icono {
+  width: 22px;
+  height: 22px;
+  opacity: 0.6;
+}
+.buscar__mas .cg-icono {
+  width: 22px;
+  height: 22px;
+}
+.actividad__aviso-linea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  margin-bottom: 8px;
+  border-radius: var(--cg-radio);
+  background: var(--cg-superficie);
+  border: 1px solid var(--cg-borde);
+  color: var(--cg-texto);
+  text-decoration: none;
+  font-size: 14px;
+}
+.actividad__aviso-linea > span {
+  flex: 1;
+  min-width: 0;
+}
+.actividad__aviso-linea .cg-icono {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.actividad__aviso-linea .cg-icono:first-child {
+  color: var(--cg-mal);
+}
+/* CS-UX-019: en el móvil, las pestañas que no caben se insinúan con un degradado a la derecha. */
+@media (max-width: 768px) {
+  .actividad__pestanas {
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+    mask-image: linear-gradient(to right, #000 85%, transparent);
+  }
+}
+.results__filtrar > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.results__mas {
+  position: relative;
+}
+.results__mas > summary {
+  list-style: none;
+}
+.results__mas > summary::-webkit-details-marker {
+  display: none;
+}
+.results__mas-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  min-width: 200px;
+  border-radius: var(--cg-radio);
+  background: var(--cg-superficie);
+  border: 1px solid var(--cg-borde);
+  box-shadow: var(--cg-sombra-media);
+}
+/* CS-UX-014: los toques pequeños de Explorar, a 44 px. */
+.link-toggle {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+/* CS-UX-012: en el móvil, el carril de pasos es una línea con el paso actual. */
+@media (max-width: 768px) {
+  .steps-rail [data-state]:not([data-state='activo']) {
+    display: none;
+  }
+  .steps-rail {
+    padding: 0;
+    min-height: 32px;
+  }
+}
+/* CS-UX-016: en «Analizar enlace», las opciones en una línea (la ayuda con el ratón o en el título)
+   y el botón pegado abajo, al alcance del pulgar. */
+@media (max-width: 768px) {
+  .video__pie {
+    position: sticky;
+    bottom: calc(var(--cg-ocupa-abajo, 0px) + 8px);
+    z-index: 5;
+    padding: 8px 0;
+    background: var(--cg-fondo);
+  }
+  #view-video .switch__hint {
+    display: none;
+  }
+  #view-video .switch {
+    min-height: 44px;
+  }
+}
+@media (max-width: 768px) {
+  .cs-sitio__cifras {
+    display: none;
+  }
+  /* SU-UX-014: en el móvil las tarjetas son secciones (sin borde ni relleno doble). */
+  #view-ajustes .card,
+  #view-explorer .card {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  #view-ajustes .card > .card__body,
+  #view-ajustes .card > form,
+  #view-explorer .card > .card__body {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+/* CS-UX-025: los enlaces de Conexiones se tocan como botones. */
+.conexion a,
+.cs-conexion a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.cs-enlace-tactil {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+/* SU-UX-018: estado vacío con icono de cg-ui de 40 px, tenue. */
+.empty__icon .cg-icono {
+  width: 40px;
+  height: 40px;
+  color: var(--cg-tenue);
 }

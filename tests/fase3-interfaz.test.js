@@ -137,7 +137,7 @@ test('POST /api/ajustes/jdownloader/enviados responde con lo apuntado en los paq
 
 /* ── La interfaz: navegación nueva y lo que se movió ─────────────────── */
 
-test('index.html: Buscar · Avanzada · Actividad · Ajustes · Apps en la barra (Apps la última)', () => {
+test('index.html: Buscar · Explorar · Actividad · Ajustes · Más en la barra (Más la última, con las apps)', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const barra = html.slice(
     html.indexOf('<cg-barra-inferior'),
@@ -145,7 +145,8 @@ test('index.html: Buscar · Avanzada · Actividad · Ajustes · Apps en la barra
   );
   const destinos = [...barra.matchAll(/href="#\/(\w+)" data-icono/g)].map(m => m[1]);
   assert.deepEqual(destinos, ['buscar', 'explorer', 'actividad', 'ajustes']);
-  assert.match(barra, /<button[^>]*id="boton-apps"[^>]*data-icono="apps"/);
+  // Auditoría UX (SU-UX-001): «Apps» pasa a ser «Más» (apps, guía y salir).
+  assert.match(barra, /<button[^>]*id="boton-apps"[^>]*data-icono="mas"/);
   assert.ok(
     barra.lastIndexOf('boton-apps') > barra.lastIndexOf('href="#/'),
     '«Apps» es el último botón'

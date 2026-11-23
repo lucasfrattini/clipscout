@@ -11,7 +11,7 @@ import { el, toast } from '../dom.js';
 import { alCambiarIdioma, cambiarIdioma, idiomaActual, IDIOMAS, t } from '../i18n/index.js';
 import { cambiarTema, temaGuardado, TEMAS } from '../tema.js';
 import { crearCabecera } from '../cabecera.js';
-import { seccionAjustes, SECCIONES_AJUSTES } from '../unaMano.js';
+import { seccionAjustes, SECCIONES_AJUSTES, fechaHora } from '../unaMano.js';
 import {
   tarjetaAcercaDe,
   tarjetaCopiaSuite,
@@ -179,7 +179,7 @@ export function createAjustesView(raiz) {
       },
     });
     const guardar = el('button', {
-      className: 'button',
+      className: 'cg-boton cg-boton--principal',
       attrs: { type: 'submit' },
       text: t('aj.guardar'),
     });
@@ -273,13 +273,13 @@ export function createAjustesView(raiz) {
           className: 'ajustes-acciones',
           children: [
             el('button', {
-              className: 'button button--small',
+              className: 'cg-boton',
               attrs: { type: 'submit' },
               text: t(estadoAcceso.protegido ? 'aj.acceso.cambiar' : 'aj.acceso.poner'),
             }),
             estadoAcceso.protegido
               ? el('button', {
-                  className: 'button button--small button--secondary ajustes-peligro',
+                  className: 'cg-boton ajustes-peligro',
                   attrs: { type: 'button' },
                   text: t('aj.acceso.quitar'),
                   on: {
@@ -316,7 +316,7 @@ export function createAjustesView(raiz) {
 
   function tarjetaSesiones() {
     const lista = el('ul', { className: 'ajustes-conexiones ajustes-sesiones' });
-    const fecha = iso => new Date(iso).toLocaleString(idiomaActual());
+    const fecha = iso => fechaHora(iso, idiomaActual());
     const cargarSesiones = async () => {
       let sesiones = [];
       try {
@@ -350,7 +350,7 @@ export function createAjustesView(raiz) {
               s.esta
                 ? null
                 : el('button', {
-                    className: 'button button--secondary button--small',
+                    className: 'cg-boton',
                     attrs: { type: 'button' },
                     text: t('aj.ses.cerrar'),
                     on: {
@@ -390,7 +390,7 @@ export function createAjustesView(raiz) {
             }),
             estadoAcceso.protegido
               ? el('button', {
-                  className: 'button button--secondary button--small ajustes-peligro',
+                  className: 'cg-boton ajustes-peligro',
                   attrs: { type: 'button' },
                   text: t('aj.ses.cerrarDemas'),
                   on: {
@@ -720,7 +720,7 @@ export function createAjustesView(raiz) {
           : t('aj.proxy.salidaNo');
       }
       cuando.textContent = e.comprobado
-        ? t('aj.proxy.cuando', { cuando: new Date(e.comprobado).toLocaleString() })
+        ? t('aj.proxy.cuando', { cuando: fechaHora(e.comprobado, idiomaActual()) })
         : '';
       let clase = '';
       let txt;
@@ -861,7 +861,7 @@ export function createAjustesView(raiz) {
           className: 'ajustes-acciones',
           children: [
             el('button', {
-              className: 'button button--small button--secondary',
+              className: 'cg-boton',
               attrs: { type: 'button' },
               text: t('aj.con.probar'),
               on: {
@@ -880,7 +880,7 @@ export function createAjustesView(raiz) {
               },
             }),
             el('button', {
-              className: 'button button--small',
+              className: 'cg-boton',
               attrs: { type: 'submit' },
               text: t('aj.guardar'),
             }),
@@ -958,7 +958,7 @@ export function createAjustesView(raiz) {
           className: 'ajustes-acciones',
           children: [
             el('button', {
-              className: 'button button--small',
+              className: 'cg-boton',
               attrs: { type: 'submit' },
               text: t('aj.guardar'),
             }),

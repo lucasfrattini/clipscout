@@ -6,10 +6,10 @@
  */
 import { ajustes, fase7 } from '../api.js';
 import { el, toast } from '../dom.js';
-import { t, tp, alCambiarIdioma } from '../i18n/index.js';
+import { t, tp, alCambiarIdioma, idiomaActual } from '../i18n/index.js';
 import { crearCabecera } from '../cabecera.js';
 import { abrirHoja, menuAcciones } from '../hojas.js';
-import { pestanaActividad, PESTANAS_ACTIVIDAD } from '../unaMano.js';
+import { pestanaActividad, PESTANAS_ACTIVIDAD, fechaHora } from '../unaMano.js';
 import { comprobarAvisos, marcarLeidos, textoAviso } from '../avisos.js';
 
 const confirmarIrreversible = opciones =>
@@ -50,9 +50,10 @@ export function createActividadView(raiz) {
       if (rotos.length) {
         hijos.push(
           aviso(
-            t('act.rotos', { nombres: rotos.join(', ') }),
+            tp('act.rotos.corto', rotos.length),
             t('act.rotos.ver'),
-            '#/ajustes/busqueda'
+            '#/ajustes/busqueda',
+            rotos.join(', ')
           )
         );
       }
@@ -61,14 +62,21 @@ export function createActividadView(raiz) {
     }
     avisos.replaceChildren(...hijos);
   }
-  function aviso(textoAviso, textoEnlace, href) {
-    return el('div', {
-      className: 'cs-aviso-proxy',
-      attrs: { role: 'note' },
+  /** CS-UX-018: una línea de 44 px que lleva a donde se arregla (no un bloque en cada pestaña). */
+  function aviso(textoAviso, textoEnlace, href, detalle = '') {
+    return el('a', {
+      className: 'actividad__aviso-linea',
+      attrs: {
+        href,
+        role: 'note',
+        title: detalle || textoEnlace,
+        'aria-label': `${textoAviso}. ${textoEnlace}`,
+      },
       children: [
-        el('span', { className: 'cs-aviso-proxy__texto', text: textoAviso }),
-        el('a', { className: 'cg-boton', attrs: { href }, text: textoEnlace }),
-      ],
+        window.cgIcono ? window.cgIcono('aviso') : null,
+        el('span', { text: textoAviso }),
+        window.cgIcono ? window.cgIcono('adelante') : null,
+      ].filter(Boolean),
     });
   }
 
@@ -242,41 +250,54 @@ export function createActividadView(raiz) {
       listaPaquetes.replaceChildren(vacio(t('aj.paq.vacio')));
       return;
     }
-    const fecha = ms => new Date(ms).toLocaleString();
+    const fecha = ms => fechaHora(ms, idiomaActual());
     listaPaquetes.replaceChildren(
       ...paquetes.slice(0, 50).map(p => {
         const c = p.contadores;
+        // CS-UX-020: una línea (estado · progreso · cuándo); lo demás, en «⋯».
         const detalle = [
           t(`aj.paq.estado.${p.estado}`),
-          p.carpeta || t('aj.prog.sinCarpeta'),
-          fecha(p.creado),
           c ? t('aj.paq.cuenta', { hechos: c.terminados, total: c.total }) : null,
+          fecha(p.creado),
+        ].filter(Boolean);
+        const mas = [
+          p.carpeta || t('aj.prog.sinCarpeta'),
           c?.fallidos ? tp('aj.paq.caidos', c.fallidos) : null,
           p.directos ? tp('aj.paq.directos', p.directos) : null,
           p.sinDirecto ? tp('aj.paq.sinDirecto', p.sinDirecto) : null,
           p.escaneado ? t('aj.paq.escaneado') : null,
         ].filter(Boolean);
-        const acciones = [];
-        if (p.estado === 'error' || c?.fallidos) {
-          acciones.push(
-            el('button', {
-              className: 'cg-boton',
-              attrs: { type: 'button' },
-              text: t('aj.paq.reintentar'),
-              on: {
-                click: async () => {
-                  try {
-                    const r = await ajustes.reintentarPaquete(p.id);
-                    toast(tp('aj.paq.reintentado', r.sustituidas || 0));
-                    cargarPaquetes();
-                  } catch (error) {
-                    toast(error.message, 'error', 6000);
-                  }
-                },
-              },
-            })
-          );
-        }
+        const puedeReintentar = p.estado === 'error' || c?.fallidos;
+        const reintentar = async () => {
+          try {
+            const r = await ajustes.reintentarPaquete(p.id);
+            toast(tp('aj.paq.reintentado', r.sustituidas || 0));
+            cargarPaquetes();
+          } catch (error) {
+            toast(error.message, 'error', 6000);
+          }
+        };
+        const acciones = [
+          el('button', {
+            className: 'cg-boton cg-boton--fantasma cg-boton--icono',
+            attrs: {
+              type: 'button',
+              'aria-label': t('act.masPaquete'),
+              title: t('act.masPaquete'),
+            },
+            children: [window.cgIcono ? window.cgIcono('mas') : document.createTextNode('⋯')],
+            on: {
+              click: () =>
+                menuAcciones({
+                  titulo: p.nombre,
+                  subtitulo: mas.join(' · '),
+                  acciones: puedeReintentar
+                    ? [{ texto: t('aj.paq.reintentar'), fn: reintentar }]
+                    : [],
+                }),
+            },
+          }),
+        ];
         return fila({
           estado: p.estado === 'terminado' ? 'hecho' : p.estado === 'error' ? 'error' : 'curso',
           titulo: p.nombre,
@@ -326,7 +347,7 @@ export function createActividadView(raiz) {
   const resumen = p => {
     if (programadas.enCurso === p.id) return t('aj.prog.enCurso');
     if (!p.ultimo) return t('aj.prog.nunca');
-    const fecha = new Date(p.ultimo.fecha).toLocaleString();
+    const fecha = fechaHora(p.ultimo.fecha, idiomaActual());
     return p.ultimo.error
       ? t('aj.prog.ultimoError', { fecha, error: p.ultimo.error })
       : t('aj.prog.ultimo', {
@@ -342,7 +363,7 @@ export function createActividadView(raiz) {
   function filaSeguida(p) {
     const ultimos = (p.ultimo?.mandados || []).map(m => m.titulo).filter(Boolean);
     const proxima = p.ultimaVez
-      ? new Date(Date.parse(p.ultimaVez) + p.cadaDias * 86400000).toLocaleDateString()
+      ? new Date(Date.parse(p.ultimaVez) + p.cadaDias * 86400000).toLocaleDateString(idiomaActual())
       : t('seg.pronto');
     const li = fila({
       estado: p.activa ? (programadas.enCurso === p.id ? 'curso' : 'hecho') : 'pausa',
@@ -469,8 +490,9 @@ export function createActividadView(raiz) {
       pie: [guardarSeguir],
     });
   }
+  // CS-UX-021 / SU-UX-010: un solo principal («Nueva programada»); seguir a una persona, fantasma.
   const botonSeguir = el('button', {
-    className: 'cg-boton',
+    className: 'cg-boton cg-boton--fantasma',
     attrs: { type: 'button' },
     text: t('seg.seguir'),
     on: { click: () => formularioSeguir() },
@@ -786,7 +808,7 @@ export function createActividadView(raiz) {
           estado: error.test(a.tipo) ? 'error' : 'hecho',
           titulo: textoAviso(a),
           detalle:
-            new Date(a.fecha).toLocaleString() +
+            fechaHora(a.fecha, idiomaActual()) +
             (a.id > datosAvisos.leidoHasta ? ` · ${t('avisos.nuevo')}` : ''),
           acciones: destinoAviso(a)
             ? [
@@ -822,6 +844,9 @@ export function createActividadView(raiz) {
   /* ── Pestañas ──────────────────────────────────────────────────────── */
   function mostrar(id) {
     pestana = id;
+    // CS-UX-003: entrar en Actividad (por cualquier pestaña) da los avisos por vistos; el punto
+    // vuelve solo con uno nuevo. En «Avisos» se marcan después de pintarlos (siguen con «nuevo»).
+    if (id !== 'avisos') marcarLeidos().catch(() => {});
     for (const [clave, b] of Object.entries(botones)) {
       b.setAttribute('aria-pressed', String(clave === id));
     }

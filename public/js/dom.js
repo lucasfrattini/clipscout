@@ -81,11 +81,18 @@ export function show(node, visible = true) {
 }
 
 /** Estado vacío reutilizable. */
-export function emptyState({ icon = '○', title, text }) {
+/**
+ * Estado vacío (SU-UX-018): icono de cg-ui (nombre: «buscar», «reels», «lista»…), título y una frase.
+ * Un nombre que cg-ui no conoce se pinta como texto (compatibilidad).
+ */
+export function emptyState({ icon = 'lista', title, text }) {
+  const caja = el('div', { className: 'empty__icon', attrs: { 'aria-hidden': 'true' } });
+  if (window.cgIcono) caja.append(window.cgIcono(icon));
+  else caja.textContent = '';
   return el('div', {
     className: 'empty',
     children: [
-      el('div', { className: 'empty__icon', text: icon, attrs: { 'aria-hidden': 'true' } }),
+      caja,
       el('p', { className: 'empty__title', text: title }),
       text ? el('p', { className: 'empty__text', text }) : null,
     ],
@@ -186,7 +193,7 @@ export async function copyToClipboard(text) {
  */
 export function copyIconButton(value, { labelKey = 'copiar.estaUrl' } = {}) {
   const boton = el('button', {
-    className: 'button button--secondary button--icon',
+    className: 'cg-boton cg-boton--icono',
     text: '⧉',
     attrs: { type: 'button' },
     on: {

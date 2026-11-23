@@ -50,6 +50,26 @@ async function listar() {
   return { busquedas: (await almacen.leer()).busquedas || [] };
 }
 
+/** «Deshacer» de «Borrar el historial» (SU-UX-011): vuelve a poner lo que había. */
+async function restaurar(lista) {
+  const validas = (Array.isArray(lista) ? lista : [])
+    .filter(b => b && typeof b.q === 'string' && b.q.trim())
+    .slice(0, MAX)
+    .map(b => ({
+      q: b.q.trim().slice(0, 300),
+      fecha: typeof b.fecha === 'string' ? b.fecha : new Date().toISOString(),
+      veces: Number.isInteger(b.veces) && b.veces > 0 ? b.veces : 1,
+    }));
+  return almacen.cambiar(d => {
+    const ya = new Set((d.busquedas || []).map(b => claveDe(b.q)));
+    d.busquedas = [...(d.busquedas || []), ...validas.filter(b => !ya.has(claveDe(b.q)))].slice(
+      0,
+      MAX
+    );
+    return { busquedas: d.busquedas };
+  });
+}
+
 /** Borra una (por su texto) o, sin `q`, todo. */
 async function borrar(q) {
   return almacen.cambiar(d => {
@@ -58,4 +78,4 @@ async function borrar(q) {
   });
 }
 
-module.exports = { apuntar, listar, borrar, MAX };
+module.exports = { apuntar, listar, borrar, MAX, restaurar };

@@ -122,7 +122,7 @@ export function createVideoView(container) {
 
   function crearBotonQuitarFila(onClick) {
     const boton = el('button', {
-      className: 'button button--secondary button--icon',
+      className: 'cg-boton cg-boton--icono',
       text: '✕',
       attrs: { type: 'button' },
       on: { click: onClick },
@@ -207,11 +207,11 @@ export function createVideoView(container) {
   const thumbInput = el('input', { attrs: { type: 'checkbox', id: 'video-thumb' } });
 
   const submitButton = el('button', {
-    className: 'button button--large',
+    className: 'cg-boton cg-boton--principal',
     attrs: { type: 'submit' },
   });
   const cancelButton = el('button', {
-    className: 'button button--secondary',
+    className: 'cg-boton',
     attrs: { type: 'button' },
   });
   texto(cancelButton, 'video.cancelar');
@@ -222,7 +222,7 @@ export function createVideoView(container) {
   // siempre en cuanto el panel se muestre.
 
   const limpiarButton = el('button', {
-    className: 'button button--ghost',
+    className: 'cg-boton cg-boton--fantasma',
     attrs: { type: 'button' },
   });
   texto(limpiarButton, 'video.limpiar');
@@ -286,7 +286,8 @@ export function createVideoView(container) {
           makeSwitch(thumbInput, 'video.miniatura.label', 'video.miniatura.hint'),
         ],
       }),
-      el('div', { className: 'button-row', children: [submitButton, limpiarButton] }),
+      // CS-UX-016: «Analizar» siempre a la vista (pie pegado abajo en el móvil).
+      el('div', { className: 'button-row video__pie', children: [submitButton, limpiarButton] }),
     ],
   });
 
@@ -382,7 +383,7 @@ export function createVideoView(container) {
   const contador = el('span', { className: 'results__count' });
 
   const undoButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: {
       click: () => {
@@ -398,7 +399,7 @@ export function createVideoView(container) {
   undoButton.hidden = true;
 
   const restoreButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: {
       click: () => {
@@ -561,7 +562,7 @@ export function createVideoView(container) {
   exportMenu.hidden = true;
 
   const exportToggleButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false' },
     on: {
       click: clickEvent => {
@@ -594,7 +595,7 @@ export function createVideoView(container) {
   });
 
   const copyAllButton = el('button', {
-    className: 'button button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: {
       click: async () => {
@@ -656,7 +657,7 @@ export function createVideoView(container) {
   }
 
   const yaLoTengoButton = el('button', {
-    className: 'button button--secondary button--small',
+    className: 'cg-boton',
     attrs: { type: 'button' },
     on: { click: comprobarBiblioteca },
   });
@@ -987,7 +988,7 @@ export function createVideoView(container) {
               esElegido
                 ? null
                 : el('button', {
-                    className: 'button button--secondary button--small miembro__sacar',
+                    className: 'cg-boton miembro__sacar',
                     text: t('resultados.grupo.noEsDuplicado'),
                     attrs: { type: 'button', title: t('resultados.grupo.noEsDuplicado.title') },
                     on: {
@@ -1055,7 +1056,7 @@ export function createVideoView(container) {
     if (loTengo) {
       actions.push(
         safeLink(loTengo.url, {
-          className: 'button button--secondary button--small',
+          className: 'cg-boton',
           text: t('video.verEnClipkeeper'),
         })
       );
@@ -1063,14 +1064,14 @@ export function createVideoView(container) {
     if (/^https?:\/\//i.test(video.url)) {
       actions.push(
         safeLink(video.url, {
-          className: 'button button--secondary button--small',
+          className: 'cg-boton',
           text: t('video.abrir'),
         })
       );
       if (jd.configurado()) {
         actions.push(
           el('button', {
-            className: 'button button--secondary button--small',
+            className: 'cg-boton',
             text: t('video.jd.boton'),
             attrs: { type: 'button', title: t('video.jd.boton.titulo') },
             on: { click: () => jd.enviar([video.url]) },
@@ -1080,7 +1081,7 @@ export function createVideoView(container) {
     }
     actions.push(
       el('button', {
-        className: 'button button--secondary button--icon',
+        className: 'cg-boton cg-boton--icono',
         text: '✕',
         attrs: {
           type: 'button',
@@ -1159,7 +1160,7 @@ export function createVideoView(container) {
             marcaGrupo,
             copyIconButton(video.url),
             el('button', {
-              className: 'button button--secondary button--icon result-item__quitar',
+              className: 'cg-boton cg-boton--icono result-item__quitar',
               text: '✕',
               attrs: { type: 'button', 'aria-label': t('resultados.ocultar') },
               on: {
@@ -1313,7 +1314,7 @@ export function createVideoView(container) {
     show(emptySlot, true);
     setChildren(
       emptySlot,
-      emptyState({ icon: '🎬', title: t('video.vacio.titulo'), text: t('video.vacio.texto') })
+      emptyState({ icon: 'reels', title: t('video.vacio.titulo'), text: t('video.vacio.texto') })
     );
   }
 
@@ -1409,7 +1410,7 @@ export function createVideoView(container) {
       setChildren(
         emptySlot,
         emptyState({
-          icon: estabaFiltrado ? '🔍' : '🎬',
+          icon: estabaFiltrado ? 'buscar' : 'reels',
           title: t(estabaFiltrado ? 'resultados.sinCoincidencias' : 'video.sinResultados.titulo'),
           text: t(
             estabaFiltrado ? 'resultados.sinCoincidencias.texto' : 'video.sinResultados.texto'

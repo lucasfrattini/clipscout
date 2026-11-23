@@ -199,6 +199,15 @@ router.get('/buscar/historial', async (req, res) => {
   }
 });
 
+/** POST /api/buscar/historial { busquedas } — «Deshacer» tras borrarlo (SU-UX-011). */
+router.post('/buscar/historial', async (req, res) => {
+  try {
+    res.json(await require('../services/historial').restaurar(req.body?.busquedas));
+  } catch (error) {
+    errores.responder(req, res, error, logger);
+  }
+});
+
 /** DELETE /api/buscar/historial[?q=…] — borra una búsqueda del historial, o todo. */
 router.delete('/buscar/historial', async (req, res) => {
   try {
