@@ -120,6 +120,23 @@ function prefijosMasFrecuentes(diagnostico, n = 3) {
 }
 
 /** Busca en un HTML las URLs cuya extensión real esté en `extensions`. */
+/**
+ * Direcciones de vídeo declaradas como variables del reproductor dentro de los scripts, en orden
+ * de calidad (`video_url`, `video_alt_url`, `video_alt_url2`…). Las ofuscadas («function/0/…»)
+ * solo valen si detrás va la dirección en claro.
+ */
+function videosEnScripts(html, baseUrl) {
+  const encontrados = [];
+  const re = /\bvideo_(?:alt_)?url(\d*)\s*:\s*['"]([^'"]+)['"]/g;
+  for (const m of String(html || '').matchAll(re)) {
+    const crudo = m[2].replace(/^function\/0\//, '');
+    if (!/^(https?:)?\/\//i.test(crudo) && !crudo.startsWith('/')) continue;
+    const url = toAbsoluteUrl(crudo, baseUrl);
+    if (url) encontrados.push({ orden: m[0].includes('alt_') ? 1 + (Number(m[1]) || 1) : 0, url });
+  }
+  return [...new Set(encontrados.sort((a, b) => a.orden - b.orden).map(e => e.url))];
+}
+
 function extractFilesFromHtml(html, baseUrl, extensions) {
   const $ = asDocument(html);
   const files = new Set();
@@ -135,6 +152,14 @@ function extractFilesFromHtml(html, baseUrl, extensions) {
     if (alojado) gratuitos.add(alojado);
     else if (hasExtension(absolute, extensions)) files.add(absolute);
   });
+
+  // Reproductores que declaran el vídeo en un <script> y no en un atributo (las variables del
+  // reproductor: `video_url: '…'`, `video_alt_url2: '…'`). Sin esto solo se veían los anuncios de
+  // la ficha, que sí van en atributos. De las calidades declaradas se queda la última (la mayor).
+  if (conVideo) {
+    const declarados = videosEnScripts($.html(), baseUrl).filter(u => hasExtension(u, extensions));
+    if (declarados.length) files.add(declarados[declarados.length - 1]);
+  }
 
   if (conVideo) for (const url of alojamientosEnHtml($.html())) gratuitos.add(url);
 

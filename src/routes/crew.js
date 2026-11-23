@@ -397,8 +397,10 @@ router.get(
 
 router.delete(
   '/ajustes/sitios/estadisticas',
-  manejar(async () => {
-    await estadisticas.ponerACero();
+  manejar(async req => {
+    const dominio =
+      typeof req.query.dominio === 'string' ? req.query.dominio.trim().toLowerCase() : '';
+    await estadisticas.ponerACero(dominio || null);
     return { ok: true };
   })
 );

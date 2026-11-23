@@ -230,3 +230,18 @@ test('alojamientos: también en og:video, data-embed-src y noscript', () => {
   ]);
   assert.deepEqual(extractFilesFromHtml(html, 'https://example.com/ficha', ['jpg']), []);
 });
+
+test('extractFilesFromHtml: vídeo declarado en un script del reproductor (la mayor calidad)', () => {
+  const html = `<html><body>
+    <video src="https://anuncios.example.net/creatives/1/999.mp4"></video>
+    <script>var flashvars = { license_code: '$123',
+      video_url: 'https://www.example.com/get_file/5/abc/321000/321456/321456.mp4/', video_url_text: '480p',
+      video_alt_url: 'https://www.example.com/get_file/5/def/321000/321456/321456_720p.mp4/',
+      video_alt_url2: 'https://www.example.com/get_file/5/ghi/321000/321456/321456_1080p.mp4/' };</script>
+  </body></html>`;
+  const files = extractFilesFromHtml(html, 'https://www.example.com/video/321456/titulo', ['mp4']);
+  assert.ok(
+    files.includes('https://www.example.com/get_file/5/ghi/321000/321456/321456_1080p.mp4/')
+  );
+  assert.ok(!files.some(f => f.includes('_720p') || f.endsWith('321456.mp4/')));
+});

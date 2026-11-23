@@ -138,7 +138,16 @@ async function leerSalud() {
   return Object.fromEntries(Object.entries(salud).map(([d, s]) => [d, conAviso(s)]));
 }
 
-async function ponerACero() {
+/** Todo a cero; con `dominio`, solo ese sitio (p. ej. tras arreglar uno que se saltaba). */
+async function ponerACero(dominio = null) {
+  if (dominio) {
+    await volcar();
+    await almacen.cambiar(d => {
+      if (d.sitios) delete d.sitios[dominio];
+      if (d.salud) delete d.salud[dominio];
+    });
+    return;
+  }
   pendiente = new Map();
   saludPendiente = [];
   await almacen.cambiar(d => {
