@@ -394,6 +394,42 @@
         cab.addEventListener('pointerup', soltar);
         cab.addEventListener('pointercancel', soltar);
       });
+      // 1.5.0 (§4.2 de la auditoría): también desde el CONTENIDO, pero solo si está arriba del todo
+      // y el dedo baja; si no, el desplazamiento de dentro sigue igual.
+      let t0 = null;
+      this.addEventListener('touchstart', e => {
+        if (!mqMovil.matches || e.touches.length !== 1 || cab.contains(e.target)) return (t0 = null);
+        t0 = { y: e.touches[0].clientY, arrastrando: false, dy: 0, alto: this.offsetHeight || 1 };
+      }, { passive: true });
+      this.addEventListener('touchmove', e => {
+        if (!t0) return;
+        const dy = e.touches[0].clientY - t0.y;
+        if (!t0.arrastrando) {
+          if (dy > 8 && this.scrollTop <= 0) {
+            t0.arrastrando = true;
+            this.classList.add('cg-arrastrando');
+          } else if (dy < -4 || this.scrollTop > 0) return (t0 = null);
+          else return;
+        }
+        e.preventDefault(); // es un arrastre de la hoja, no un desplazamiento
+        t0.dy = Math.max(0, dy - 8);
+        this.style.setProperty('--cg-arrastre', t0.dy + 'px');
+        if (this._velo) this._velo.style.opacity = String(Math.max(0, 1 - t0.dy / t0.alto));
+      }, { passive: false });
+      const fin = () => {
+        if (!t0) return;
+        const { arrastrando, dy, alto } = t0;
+        t0 = null;
+        if (!arrastrando) return;
+        this.classList.remove('cg-arrastrando');
+        if (dy > alto * 0.3 || dy > 140) this.cerrar();
+        else {
+          this.style.setProperty('--cg-arrastre', '0px');
+          if (this._velo) this._velo.style.opacity = '';
+        }
+      };
+      this.addEventListener('touchend', fin);
+      this.addEventListener('touchcancel', fin);
     }
   }
 
@@ -1289,6 +1325,65 @@
     t,
   });
   window.cgAviso = cgAviso;
+
+  // ── cgDeslizar(fila, {der, izq}) (1.5.0, §4.2 de la auditoría) ─────────────────────────────────
+  /**
+   * Deslizar una fila con el dedo: a la derecha, `der` (la acción positiva: restaurar, reintentar);
+   * a la izquierda, `izq` (quitar). Cada una `{ texto, fn }`. Umbral de 80 px; por debajo, vuelve
+   * a su sitio. Solo táctil (con ratón, los botones de siempre); el desplazamiento vertical manda.
+   * Devuelve una función que lo quita.
+   */
+  function cgDeslizar(fila, { der = null, izq = null } = {}) {
+    let x0 = null, y0 = 0, dx = 0, horizontal = null;
+    const fondo = el('span', { class: 'cg-deslizar-fondo', 'aria-hidden': 'true' });
+    fondo.style.display = 'none';
+    fila.classList.add('cg-deslizable');
+    fila.prepend(fondo);
+    const pintar = () => {
+      fila.style.setProperty('--cg-desliza', dx + 'px');
+      const accion = dx > 0 ? der : dx < 0 ? izq : null;
+      fondo.style.display = accion ? '' : 'none';
+      fondo.textContent = accion ? accion.texto : '';
+      fondo.dataset.lado = dx > 0 ? 'der' : 'izq';
+      fondo.toggleAttribute('data-listo', Math.abs(dx) >= 80);
+    };
+    const inicio = e => {
+      if (e.touches.length !== 1) return;
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; horizontal = null;
+    };
+    const mover = e => {
+      if (x0 === null) return;
+      const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (horizontal === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) horizontal = Math.abs(mx) > Math.abs(my) * 1.3;
+      if (!horizontal) return;
+      if ((mx > 0 && !der) || (mx < 0 && !izq)) return;
+      e.preventDefault();
+      dx = Math.max(-140, Math.min(140, mx));
+      fila.classList.add('cg-deslizando');
+      pintar();
+    };
+    const fin = () => {
+      if (x0 === null) return;
+      const accion = dx >= 80 ? der : dx <= -80 ? izq : null;
+      x0 = null; dx = 0;
+      fila.classList.remove('cg-deslizando');
+      pintar();
+      if (accion) accion.fn();
+    };
+    fila.addEventListener('touchstart', inicio, { passive: true });
+    fila.addEventListener('touchmove', mover, { passive: false });
+    fila.addEventListener('touchend', fin);
+    fila.addEventListener('touchcancel', fin);
+    return () => {
+      fila.removeEventListener('touchstart', inicio);
+      fila.removeEventListener('touchmove', mover);
+      fila.removeEventListener('touchend', fin);
+      fila.removeEventListener('touchcancel', fin);
+      fondo.remove();
+      fila.classList.remove('cg-deslizable');
+    };
+  }
+  window.cgDeslizar = cgDeslizar;
   window.cgConfirmar = cgConfirmar;
   window.cgSeleccion = cgSeleccion;
   window.cgIcono = icono;

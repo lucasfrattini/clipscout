@@ -298,12 +298,17 @@ export function createActividadView(raiz) {
             },
           }),
         ];
-        return fila({
+        const li = fila({
           estado: p.estado === 'terminado' ? 'hecho' : p.estado === 'error' ? 'error' : 'curso',
           titulo: p.nombre,
           detalle: detalle.join(' · '),
           acciones,
         });
+        // §4.2 de la auditoría: en táctil, deslizar a la derecha reintenta lo que falló.
+        if (puedeReintentar && window.cgDeslizar) {
+          window.cgDeslizar(li, { der: { texto: t('aj.paq.reintentar'), fn: reintentar } });
+        }
+        return li;
       })
     );
   }

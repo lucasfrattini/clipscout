@@ -1,5 +1,12 @@
 # Cambios
 
+## 2.28.1
+
+- **Gestos** (cg-ui 1.5.0): las hojas se cierran arrastrando hacia abajo también desde su contenido; en
+  Actividad → Descargas, deslizar a la derecha reintenta un paquete con fallos.
+- Texto tenue con más contraste (5,5:1), campos a 16 px en el móvil (sin zoom al escribir) y escala de letra
+  común.
+
 ## 2.28.0
 
 Auditoría de UX (clipscout):

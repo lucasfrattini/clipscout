@@ -18,7 +18,7 @@
   --cc-fondo: #f4f6f9;
   --cc-carta: #ffffff;
   --cc-texto: #172033;
-  --cc-tenue: #64748b;
+  --cc-tenue: #5b6472; /* SU-UX-017: 5,5:1 sobre el fondo (antes 4,4) */
   --cc-borde: #e2e8f0;
   --cc-borde-fuerte: #cbd5e1;
   --cc-noche: #0b1e3f;

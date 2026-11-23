@@ -17,6 +17,13 @@
   --cg-superficie-alta: #ffffff;
   --cg-texto: #141b2d;
   --cg-tenue: #5e6b80;
+  /* 1.5.0 (SU-UX-013): escala tipográfica común (sin decimales). */
+  --cg-t-xs: 12px;
+  --cg-t-s: 13px;
+  --cg-t-m: 15px;
+  --cg-t-l: 17px;
+  --cg-t-xl: 20px;
+  --cg-t-xxl: 24px;
   --cg-borde: #e1e6ee;
   --cg-borde-fuerte: #c8d1de;
   --cg-velo: rgba(10, 16, 30, 0.45);
@@ -1036,3 +1043,26 @@ cg-barra-accion :focus-visible { outline-color: var(--cg-acento-claro) !importan
   text-transform: none;
 }
 .cg-hoja-lista > .cg-hoja-grupo:first-child { padding-top: 4px; }
+
+/* 1.5.0: cgDeslizar (filas que se deslizan para una acción). */
+.cg-deslizable { position: relative; overflow: hidden; }
+.cg-deslizable > :not(.cg-deslizar-fondo) { transform: translateX(var(--cg-desliza, 0px)); transition: transform var(--cg-rapido) var(--cg-curva); }
+.cg-deslizando > :not(.cg-deslizar-fondo) { transition: none; }
+.cg-deslizar-fondo {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  font-weight: 600;
+  color: var(--cg-acento-texto);
+  background: var(--cg-tenue);
+}
+.cg-deslizar-fondo[data-lado='izq'] { justify-content: flex-end; }
+.cg-deslizar-fondo[data-listo][data-lado='der'] { background: var(--cg-ok); }
+.cg-deslizar-fondo[data-listo][data-lado='izq'] { background: var(--cg-mal); }
+
+/* 1.5.0 (SU-UX-013): en el móvil, los campos a 16 px (con menos, iOS hace zoom al escribir). */
+@media (max-width: 768px) {
+  :where(input:not([type='checkbox']):not([type='radio']):not([type='range']), select, textarea) { font-size: 16px; }
+}

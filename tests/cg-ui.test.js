@@ -13,8 +13,8 @@ const path = require('node:path');
  * actualizan estas constantes (y las de los otros dos repos).
  */
 const MD5 = {
-  'cg-ui.css': '77e149d691052f486b7bca133223c069',
-  'cg-ui.js': 'dd955308f10c4c950e1fd464ce7da47d',
+  'cg-ui.css': '06496624492161b1982790e4f64df640',
+  'cg-ui.js': 'f08ba0dfbf62c552f59e6f0b62ebbc05',
 };
 
 const dir = path.join(__dirname, '..', 'public', 'cg');
