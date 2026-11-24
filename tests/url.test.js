@@ -372,3 +372,11 @@ test('applySearchTerm — {q:slug} para páginas /modelo/<nombre>', () => {
   );
   assert.equal(hasSearchTemplate('https://ejemplo.com/m/{q:slug}'), true);
 });
+
+test('applySearchTerm — {q:guion} para búsquedas en la ruta', () => {
+  assert.equal(
+    applySearchTerm('https://ejemplo.com/search/{q:guion}/?q={q}', ' Ana  Pérez '),
+    'https://ejemplo.com/search/ana-perez/?q=Ana%20%20P%C3%A9rez'
+  );
+  assert.equal(hasSearchTemplate('https://ejemplo.com/search/{q:guion}/'), true);
+});

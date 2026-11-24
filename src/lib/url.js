@@ -35,8 +35,10 @@ function toAbsoluteUrl(href, baseUrl) {
  *   https://sitio.com/buscar?q={q}&page={page}
  */
 // {q} tal cual (codificado); {q:slug} en minúsculas, sin acentos ni espacios: para sitios cuyas
-// páginas son /modelo/<nombre> («Ana Pérez» → «anaperez»).
-const SEARCH_TEMPLATE = /\{(?:q|query|termino|término)(?::(slug))?\}/gi;
+// páginas son /modelo/<nombre> («Ana Pérez» → «anaperez»). {q:guion}, igual pero con guiones entre
+// palabras («Ana Pérez» → «ana-perez»): para los que ponen la búsqueda en la ruta (/search/ana-perez/),
+// que con un espacio codificado responden 403.
+const SEARCH_TEMPLATE = /\{(?:q|query|termino|término)(?::(slug|guion))?\}/gi;
 
 function aSlug(texto) {
   return String(texto ?? '')
@@ -47,6 +49,15 @@ function aSlug(texto) {
 }
 
 /** ¿La URL espera un término de búsqueda? */
+function aGuiones(texto) {
+  return String(texto ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 function hasSearchTemplate(url) {
   if (typeof url !== 'string') return false;
   SEARCH_TEMPLATE.lastIndex = 0;
@@ -62,7 +73,9 @@ function applySearchTerm(url, term) {
   if (typeof url !== 'string') return url;
   const limpio = String(term ?? '').trim();
   return url.replace(SEARCH_TEMPLATE, (_, modo) =>
-    encodeURIComponent(modo ? aSlug(limpio) : limpio)
+    encodeURIComponent(
+      !modo ? limpio : modo.toLowerCase() === 'guion' ? aGuiones(limpio) : aSlug(limpio)
+    )
   );
 }
 

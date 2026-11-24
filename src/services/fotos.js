@@ -237,7 +237,9 @@ async function sitiosConAlbumes() {
   return perfiles
     .map((p, id) => ({ id, nombre: nombreCorto(p.name), perfil: p }))
     .filter(s =>
-      /\{(?:q|query|termino|término)(?::slug)?\}/i.test(s.perfil.config.albumSearchUrl || '')
+      /\{(?:q|query|termino|término)(?::(?:slug|guion))?\}/i.test(
+        s.perfil.config.albumSearchUrl || ''
+      )
     );
 }
 

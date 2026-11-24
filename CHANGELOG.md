@@ -1,5 +1,11 @@
 # Cambios
 
+## 2.28.3
+
+- Búsquedas de varias palabras en sitios que ponen el término en la ruta (`/search/<término>/`): nuevo marcador
+  `{q:guion}` («Ana Pérez» → `ana-perez`). Con el espacio codificado esos sitios respondían 403 y daban 0
+  resultados. El alta automática de sitios ya lo usa en la ruta (y lo prueba así).
+
 ## 2.28.2
 
 - iPhone: «Borrar el historial» (y los recientes) responden al toque; antes la lista se escondía al perder

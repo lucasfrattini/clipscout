@@ -137,3 +137,13 @@ test('alta: si las fichas no tienen vídeo, no se da por buena y dice por qué',
   assert.equal(r.ok, false);
   assert.equal(r.motivo, 'sin_ficheros');
 });
+
+test('guionEnRuta — el término en la ruta va con guiones; en la consulta, tal cual', () => {
+  const { guionEnRuta } = require('../src/services/autoSitio');
+  assert.equal(
+    guionEnRuta('https://s.com/search/{q}/?q={q}&p=1'),
+    'https://s.com/search/{q:guion}/?q={q}&p=1'
+  );
+  assert.equal(guionEnRuta('https://s.com/search?q={q}'), 'https://s.com/search?q={q}');
+  assert.equal(guionEnRuta('https://s.com/m/{q:slug}'), 'https://s.com/m/{q:slug}');
+});

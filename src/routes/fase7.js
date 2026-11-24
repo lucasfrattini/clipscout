@@ -188,7 +188,10 @@ router.put(
       throw error;
     }
     const plantilla = String(albumSearchUrl).trim();
-    if (plantilla && !/^https?:\/\/.+\{(?:q|query|termino|término)(?::slug)?\}/i.test(plantilla)) {
+    if (
+      plantilla &&
+      !/^https?:\/\/.+\{(?:q|query|termino|término)(?::(?:slug|guion))?\}/i.test(plantilla)
+    ) {
       const error = new Error('La plantilla de álbumes tiene que ser una dirección con {q}.');
       error.status = 400;
       throw error;

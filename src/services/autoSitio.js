@@ -8,7 +8,7 @@ const { AppError } = require('../lib/errors');
 const { enviarBusqueda } = require('../lib/browser');
 const { tryFetchHtml } = require('../lib/http');
 const { assertUrlIsSafe } = require('../lib/ssrf');
-const { toAbsoluteUrl, parseExtensionList } = require('../lib/url');
+const { toAbsoluteUrl, parseExtensionList, applySearchTerm } = require('../lib/url');
 const { detectConfig } = require('./detector');
 const { crawl, normalizeCrawlParams } = require('./scraper');
 
@@ -185,9 +185,20 @@ function enlacesInternos(html, base) {
   return vistos.size;
 }
 
+/**
+ * El término dentro de la RUTA va con guiones ({q:guion}: /search/ana-perez/): con un espacio
+ * codificado (/search/Ana%20Perez/) muchos sitios responden 403. En la consulta (?q=) queda {q}.
+ */
+function guionEnRuta(plantilla) {
+  if (!plantilla) return plantilla;
+  const i = plantilla.indexOf('?');
+  const ruta = i >= 0 ? plantilla.slice(0, i) : plantilla;
+  return ruta.split('{q}').join('{q:guion}') + (i >= 0 ? plantilla.slice(i) : '');
+}
+
 /** ¿Esta plantilla da una página de resultados de verdad para el término? */
 async function plantillaResponde(plantilla, termino, { signal }) {
-  const url = plantilla.replace('{q}', encodeURIComponent(termino));
+  const url = applySearchTerm(guionEnRuta(plantilla), termino);
   try {
     await assertUrlIsSafe(url);
   } catch {
@@ -199,8 +210,13 @@ async function plantillaResponde(plantilla, termino, { signal }) {
   return menciona && enlacesInternos(html, url) >= config.autoSitio.minEnlaces;
 }
 
-/** Paso 1: la dirección del buscador del sitio, como plantilla con {q}. */
-async function encontrarBuscador(portada, termino, { signal, emit = () => {} } = {}) {
+/** Paso 1: la dirección del buscador del sitio, como plantilla con {q} ({q:guion} en la ruta). */
+async function encontrarBuscador(portada, termino, opciones) {
+  const r = await buscarPlantilla(portada, termino, opciones);
+  return r ? { ...r, plantilla: guionEnRuta(r.plantilla) } : r;
+}
+
+async function buscarPlantilla(portada, termino, { signal, emit = () => {} } = {}) {
   const html = await tryFetchHtml(portada, { signal });
 
   // a) OpenSearch: el propio sitio dice cómo se busca.
@@ -381,6 +397,7 @@ async function configurarSitio({ url, termino }, { signal, emit = () => {} } = {
 module.exports = {
   configurarSitio,
   encontrarBuscador,
+  guionEnRuta,
   plantillaDesdeUrl,
   plantillaDeFormulario,
   plantillaOpenSearch,
