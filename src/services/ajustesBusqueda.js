@@ -9,6 +9,7 @@ const crew = require('./crew');
  * - `searxngUrl`: el SearXNG propio para la búsqueda «site:» (vacío = sin búsqueda web).
  * - `motores`: qué buscadores consulta SearXNG (los que bloquean, fuera). Lista separada por comas.
  * - `webPaginas`: páginas de resultados del buscador por sitio.
+ * - `sitiosALaVez`: cuántos sitios se recorren a la vez al buscar (1–10).
  * - `sinProxy`: dominios que van directos, sin la VPN (bloquean su salida).
  * - `palabraFotos`: palabra que se añade al buscar fotos en la web (FO-4); de fábrica, ninguna.
  *
@@ -21,6 +22,7 @@ const DEFECTO = () => ({
   searxngUrl: config.busqueda.searxngUrl,
   motores: config.busqueda.webMotores,
   webPaginas: config.busqueda.webPaginas,
+  sitiosALaVez: config.busqueda.sitiosALaVez,
   sinProxy: [...config.outboundProxyBypass],
   // FO-4: palabra extra para buscar fotos en la web (de fábrica, ninguna).
   palabraFotos: config.fotos.palabraWeb,
@@ -58,6 +60,7 @@ function aplicar(a) {
   config.busqueda.searxngUrl = a.searxngUrl;
   config.busqueda.webMotores = a.motores;
   config.busqueda.webPaginas = a.webPaginas;
+  config.busqueda.sitiosALaVez = a.sitiosALaVez;
   config.outboundProxyBypass.splice(0, config.outboundProxyBypass.length, ...a.sinProxy);
   config.fotos.palabraWeb = a.palabraFotos || '';
 }
@@ -86,6 +89,10 @@ async function guardar(cambios = {}) {
       cambios.webPaginas === undefined
         ? actual.webPaginas
         : Math.min(5, Math.max(1, Number.parseInt(cambios.webPaginas, 10) || 1)),
+    sitiosALaVez:
+      cambios.sitiosALaVez === undefined
+        ? actual.sitiosALaVez
+        : Math.min(10, Math.max(1, Number.parseInt(cambios.sitiosALaVez, 10) || 1)),
     sinProxy: cambios.sinProxy === undefined ? actual.sinProxy : limpiarDominios(cambios.sinProxy),
     palabraFotos:
       cambios.palabraFotos === undefined

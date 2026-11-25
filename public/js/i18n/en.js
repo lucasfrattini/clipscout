@@ -784,6 +784,9 @@ export const en = {
   'aj.web.motores': 'Search engines',
   'aj.web.motores.hint':
     'The ones SearXNG queries, comma-separated. If one blocks (Test tells you), remove it.',
+  'aj.web.sitiosALaVez': 'Sites at once when searching',
+  'aj.web.sitiosALaVez.hint':
+    'More is faster; if the machine struggles or a site blocks, lower it.',
   'aj.web.paginas': 'Result pages per site',
   'aj.web.sinProxy': 'Sites without VPN',
   'aj.web.sinProxy.hint':

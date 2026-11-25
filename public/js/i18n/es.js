@@ -789,6 +789,9 @@ export const es = {
   'aj.web.motores': 'Buscadores',
   'aj.web.motores.hint':
     'Los que consulta SearXNG, separados por comas. Si uno bloquea (Probar lo dice), quítalo.',
+  'aj.web.sitiosALaVez': 'Sitios a la vez al buscar',
+  'aj.web.sitiosALaVez.hint':
+    'Más va más rápido; si el equipo va justo o algún sitio bloquea, baja el número.',
   'aj.web.paginas': 'Páginas de resultados por sitio',
   'aj.web.sinProxy': 'Sitios sin VPN',
   'aj.web.sinProxy.hint':

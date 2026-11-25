@@ -1,5 +1,12 @@
 # Cambios
 
+## 2.28.5
+
+- **Más rápida por VPN o datos**: la interfaz (scripts, estilos y la página) va comprimida con gzip, unas 4
+  veces menos que bajar.
+- **Buscar, más rápido**: 6 sitios a la vez en vez de 3 (cada sitio es otro dominio: el freno por dominio sigue
+  igual). Se cambia en Ajustes → Búsqueda web → «Sitios a la vez al buscar».
+
 ## 2.28.4
 
 - Buscar en el móvil: la línea de «N resultados · N ya enviados · Recoger» ya no se parte en dos (bajaba el botón

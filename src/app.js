@@ -17,6 +17,7 @@ const credenciales = require('./services/acceso');
 const sesiones = require('./services/sesiones');
 const apagado = require('./services/apagado');
 const asistente = require('./services/asistente');
+const { estaticosComprimidos } = require('./lib/estaticosComprimidos');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -222,6 +223,8 @@ function createApp() {
     return res.sendFile(path.join(PUBLIC_DIR, '404.html'));
   });
 
+  // Antes que express.static: lo mismo, pero con gzip (por una VPN, ~4 veces menos que bajar).
+  app.use(estaticosComprimidos(PUBLIC_DIR));
   app.use(
     express.static(PUBLIC_DIR, {
       extensions: ['html'],

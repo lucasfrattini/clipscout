@@ -820,6 +820,12 @@ export function createAjustesView(raiz) {
       className: 'input',
       children: [1, 2, 3, 4, 5].map(n => el('option', { attrs: { value: n }, text: n })),
     });
+    const sitiosALaVez = el('select', {
+      className: 'input',
+      children: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n =>
+        el('option', { attrs: { value: n }, text: n })
+      ),
+    });
     const sinProxy = el('textarea', {
       className: 'input',
       attrs: { rows: 3, spellcheck: 'false', placeholder: 'ejemplo.com' },
@@ -845,6 +851,7 @@ export function createAjustesView(raiz) {
         url.value = d.searxngUrl || '';
         motores.value = d.motores || '';
         paginas.value = String(d.webPaginas || 2);
+        sitiosALaVez.value = String(d.sitiosALaVez || 6);
         sinProxy.value = (d.sinProxy || []).join('\n');
         palabraFotos.value = d.palabraFotos || '';
       })
@@ -855,6 +862,7 @@ export function createAjustesView(raiz) {
         campo(t('aj.web.url'), url, t('aj.web.url.hint')),
         campo(t('aj.web.motores'), motores, t('aj.web.motores.hint')),
         campo(t('aj.web.paginas'), paginas),
+        campo(t('aj.web.sitiosALaVez'), sitiosALaVez, t('aj.web.sitiosALaVez.hint')),
         campo(t('aj.web.sinProxy'), sinProxy, t('aj.web.sinProxy.hint')),
         campo(t('aj.web.palabraFotos'), palabraFotos, t('aj.web.palabraFotos.hint')),
         el('div', {
@@ -896,6 +904,7 @@ export function createAjustesView(raiz) {
               searxngUrl: url.value,
               motores: motores.value,
               webPaginas: Number(paginas.value),
+              sitiosALaVez: Number(sitiosALaVez.value),
               sinProxy: sinProxy.value,
               palabraFotos: palabraFotos.value,
             });

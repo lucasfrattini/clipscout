@@ -179,8 +179,9 @@ const config = {
 
   // Búsqueda en todos los sitios guardados a la vez (pestaña Buscar)
   busqueda: {
-    // Sitios que se recorren en paralelo: cada uno puede abrir un navegador
-    sitiosALaVez: intFromEnv('BUSQUEDA_SITIOS_A_LA_VEZ', 3),
+    // Sitios que se recorren en paralelo (cada uno es otro dominio: el freno por dominio ya va
+    // aparte). Con 3, una búsqueda en 19 sitios tardaba minutos. Editable en Ajustes.
+    sitiosALaVez: intFromEnv('BUSQUEDA_SITIOS_A_LA_VEZ', 6),
     // Páginas de resultados por sitio: es una búsqueda rápida, no un barrido
     paginas: intFromEnv('BUSQUEDA_PAGINAS', 2),
     // Lo máximo que se puede elegir en la pantalla
