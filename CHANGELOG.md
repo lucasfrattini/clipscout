@@ -1,5 +1,17 @@
 # Cambios
 
+## 2.28.4
+
+- Buscar en el móvil: la línea de «N resultados · N ya enviados · Recoger» ya no se parte en dos (bajaba el botón
+  de la vista y empujaba los resultados); los textos se recortan con «…».
+- Editor de sitio en el móvil: «Que lo configure por mí» vuelve a ir debajo de la dirección (el campo quedaba
+  aplastado).
+- Actividad: la cabecera con «Limpiar» no baja la lista.
+- Al apagar, se guardan también los eventos que un guardado en curso aún no había escrito (antes podía perderse
+  lo ya visto de una búsqueda a medias).
+- CI: `.gitattributes` para que Windows no cambie los finales de línea de cg-ui; la prueba de humo, al día con la
+  barra y la cabecera nuevas.
+
 ## 2.28.3
 
 - Búsquedas de varias palabras en sitios que ponen el término en la ruta (`/search/<término>/`): nuevo marcador

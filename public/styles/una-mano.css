@@ -473,9 +473,11 @@ cg-chips.buscar__pestanas {
   font-size: 0.9rem;
   cursor: pointer;
 }
+/* Una sola línea siempre: con «N ya enviados» y «Recoger» en el móvil, partirla bajaba el botón de la
+   vista a una segunda fila (44 px más antes de los resultados). Los textos se recortan; los botones, no. */
 .buscar__estado {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0 4px;
   min-height: 44px;
@@ -494,6 +496,28 @@ cg-chips.buscar__pestanas {
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+.buscar__estado > .buscar__estado-texto,
+.buscar__estado > .buscar__contador {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.buscar__estado > .buscar__estado-texto > *,
+.buscar__estado > .buscar__contador > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* El contador lleva el texto suelto: la elipsis solo funciona en un bloque, no en un flex. */
+.buscar__estado > .buscar__contador:not([hidden]) {
+  display: block;
+  line-height: 44px;
+  text-overflow: ellipsis;
+}
+.buscar__estado > button:not(.buscar__estado-texto):not(.buscar__contador) {
+  flex: none;
 }
 .buscar__estado-texto {
   padding-left: 0;
@@ -1267,6 +1291,11 @@ cg-chips.actividad__pestanas {
 }
 .actividad__limpiar {
   min-height: 44px;
+}
+/* Con «Limpiar» (44 px) el botón ya da el aire: sin el relleno de arriba del grupo, la lista no baja. */
+.cs-lista__grupo.actividad__grupo-limpiar {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .cs-calidad-jd__sitio {
   display: grid;

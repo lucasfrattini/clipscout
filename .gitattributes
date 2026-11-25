@@ -1,0 +1,2 @@
+# cg-ui: copia byte a byte del paquete común (la prueba compara su md5): sin CRLF en Windows.
+**/cg/cg-ui* text eol=lf

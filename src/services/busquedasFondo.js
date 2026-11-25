@@ -81,6 +81,8 @@ const MODO = 0o600;
 let indiceSucio = false;
 /** id → líneas de eventos aún sin escribir (en orden). */
 const pendientes = new Map();
+/** Eventos que un guardado asíncrono sacó de `pendientes` y aún no escribió (id → líneas). */
+const enVuelo = new Map();
 /** Búsquedas caducadas cuyo fichero de eventos hay que borrar. */
 const porBorrar = new Set();
 let relojGuardado = null;
@@ -149,11 +151,16 @@ function guardarAhora() {
     if (congelado) return;
     const lote = [...pendientes];
     pendientes.clear();
+    // En vuelo hasta escribirse: si llega el apagado entremedias, `guardarAlApagar` los escribe él.
+    for (const [id, lineas] of lote) enVuelo.set(id, [...(enVuelo.get(id) || []), ...lineas]);
     if (lote.length) {
       await fs.promises.mkdir(carpetaEventos(), { recursive: true, mode: 0o700 });
     }
-    for (const [id, lineas] of lote) {
-      if (!busquedas.has(id)) continue; // caducó mientras esperaba
+    for (const [id] of lote) {
+      if (congelado) return; // el apagado ya lo escribió todo
+      const lineas = enVuelo.get(id);
+      enVuelo.delete(id);
+      if (!lineas || !busquedas.has(id)) continue; // caducó mientras esperaba
       await fs.promises.appendFile(ficheroEventos(id), lineas.join(''), {
         encoding: 'utf8',
         mode: MODO,
@@ -179,12 +186,16 @@ function guardarAlApagar() {
   if (congelado) return;
   clearTimeout(relojGuardado);
   try {
-    if (pendientes.size) fs.mkdirSync(carpetaEventos(), { recursive: true, mode: 0o700 });
-    for (const [id, lineas] of pendientes) {
+    // Primero lo que un guardado asíncrono tenía en vuelo (va antes en el orden), luego lo pendiente.
+    const todo = new Map(enVuelo);
+    for (const [id, lineas] of pendientes) todo.set(id, [...(todo.get(id) || []), ...lineas]);
+    if (todo.size) fs.mkdirSync(carpetaEventos(), { recursive: true, mode: 0o700 });
+    for (const [id, lineas] of todo) {
       if (busquedas.has(id)) {
         fs.appendFileSync(ficheroEventos(id), lineas.join(''), { encoding: 'utf8', mode: MODO });
       }
     }
+    enVuelo.clear();
     pendientes.clear();
     escribirTextoSync(fichero(), JSON.stringify(foto()));
   } catch (error) {

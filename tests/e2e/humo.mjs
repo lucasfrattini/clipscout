@@ -321,7 +321,8 @@ try {
     'enteros; miniatura',
     JSON.stringify(miniatura)
   );
-  // La hoja de filtros: dos partes; «Lista compacta» se elige ahí y se recuerda.
+  // La hoja de filtros: dos partes. La vista (grande o lista) va en un botón junto a los resultados
+  // (CS-UX-009) y se recuerda.
   await pagina.locator('.buscar__boton-filtros').click();
   await pagina.locator('cg-hoja.buscar__hoja-filtros[abierta]').waitFor();
   await esperar(400);
@@ -338,8 +339,9 @@ try {
   if ((await pagina.locator('cg-chips.buscar__modos button[aria-pressed="true"]').count()) !== 1) {
     throw new Error('profundidad: ninguna (o varias) marcada');
   }
-  await pagina.locator('label.cs-casilla', { hasText: 'Lista compacta' }).click();
   await pagina.keyboard.press('Escape');
+  await esperar(400);
+  await pagina.locator('button.buscar__vista[aria-label="Lista compacta"]').click();
   await esperar(400);
   const lista = await medir(pagina, 'buscar-compacta', '.buscar__tarjeta');
   if (lista.filasEnPantalla < 7) {
@@ -577,26 +579,26 @@ try {
   await pagina.locator('.cs-sitio').first().locator('button[aria-haspopup]').click();
   await pagina.getByRole('button', { name: /^Editar/ }).click();
   await pagina.waitForURL(/#\/explorer\/0/);
-  await pagina.getByText('Editando «sitio A»').waitFor();
+  await pagina.getByText('Editor de sitio · sitio A').waitFor();
   await esperar(400);
   await capturar(pagina, 'editor-sitio', false);
 
-  // Avanzada (segundo botón de la barra): la pantalla de recorrer una página o un sitio.
+  // Explorar (segundo botón de la barra; antes «Avanzada»): la pantalla de recorrer una página o un sitio.
   const orden = await pagina
     .locator('cg-barra-inferior > a:not([data-marca]), cg-barra-inferior > button[data-icono]')
     .allTextContents();
-  if (orden.map(x => x.trim()).join('|') !== 'Buscar|Avanzada|Actividad|Ajustes|Apps') {
+  if (orden.map(x => x.trim()).join('|') !== 'Buscar|Explorar|Actividad|Ajustes|Más') {
     throw new Error(`barra: ${orden.map(x => x.trim()).join(' | ')}`);
   }
   await pagina.locator('cg-barra-inferior a[href="#/explorer"]').click();
   await pagina.locator('#explorer-cabecera', { hasText: 'Búsqueda avanzada' }).waitFor();
   if (!(await pagina.locator('cg-barra-inferior a[href="#/explorer"][data-activo]').count())) {
-    throw new Error('«Avanzada» no queda marcada en la barra');
+    throw new Error('«Explorar» no queda marcada en la barra');
   }
   // Es la pantalla de siempre (con su guía de pasos): se mide lo táctil, no dónde empieza.
   await medir(pagina, 'avanzada', null);
 
-  // «Apps», el último botón de la barra: las otras apps (aquí ninguna conectada) y «Salir».
+  // «Más», el último botón de la barra (antes «Apps»): las otras apps (aquí ninguna conectada) y «Salir».
   await pagina.locator('#boton-apps').click();
   await pagina.locator('#hoja-apps[abierta]').waitFor();
   await esperar(400);

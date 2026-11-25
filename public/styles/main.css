@@ -714,7 +714,8 @@ a {
   min-width: 0;
 }
 
-.url-row .button {
+.url-row .button,
+.url-row .cg-boton {
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -727,7 +728,8 @@ a {
   .url-row .input {
     flex: 1 1 0;
   }
-  .url-row .button:not(:last-child) {
+  .url-row .button:not(:last-child),
+  .url-row .cg-boton:not(:last-child) {
     order: 3;
     flex: 1 1 100%;
   }
