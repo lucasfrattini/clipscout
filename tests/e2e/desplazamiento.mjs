@@ -57,10 +57,16 @@ const volverAlFallo = () => {
   );
 };
 
-/** La tarjeta bajo el punto (150, 330) de la pantalla y dónde está. */
+/**
+ * La tarjeta bajo el dedo, en x = 150, y dónde está: la primera que hay bajando desde y = 330
+ * (con las tarjetas grandes, un punto fijo puede caer en el hueco entre dos filas).
+ */
 const ANCLA = () => {
-  const c = document.elementFromPoint(150, 330)?.closest?.('.buscar__tarjeta');
-  return c ? { id: c.dataset.id, top: c.getBoundingClientRect().top } : null;
+  for (let y = 330; y <= 460; y += 8) {
+    const c = document.elementFromPoint(150, y)?.closest?.('.buscar__tarjeta');
+    if (c) return { id: c.dataset.id, top: c.getBoundingClientRect().top };
+  }
+  return null;
 };
 
 /** Desplaza hacia abajo como un dedo: toques (touchstart/move/end) y el desplazamiento. */
