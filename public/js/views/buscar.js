@@ -1,3 +1,4 @@
+import { cargarMiniatura } from '../miniaturas.js';
 import { ajustes, fase7 } from '../api.js';
 import { el, clear, toast, enfocarAlAbrir, copyToClipboard } from '../dom.js';
 import { t, tp, texto, atributo, alCambiarIdioma, idiomaActual } from '../i18n/index.js';
@@ -1998,23 +1999,25 @@ export function createBuscarView(root) {
     const tituloFila = r.title || nombreDeUrl(r.url) || enlace;
     const imagen =
       r.thumbnail && !miniaturasRotas.has(r.thumbnail)
-        ? el('img', {
-            attrs: {
-              src: `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}&s=${r.thumbnailFirma || ''}`,
-              alt: '',
-              loading: 'lazy',
-              decoding: 'async',
-            },
-            // Si el sitio no la da, el hueco de siempre en vez de una imagen rota
-            on: {
-              error: e => {
-                miniaturasRotas.add(r.thumbnail);
-                e.currentTarget.replaceWith(
-                  el('span', { className: 'buscar__sin', children: [icono('play')] })
-                );
+        ? cargarMiniatura(
+            el('img', {
+              attrs: {
+                alt: '',
+                loading: 'lazy',
+                decoding: 'async',
               },
-            },
-          })
+              // Si el sitio no la da, el hueco de siempre en vez de una imagen rota
+              on: {
+                error: e => {
+                  miniaturasRotas.add(r.thumbnail);
+                  e.currentTarget.replaceWith(
+                    el('span', { className: 'buscar__sin', children: [icono('play')] })
+                  );
+                },
+              },
+            }),
+            `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}&s=${r.thumbnailFirma || ''}`
+          )
         : el('span', { className: 'buscar__sin', children: [icono('play')] });
     const oculto = pasada.motivos.get(r);
     const kAlbum = claveAlbum(r);

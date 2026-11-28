@@ -1,3 +1,4 @@
+import { cargarMiniatura } from '../miniaturas.js';
 import {
   el,
   safeLink,
@@ -782,17 +783,13 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
        * pedirían todas de golpe al pintar.
        */
       const miniatura = info?.thumbnail
-        ? el('img', {
-            className: 'result-item__thumb',
-            attrs: {
-              src: `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}&s=${info.thumbnailFirma || ''}`,
-              alt: '',
-              loading: 'lazy',
-              decoding: 'async',
-              width: '64',
-              height: '36',
-            },
-          })
+        ? cargarMiniatura(
+            el('img', {
+              className: 'result-item__thumb',
+              attrs: { alt: '', loading: 'lazy', decoding: 'async', width: '64', height: '36' },
+            }),
+            `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}&s=${info.thumbnailFirma || ''}`
+          )
         : null;
 
       const clases = ['result-item'];
@@ -932,17 +929,13 @@ export function createResultList({ emptyTitleKey, emptyTextKey, filename = 'clip
       const info = meta.get(miembroUrl);
 
       const mini = info?.thumbnail
-        ? el('img', {
-            className: 'miembro__thumb',
-            attrs: {
-              src: `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}&s=${info.thumbnailFirma || ''}`,
-              alt: '',
-              loading: 'lazy',
-              decoding: 'async',
-              width: '64',
-              height: '36',
-            },
-          })
+        ? cargarMiniatura(
+            el('img', {
+              className: 'miembro__thumb',
+              attrs: { alt: '', loading: 'lazy', decoding: 'async', width: '64', height: '36' },
+            }),
+            `/api/thumbnail?url=${encodeURIComponent(info.thumbnail)}&s=${info.thumbnailFirma || ''}`
+          )
         : el('span', { className: 'miembro__thumb miembro__thumb--vacia' });
 
       const aprox = info?.sizeApproximate === true;

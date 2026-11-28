@@ -7,6 +7,7 @@
  * La elección la hace el servidor (`POST /api/recoger/propuesta`, `src/lib/recoger.js`): la misma
  * función que las programadas. clipscout nunca descarga: manda al gestor de descargas.
  */
+import { cargarMiniatura } from '../miniaturas.js';
 import { ajustes, recoger } from '../api.js';
 import { el, toast } from '../dom.js';
 import { t, tp } from '../i18n/index.js';
@@ -211,15 +212,13 @@ export function abrirRecoger(c) {
           className: 'recoger__fila',
           children: [
             r.thumbnail
-              ? el('img', {
-                  className: 'recoger__mini',
-                  attrs: {
-                    src: `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}&s=${r.thumbnailFirma || ''}`,
-                    alt: '',
-                    loading: 'lazy',
-                    referrerpolicy: 'no-referrer',
-                  },
-                })
+              ? cargarMiniatura(
+                  el('img', {
+                    className: 'recoger__mini',
+                    attrs: { alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' },
+                  }),
+                  `/api/thumbnail?url=${encodeURIComponent(r.thumbnail)}&s=${r.thumbnailFirma || ''}`
+                )
               : el('span', { className: 'recoger__mini' }),
             el('span', {
               className: 'recoger__texto',

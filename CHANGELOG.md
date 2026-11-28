@@ -1,5 +1,11 @@
 # Cambios
 
+## 2.28.6
+
+- **Enviar a descargar ya no se queda colgado** con una lista larga: las miniaturas se piden solo las que se ven y
+  de 4 en 4. Antes salían cientos de golpe y cualquier otra acción (elegir carpeta y enviar, abrir una ficha)
+  esperaba detrás de todas: 5–8 s por VPN, más en el iPhone.
+
 ## 2.28.5
 
 - **Más rápida por VPN o datos**: la interfaz (scripts, estilos y la página) va comprimida con gzip, unas 4
