@@ -864,6 +864,11 @@ export const en = {
   'buscar.nada': 'Nothing found.',
   'buscar.errorSitio': 'This site returned an error: {error}',
   'buscar.bloqueo': 'The site may be throttling requests: some results are missing.',
+  'buscar.previa': 'Preview',
+  'buscar.previa.detalle': 'Frames from the whole video, without downloading it',
+  'buscar.previa.cargando': 'Grabbing frames from the video…',
+  'buscar.previa.alt': 'Frames of “{titulo}”',
+  'buscar.previa.error': 'Could not make the preview: {error}',
   'buscar.ver': '▶ Play',
   'buscar.cerrarVideo': '■ Close',
   'buscar.videoError':

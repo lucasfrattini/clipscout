@@ -192,6 +192,11 @@ function createApp() {
   // CS-S12: el límite de miniaturas, solo en /api/thumbnail (montado en /api contaba también las
   // demás peticiones de la API).
   app.use('/api/thumbnail', createRateLimiter(config.thumbnails.rateLimit));
+  // Vista previa: cada una abre el vídeo remoto varias veces; con el límite de lo caro.
+  app.use(
+    '/api/vista-previa',
+    createRateLimiter({ maxRequests: config.security.rateLimit.maxPesadas })
+  );
   app.use('/api', thumbnailRoutes);
   // Reproducir: cada salto del reproductor es una petición (Range), con su propio límite.
   app.use('/api/media', createRateLimiter(config.media.rateLimit));

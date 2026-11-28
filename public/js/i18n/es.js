@@ -868,6 +868,11 @@ export const es = {
   'buscar.nada': 'No se encontró nada.',
   'buscar.errorSitio': 'Este sitio dio un error: {error}',
   'buscar.bloqueo': 'Puede que el sitio esté frenando las peticiones: faltan resultados.',
+  'buscar.previa': 'Vista previa',
+  'buscar.previa.detalle': 'Fotogramas de todo el vídeo, sin descargarlo',
+  'buscar.previa.cargando': 'Sacando fotogramas del vídeo…',
+  'buscar.previa.alt': 'Fotogramas de «{titulo}»',
+  'buscar.previa.error': 'No se pudo hacer la vista previa: {error}',
   'buscar.ver': '▶ Ver',
   'buscar.cerrarVideo': '■ Cerrar',
   'buscar.videoError':

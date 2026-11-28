@@ -247,6 +247,22 @@ const config = {
    * Seguimiento de lo mandado a JDownloader (services/paquetesJd.js): estado de cada paquete,
    * fichero directo cuando JDownloader no puede con la ficha y aviso a clipkeeper al terminar.
    */
+  // Vista previa de un resultado (services/vistaPrevia.js): fotogramas sacados del fichero con ffmpeg.
+  vistaPrevia: {
+    ffmpeg: process.env.FFMPEG_PATH || 'ffmpeg',
+    ffprobe: process.env.FFPROBE_PATH || 'ffprobe',
+    fotogramas: intFromEnv('VISTA_PREVIA_FOTOGRAMAS', 6),
+    columnas: intFromEnv('VISTA_PREVIA_COLUMNAS', 3),
+    ancho: intFromEnv('VISTA_PREVIA_ANCHO', 320),
+    alto: intFromEnv('VISTA_PREVIA_ALTO', 180),
+    concurrencia: intFromEnv('VISTA_PREVIA_CONCURRENCIA', 2),
+    vigenciaMs: intFromEnv('VISTA_PREVIA_VIGENCIA_MS', 60 * 60 * 1000),
+    maxCache: intFromEnv('VISTA_PREVIA_MAX_CACHE', 60),
+    userAgent:
+      process.env.VISTA_PREVIA_UA ||
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+  },
+
   jd: {
     // Cada cuánto se mira el estado de los paquetes mientras queda alguno sin terminar
     vigilarCadaMs: intFromEnv('JD_VIGILAR_CADA_MS', 20000),

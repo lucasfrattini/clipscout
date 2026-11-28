@@ -1476,3 +1476,21 @@ html:not(.cg-seleccionando) .buscar__casilla {
   min-height: 44px;
   margin: 0.5rem 0 0.75rem;
 }
+
+/* Vista previa de un resultado: la tira de fotogramas a lo ancho de la hoja. */
+.buscar__previa {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+}
+.buscar__previa-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  background: #000;
+}
+.buscar__previa-estado {
+  color: var(--cg-tenue, inherit);
+  text-align: center;
+}

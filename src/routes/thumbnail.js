@@ -96,4 +96,33 @@ router.get('/thumbnail', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/vista-previa?url=<ficha> — tira de fotogramas del vídeo de esa ficha (JPEG), para ver
+ * qué es antes de mandarlo a descargar. Solo fichas de los sitios configurados.
+ */
+router.get('/vista-previa', async (req, res, next) => {
+  try {
+    const { desenvolver } = require('../lib/redireccion');
+    const crudo = typeof req.query.url === 'string' ? req.query.url.trim() : '';
+    const ficha = desenvolver(crudo);
+    let host;
+    try {
+      host = new URL(ficha).hostname;
+    } catch {
+      throw new AppError('Falta la dirección de la ficha.', 400, 'SIN_URL');
+    }
+    if (!/^https?:/i.test(ficha) || !(await dominiosSitios()).has(dominioBase(host))) {
+      throw new AppError('Solo hay vista previa de los sitios configurados.', 403, 'SITIO_AJENO');
+    }
+    const { generar } = require('../services/vistaPrevia');
+    const r = await generar(ficha);
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'private, max-age=3600');
+    if (r.duracion) res.set('X-Duracion', String(Math.round(r.duracion)));
+    res.send(r.jpeg);
+  } catch (error) {
+    next(error);
+  }
+});
+
 module.exports = router;

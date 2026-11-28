@@ -1,5 +1,12 @@
 # Cambios
 
+## 2.29.0
+
+- **Vista previa** en el «⋯» de cada resultado: una tira de 6 fotogramas repartidos por todo el vídeo, sacados
+  del propio fichero sin descargarlo (también de los sitios que reproducen por HLS). Para ver antes de enviar
+  si es lo que parece. Se hace solo al pedirla (unos segundos) y se guarda una hora. La imagen de Docker
+  incluye ahora ffmpeg.
+
 ## 2.28.8
 
 - **Enlaces de salto**: si un agregador enlaza un salto por su servidor («/out/?l=…», «/go?url=…») con la

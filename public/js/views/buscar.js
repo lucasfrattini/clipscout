@@ -2110,6 +2110,11 @@ export function createBuscarView(root) {
     menuAcciones({
       titulo: tituloFila,
       acciones: [
+        {
+          texto: t('buscar.previa'),
+          detalle: t('buscar.previa.detalle'),
+          fn: () => verPrevia(enlace, tituloFila),
+        },
         archivoReproducible(r)
           ? { texto: t('buscar.ver'), fn: () => verVideo(r, tituloFila) }
           : null,
@@ -2142,6 +2147,32 @@ export function createBuscarView(root) {
    * miniaturas: el navegador no habla con el sitio, y muchos solo sirven el fichero a quien abrió
    * la ficha. Al cerrar la hoja se corta la descarga.
    */
+  /** Tira de fotogramas de todo el vídeo, para ver qué es antes de mandarlo a descargar. */
+  function verPrevia(enlace, tituloFila) {
+    const estado = el('p', {
+      className: 'buscar__previa-estado',
+      text: t('buscar.previa.cargando'),
+    });
+    const caja = el('div', { className: 'buscar__previa', children: [estado] });
+    abrirHoja({ titulo: tituloFila, contenido: [caja], clase: 'buscar__hoja-previa' });
+    fetch(`/api/vista-previa?url=${encodeURIComponent(enlace)}`, { credentials: 'same-origin' })
+      .then(async res => {
+        if (!res.ok) {
+          const datos = await res.json().catch(() => ({}));
+          throw new Error(datos.error?.message || datos.error || datos.message || res.statusText);
+        }
+        const url = URL.createObjectURL(await res.blob());
+        const img = el('img', {
+          className: 'buscar__previa-img',
+          attrs: { alt: t('buscar.previa.alt', { titulo: tituloFila }), src: url },
+        });
+        caja.replaceChildren(img);
+      })
+      .catch(error => {
+        estado.textContent = t('buscar.previa.error', { error: error.message });
+      });
+  }
+
   function verVideo(r, tituloFila) {
     const video = el('video', {
       className: 'buscar__video',

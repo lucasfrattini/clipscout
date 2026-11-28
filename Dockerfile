@@ -37,6 +37,7 @@ RUN apt-get update \
         fonts-noto-color-emoji \
         ca-certificates \
         dumb-init \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
