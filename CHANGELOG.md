@@ -1,5 +1,14 @@
 # Cambios
 
+## 2.28.8
+
+- **Enlaces de salto**: si un agregador enlaza un salto por su servidor («/out/?l=…», «/go?url=…») con la
+  ficha de verdad dentro (en claro o en base64), se manda esa ficha al gestor de descargas. Antes el salto no
+  se abría (suele tener una comprobación anti-robots) y el vídeo se perdía.
+- **Nada se pierde en silencio**: si al terminar un paquete alguna ficha nunca entró en JDownloader, se
+  intenta una vez más (la ficha de dentro del salto, o el fichero directo). Si sigue faltando, el paquete queda
+  **incompleto**, con aviso («Descarga incompleta: … 3 de 21 no entraron») y «Reintentar» en Actividad.
+
 ## 2.28.7
 
 - **Personas en la ficha** (Ajustes → Sitios → «⋯»): al mandar un vídeo de un sitio con esta opción, clipscout

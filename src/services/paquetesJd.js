@@ -91,12 +91,13 @@ function resumir(enlacesDescarga, enlacesCapturador) {
   };
 }
 
-const FINALES = new Set(['terminado']);
+// «incompleto»: terminó, pero alguna ficha nunca entró en JDownloader (ni con el rescate).
+const FINALES = new Set(['terminado', 'incompleto']);
 
 /** Terminado y aún sin avisar a clipkeeper (que tenga a quién avisar y queden intentos). */
 function faltaAviso(p) {
   return (
-    p.estado === 'terminado' &&
+    FINALES.has(p.estado) &&
     p.biblioteca !== null &&
     p.biblioteca !== undefined &&
     !p.escaneado &&
@@ -237,6 +238,66 @@ async function sustituir(jdUrl, p, caidos, { forzar = false, autostart = true } 
   return mandadas;
 }
 
+function hostSinWww(enlace) {
+  try {
+    return new URL(enlace).hostname.replace(/^www\./i, '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Fichas de un paquete de cuyo sitio JDownloader nunca enseñó ningún enlace (ni las mandamos ya
+ * como fichero directo): no supo abrirlas. Pura, para poder probarla.
+ */
+function fichasNoVistas(p) {
+  const { desenvolver } = require('../lib/redireccion');
+  const vistos = new Set(p.hostsVistos || []);
+  const conDirecto = new Set(Object.values(p.directos || {}));
+  // Si JDownloader nunca enseñó NADA del paquete puede que lo bajara y lo quitara de la lista antes
+  // de la primera revisión: entonces solo cuentan los saltos, que seguro que no supo abrir.
+  const algoVisto = vistos.size > 0;
+  return (p.fichas || []).filter(
+    f =>
+      !conDirecto.has(f) &&
+      !(p.rescatadas || []).includes(f) &&
+      !vistos.has(hostSinWww(f)) &&
+      (algoVisto || desenvolver(f) !== f)
+  );
+}
+
+/**
+ * Segunda oportunidad para lo que JDownloader no abrió: si la ficha era un salto con la de verdad
+ * dentro, se manda esa; si no, el fichero directo (como con los caídos). Devuelve cuántas salieron.
+ */
+async function rescatar(jdUrl, p, fichas, { autostart = true } = {}) {
+  const jd = require('./jdownloader');
+  const { desenvolver } = require('../lib/redireccion');
+  let salieron = 0;
+  const directas = [];
+  for (const ficha of fichas) {
+    const real = desenvolver(ficha);
+    if (real !== ficha) {
+      const trabajo = await jd.anadir(jdUrl, {
+        links: [real],
+        paquete: p.nombre,
+        destino: p.destino,
+        origen: real,
+        autostart,
+      });
+      if (trabajo?.id) p.jobIds.push(trabajo.id);
+      if (!p.fichas.includes(real)) p.fichas.push(real);
+      p.rescatadas = [...(p.rescatadas || []), ficha];
+      salieron += 1;
+    } else {
+      directas.push({ uuid: ficha, ficha, lista: 'ninguna' });
+    }
+  }
+  if (directas.length) salieron += await sustituir(jdUrl, p, directas, { forzar: true, autostart });
+  if (salieron) logger.info(`JDownloader: ${salieron} fichas rescatadas de ${p.nombre}`);
+  return salieron;
+}
+
 /**
  * Consulta a JDownloader el estado de los paquetes vigilados (o de `soloId`) y aplica lo que
  * toque: estado, contadores y fichero directo para lo caído. `forzar`: reintentar también lo ya
@@ -265,6 +326,8 @@ async function revisar({ soloId = null, forzar = false } = {}) {
   let sustituidas = 0;
   for (const p0 of objetivo) {
     const p = structuredClone(p0);
+    // «Reintentar» vuelve a intentar también las fichas que JDownloader nunca llegó a ver.
+    if (forzar) p.rescatado = null;
     const coinciden = (Array.isArray(paquetesJd) ? paquetesJd : []).filter(
       k => k.name === p.nombre && (!p.destino || k.saveTo === p.destino)
     );
@@ -323,6 +386,13 @@ async function revisar({ soloId = null, forzar = false } = {}) {
       }
     }
     const r = resumir(descarga, capturador);
+    // De qué sitios ha visto JDownloader enlaces en este paquete (para saber qué fichas no entraron).
+    p.hostsVistos = [
+      ...new Set([
+        ...(p.hostsVistos || []),
+        ...[...descarga, ...capturador].map(l => hostSinWww(l.url)).filter(Boolean),
+      ]),
+    ];
     // JDownloader puede quitar de la lista lo terminado («borrar al terminar»): un envío que ya no
     // está en ninguna de las dos listas, pasado un rato, se da por terminado.
     if (
@@ -333,16 +403,39 @@ async function revisar({ soloId = null, forzar = false } = {}) {
     ) {
       r.estado = 'terminado';
       r.desaparecido = true;
-    }
-    // CS-N5: aviso al pasar a terminado o fallido (una vez: solo cuando cambia).
-    if (r.estado !== p.estado && (r.estado === 'terminado' || r.estado === 'error')) {
-      require('./avisos').anotar(
-        r.estado === 'terminado' ? 'paquete_terminado' : 'paquete_fallido',
-        {
-          nombre: p.nombre,
-          carpeta: p.carpeta || '',
+      // …salvo las fichas de las que nunca se vio nada: JDownloader no supo abrirlas. Se intenta
+      // una vez salvarlas (la ficha de dentro de un salto, o el fichero directo); si no, el paquete
+      // queda incompleto y se avisa, en vez de darlo por bueno en silencio.
+      const noVistas = fichasNoVistas(p);
+      if (noVistas.length > 0 && !p.rescatado) {
+        p.rescatado = ahora;
+        const rescatadas = await rescatar(jdUrl, p, noVistas, { autostart }).catch(error => {
+          logger.warn(`JDownloader: rescate de ${p.nombre}: ${error.message}`);
+          return 0;
+        });
+        if (rescatadas > 0) {
+          r.estado = 'enviado';
+          r.desaparecido = false;
         }
-      );
+      }
+      if (r.estado === 'terminado' && noVistas.length > 0) {
+        r.estado = 'incompleto';
+        r.faltan = noVistas.length;
+        p.faltan = noVistas;
+      }
+    }
+    // CS-N5: aviso al pasar a terminado, fallido o incompleto (una vez: solo cuando cambia).
+    const tipoAviso = {
+      terminado: 'paquete_terminado',
+      error: 'paquete_fallido',
+      incompleto: 'paquete_incompleto',
+    }[r.estado];
+    if (r.estado !== p.estado && tipoAviso) {
+      require('./avisos').anotar(tipoAviso, {
+        nombre: p.nombre,
+        carpeta: p.carpeta || '',
+        ...(r.faltan ? { faltan: r.faltan, total: p.fichas.length } : {}),
+      });
     }
     p.estado = r.estado;
     p.contadores = r;
@@ -434,5 +527,6 @@ module.exports = {
   caidoClaro,
   caidosParaSustituir,
   faltaAviso,
+  fichasNoVistas,
   almacen,
 };

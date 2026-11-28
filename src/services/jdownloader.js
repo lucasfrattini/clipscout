@@ -1,5 +1,7 @@
 'use strict';
 
+const { desenvolver } = require('../lib/redireccion');
+
 const config = require('../config');
 const logger = require('../lib/logger');
 const crew = require('./crew');
@@ -125,7 +127,9 @@ async function enviar({
   if (!url) throw new ErrorJd('JDownloader no está configurado (pestaña Ajustes).', 409);
   const validos = (Array.isArray(links) ? links : [])
     .map((l, i) => ({
-      link: String(l).trim(),
+      // Un enlace de salto de un agregador lleva dentro la ficha de verdad: se manda esa, que el
+      // gestor sí sabe abrir (el salto suele tener una comprobación anti-robots delante).
+      link: desenvolver(String(l).trim()),
       title: Array.isArray(titulos) ? titulos[i] : '',
       duracion: Array.isArray(duraciones) ? duraciones[i] : null,
       meta: Array.isArray(items) && items[i] && typeof items[i] === 'object' ? items[i] : {},

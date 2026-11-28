@@ -493,6 +493,7 @@ router.get(
       fichas: p.fichas.length,
       directos: p.sustituidas.filter(f => !p.sinDirecto.includes(f)).length,
       sinDirecto: p.sinDirecto.length,
+      faltan: (p.faltan || []).length,
       escaneado: p.escaneado || null,
     }));
     return { paquetes, error };

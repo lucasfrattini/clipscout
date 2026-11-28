@@ -241,7 +241,9 @@ export function createActividadView(raiz) {
     }
     avisoDescargas.textContent = datos.error ? t('aj.paq.sinJd', { error: datos.error }) : '';
     paquetes = datos.paquetes || [];
-    cuentas.descargas = paquetes.filter(p => p.estado !== 'terminado').length;
+    cuentas.descargas = paquetes.filter(
+      p => p.estado !== 'terminado' && p.estado !== 'incompleto'
+    ).length;
     pintarPestanas();
     if (pestana === 'descargas') pintarPaquetes();
   }
@@ -265,9 +267,10 @@ export function createActividadView(raiz) {
           c?.fallidos ? tp('aj.paq.caidos', c.fallidos) : null,
           p.directos ? tp('aj.paq.directos', p.directos) : null,
           p.sinDirecto ? tp('aj.paq.sinDirecto', p.sinDirecto) : null,
+          p.faltan ? tp('aj.paq.faltan', p.faltan) : null,
           p.escaneado ? t('aj.paq.escaneado') : null,
         ].filter(Boolean);
-        const puedeReintentar = p.estado === 'error' || c?.fallidos;
+        const puedeReintentar = p.estado === 'error' || p.estado === 'incompleto' || c?.fallidos;
         const reintentar = async () => {
           try {
             const r = await ajustes.reintentarPaquete(p.id);
@@ -299,7 +302,12 @@ export function createActividadView(raiz) {
           }),
         ];
         const li = fila({
-          estado: p.estado === 'terminado' ? 'hecho' : p.estado === 'error' ? 'error' : 'curso',
+          estado:
+            p.estado === 'terminado'
+              ? 'hecho'
+              : p.estado === 'error' || p.estado === 'incompleto'
+                ? 'error'
+                : 'curso',
           titulo: p.nombre,
           detalle: detalle.join(' · '),
           acciones,
@@ -313,7 +321,9 @@ export function createActividadView(raiz) {
     );
   }
   async function vaciarCapturador() {
-    const enEspera = paquetes.filter(p => p.estado !== 'terminado').length;
+    const enEspera = paquetes.filter(
+      p => p.estado !== 'terminado' && p.estado !== 'incompleto'
+    ).length;
     const si = await confirmarIrreversible({
       titulo: t('aj.paq.vaciar'),
       texto: `${t('aj.paq.vaciarConfirmar')} ${tp('act.paquetesEnEspera', enEspera)}`,
@@ -784,6 +794,7 @@ export function createActividadView(raiz) {
       programada_error: '#/actividad/programadas',
       paquete_terminado: '#/actividad/descargas',
       paquete_fallido: '#/actividad/descargas',
+      paquete_incompleto: '#/actividad/descargas',
       sitio_roto: '#/ajustes/busqueda',
       busqueda_terminada: '#/actividad/busquedas',
     })[a.tipo];

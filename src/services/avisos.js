@@ -22,6 +22,7 @@ const TIPOS = new Set([
   'programada_error',
   'paquete_terminado',
   'paquete_fallido',
+  'paquete_incompleto',
   'sitio_roto',
   'busqueda_terminada',
 ]);
