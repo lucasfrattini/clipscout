@@ -27,7 +27,7 @@ async function opcionesSitios() {
   return (await crew.datos()).sitios || {};
 }
 
-/** Cambia las opciones de un dominio. `cambios`: `{ jdDirecto, fueraPorDefecto, fichaComoFichero }`. */
+/** Cambia las opciones de un dominio. `cambios`: `{ jdDirecto, fueraPorDefecto, fichaComoFichero, personasFicha, selectorPersonas }`. */
 async function guardarOpcionesSitio(dominio, cambios = {}) {
   const host = hostDe(`https://${String(dominio || '').replace(/^https?:\/\//, '')}`);
   if (!host) throw new crew.ErrorCrew('Dominio no válido.');
@@ -38,6 +38,16 @@ async function guardarOpcionesSitio(dominio, cambios = {}) {
     if ('fueraPorDefecto' in cambios) actual.fueraPorDefecto = cambios.fueraPorDefecto === true;
     // «Pasar la página a JDownloader»: el sitio firma sus ficheros y el gestor resuelve la ficha.
     if ('fichaComoFichero' in cambios) actual.fichaComoFichero = cambios.fichaComoFichero === true;
+    // «Personas en la ficha»: al enviar se lee la ficha y sus personas van a clipkeeper.
+    if ('personasFicha' in cambios) actual.personasFicha = cambios.personasFicha === true;
+    if ('selectorPersonas' in cambios) {
+      const { limpiarSelector } = require('./personasFicha');
+      const crudo = String(cambios.selectorPersonas ?? '').trim();
+      const limpio = limpiarSelector(crudo);
+      if (crudo && !limpio) throw new crew.ErrorCrew('Ese selector CSS no es válido.');
+      if (limpio) actual.selectorPersonas = limpio;
+      else delete actual.selectorPersonas;
+    }
     d.sitios[host] = actual;
     return { dominio: host, ...actual };
   });

@@ -1467,3 +1467,12 @@ html:not(.cg-seleccionando) .buscar__casilla {
   height: 40px;
   color: var(--cg-tenue);
 }
+
+/* Ajustes → Sitios → «Personas en la ficha»: el interruptor con su texto en una fila. */
+.cs-personas-ficha__activo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  margin: 0.5rem 0 0.75rem;
+}

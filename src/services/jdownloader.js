@@ -197,17 +197,30 @@ async function enviar({
   // duración, origen). `esperados: false` no avisa; un array son los items ya hechos (álbumes).
   let aviso = null;
   if (esperados !== false) {
-    aviso = await avisarEsperados({
-      pasan,
-      termino,
-      regla,
-      esperados,
-      bibliotecaId: bibliotecaId ?? biblioteca,
-      carpeta: carpetaEsperados ?? sub,
-    }).catch(error => {
-      logger.warn(`Esperados: ${error.message}`);
-      return null;
-    });
+    const avisar = () =>
+      avisarEsperados({
+        pasan,
+        termino,
+        regla,
+        esperados,
+        bibliotecaId: bibliotecaId ?? biblioteca,
+        carpeta: carpetaEsperados ?? sub,
+      }).catch(error => {
+        logger.warn(`Esperados: ${error.message}`);
+        return null;
+      });
+    const personasFicha = require('./personasFicha');
+    if (!Array.isArray(esperados) && pasan.some(e => personasFicha.activoPara(e.link, opciones))) {
+      // Sitios con «Personas en la ficha»: leer las fichas lleva unos segundos, así que el aviso a
+      // clipkeeper sale después, sin hacer esperar al envío (que ya está hecho).
+      aviso = { pendiente: true };
+      personasFicha
+        .completar(pasan, opciones)
+        .catch(error => logger.warn(`Personas de la ficha: ${error.message}`))
+        .then(avisar);
+    } else {
+      aviso = await avisar();
+    }
   }
   return {
     ok: true,

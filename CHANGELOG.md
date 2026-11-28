@@ -1,5 +1,12 @@
 # Cambios
 
+## 2.28.7
+
+- **Personas en la ficha** (Ajustes → Sitios → «⋯»): al mandar un vídeo de un sitio con esta opción, clipscout
+  abre su página y pasa a clipkeeper las personas que nombra (autora y reparto de sus datos estructurados y,
+  opcionalmente, los de un selector CSS). El vídeo llega ya con su actriz. Se hace en segundo plano: el envío
+  no tarda más.
+
 ## 2.28.6
 
 - **Enviar a descargar ya no se queda colgado** con una lista larga: las miniaturas se piden solo las que se ven y

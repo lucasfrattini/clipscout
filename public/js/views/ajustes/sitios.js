@@ -153,6 +153,13 @@ export function tarjetaSitios() {
                 },
               },
               {
+                texto: t('aj.sitios.personas'),
+                detalle: s.personasFicha
+                  ? s.selectorPersonas || t('aj.sitios.personas.activo')
+                  : t('aj.sitios.personas.detalle'),
+                fn: () => editarPersonas(s),
+              },
+              {
                 texto: t('aj.sitios.albumes'),
                 detalle: s.albumSearchUrl || t('aj.sitios.albumes.detalle'),
                 fn: () => editarAlbumes(s),
@@ -272,6 +279,64 @@ export function tarjetaSitios() {
         campo(t('aj.sitios.albumes.patron'), patron, t('aj.sitios.albumes.patron.hint')),
       ],
       pie: [guardarAlbumes],
+    });
+  }
+
+  /** «Personas en la ficha»: al enviar se lee la ficha y sus personas llegan a clipkeeper. */
+  function editarPersonas(s) {
+    const activo = el('input', { attrs: { type: 'checkbox', role: 'switch' } });
+    activo.checked = s.personasFicha === true;
+    const selector = el('input', {
+      className: 'input',
+      attrs: {
+        type: 'text',
+        spellcheck: 'false',
+        autocomplete: 'off',
+        maxlength: '300',
+        placeholder: '.reparto a',
+      },
+    });
+    selector.value = s.selectorPersonas || '';
+    let hoja = null;
+    const guardar = el('button', {
+      className: 'cg-boton cg-boton--principal',
+      attrs: { type: 'button' },
+      text: t('aj.guardar'),
+      on: {
+        click: async () => {
+          try {
+            const r = await ajustes.guardarSitio(s.dominio, {
+              personasFicha: activo.checked,
+              selectorPersonas: selector.value.trim(),
+            });
+            s.personasFicha = r.personasFicha === true;
+            s.selectorPersonas = r.selectorPersonas || '';
+            toast(t('aj.guardado'));
+            hoja?.cerrar();
+          } catch (error) {
+            toast(error.message, 'error', 6000);
+          }
+        },
+      },
+    });
+    hoja = abrirHoja({
+      titulo: t('aj.sitios.personas.titulo', { nombre: s.nombre }),
+      contenido: [
+        el('p', { className: 'field__hint', text: t('aj.sitios.personas.explica') }),
+        el('label', {
+          className: 'cs-personas-ficha__activo',
+          children: [activo, el('span', { text: t('aj.sitios.personas.leer') })],
+        }),
+        el('label', {
+          className: 'field',
+          children: [
+            el('span', { className: 'field__label', text: t('aj.sitios.personas.selector') }),
+            selector,
+            el('span', { className: 'field__hint', text: t('aj.sitios.personas.selector.hint') }),
+          ],
+        }),
+      ],
+      pie: [guardar],
     });
   }
 

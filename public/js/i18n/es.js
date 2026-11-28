@@ -742,6 +742,16 @@ export const es = {
   'aj.jd.calidad.hint':
     'Son los ajustes del plugin de cada sitio en JDownloader: se cambian allí al momento.',
   'aj.jd.calidad.resolucion': 'Bajar {p}p',
+  'aj.sitios.personas': 'Personas en la ficha',
+  'aj.sitios.personas.detalle': 'Leer la actriz de la página del vídeo al mandarlo a descargar',
+  'aj.sitios.personas.activo': 'Activado (datos estructurados de la página)',
+  'aj.sitios.personas.titulo': 'Personas en la ficha — {nombre}',
+  'aj.sitios.personas.explica':
+    'Al mandar un vídeo de este sitio a JDownloader, clipscout abre su página y pasa a clipkeeper las personas que nombra: la autora o el reparto de sus datos estructurados y, si pones un selector, los enlaces que elija. Es una petición más por vídeo y no retrasa el envío.',
+  'aj.sitios.personas.leer': 'Leer las personas de la página',
+  'aj.sitios.personas.selector': 'Selector CSS del reparto (opcional)',
+  'aj.sitios.personas.selector.hint':
+    'Los enlaces o elementos con el nombre de cada persona. Vacío: solo los datos estructurados.',
   'aj.sitios.ficha.poner': 'Pasar la página a JDownloader',
   'aj.sitios.ficha.quitar': 'Dejar de pasar la página a JDownloader',
   'aj.sitios.ficha.hint':

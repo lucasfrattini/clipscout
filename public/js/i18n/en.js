@@ -737,6 +737,17 @@ export const en = {
   'aj.jd.calidad.hint':
     'These are the settings of each site plugin in JDownloader: they change there right away.',
   'aj.jd.calidad.resolucion': 'Download {p}p',
+  'aj.sitios.personas': 'People on the page',
+  'aj.sitios.personas.detalle':
+    'Read the performer from the video page when sending it to download',
+  'aj.sitios.personas.activo': 'On (structured data of the page)',
+  'aj.sitios.personas.titulo': 'People on the page — {nombre}',
+  'aj.sitios.personas.explica':
+    'When a video from this site is sent to JDownloader, clipscout opens its page and passes the people it names to clipkeeper: the author or cast from its structured data and, if you set a selector, the links it picks. It is one more request per video and does not delay sending.',
+  'aj.sitios.personas.leer': 'Read the people from the page',
+  'aj.sitios.personas.selector': 'Cast CSS selector (optional)',
+  'aj.sitios.personas.selector.hint':
+    'Links or elements with the name of each person. Empty: structured data only.',
   'aj.sitios.ficha.poner': 'Pass the page to JDownloader',
   'aj.sitios.ficha.quitar': 'Stop passing the page to JDownloader',
   'aj.sitios.ficha.hint':

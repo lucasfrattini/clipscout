@@ -390,6 +390,8 @@ router.get(
           fichaComoFichero:
             opciones[dominio]?.fichaComoFichero === true ||
             s.perfil.config.fichaComoFichero === true,
+          personasFicha: opciones[dominio]?.personasFicha === true,
+          selectorPersonas: opciones[dominio]?.selectorPersonas || '',
           estadisticas: cifras[dominio] || null,
           salud: salud[dominio] || null,
         };

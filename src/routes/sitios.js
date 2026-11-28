@@ -133,6 +133,8 @@ router.get('/sitios/exportar', async (req, res, next) => {
           jdDirecto: o.jdDirecto === true,
           fueraPorDefecto: o.fueraPorDefecto === true,
           fichaComoFichero: o.fichaComoFichero === true || p.config.fichaComoFichero === true,
+          personasFicha: o.personasFicha === true,
+          ...(o.selectorPersonas ? { selectorPersonas: o.selectorPersonas } : {}),
         },
       };
     });
@@ -199,11 +201,18 @@ router.post('/sitios/importar', async (req, res, next) => {
     }
     const guardados = await writeProfiles(perfiles);
     for (const [host, o] of opcionesNuevas) {
-      await directo.guardarOpcionesSitio(host, {
-        jdDirecto: o.jdDirecto === true,
-        fueraPorDefecto: o.fueraPorDefecto === true,
-        fichaComoFichero: o.fichaComoFichero === true,
-      });
+      // Un selector que no valga no tira la importación entera: ese sitio se queda sin él.
+      await directo
+        .guardarOpcionesSitio(host, {
+          jdDirecto: o.jdDirecto === true,
+          fueraPorDefecto: o.fueraPorDefecto === true,
+          fichaComoFichero: o.fichaComoFichero === true,
+          personasFicha: o.personasFicha === true,
+          ...(typeof o.selectorPersonas === 'string'
+            ? { selectorPersonas: o.selectorPersonas.slice(0, 300) }
+            : {}),
+        })
+        .catch(error => logger.warn(`Importar opciones de ${host}: ${error.message}`));
     }
     logger.info('Sitios importados', { anadidos, actualizados, saltados });
     res.json({ success: true, anadidos, actualizados, saltados, total: guardados.length });

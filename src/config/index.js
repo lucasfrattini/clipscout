@@ -266,6 +266,9 @@ const config = {
     // «temporalmente no disponible»…), que muchas veces se arregla solo.
     revisionesCaidoClaro: intFromEnv('JD_REVISIONES_CAIDO_CLARO', 2),
     revisionesCaidoDudoso: intFromEnv('JD_REVISIONES_CAIDO_DUDOSO', 4),
+    // «Personas en la ficha» (Ajustes → Sitios): fichas leídas a la vez al enviar y plazo de cada una
+    personasFichaConcurrencia: intFromEnv('JD_PERSONAS_FICHA_CONCURRENCIA', 3),
+    personasFichaPlazoMs: intFromEnv('JD_PERSONAS_FICHA_PLAZO_MS', 20000),
   },
 
   /**
